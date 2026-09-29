@@ -86,8 +86,38 @@ def bootstrap() -> None:
             session.add(AuditLog(user_id=user.id, action="user.create", details={"username": username, "role": "admin"}))
             session.commit()
             print(f"أُنشئ المدير «{username}»")
+        _recover_account(session)
     if os.environ.get("DEMO_SEED") == "1":
         seed_demo(os.environ.get("DEMO_PASSWORD") or None)
+
+
+def _recover_account(session) -> None:
+    """استرجاع حساب مقفول من إعدادات الاستضافة (لما ما في مدير يقدر يدخل).
+
+    RECOVER_USERNAME + RECOVER_PASSWORD: تُعطى الحساب كلمة مؤقتة، ويتفعّل، ويُطلب تغييرها أول دخول.
+    RECOVER_AS_ADMIN=1: يرقّى الحساب لمدير كمان. بعد الدخول تُحذف هذي المتغيرات من الإعدادات.
+    """
+    import os
+
+    from sqlalchemy import func
+
+    username = os.environ.get("RECOVER_USERNAME", "").strip()
+    password = os.environ.get("RECOVER_PASSWORD", "")
+    if not (username and password):
+        return
+    user = session.scalar(select(User).where(func.lower(User.username) == username.lower()))
+    if user is None:
+        print(f"الاسترجاع: ما في مستخدم باسم «{username}»، الأسماء الموجودة: "
+              + "، ".join(session.scalars(select(User.username))))
+        return
+    user.password_hash = hash_password(password)
+    user.must_change_password = True
+    user.is_active = True
+    if os.environ.get("RECOVER_AS_ADMIN") == "1":
+        user.role = Role.ADMIN
+    session.add(AuditLog(user_id=user.id, action="user.recovered", details={"username": user.username}))
+    session.commit()
+    print(f"الاسترجاع: تغيّرت كلمة مرور «{user.username}» ({user.role.value}). احذف متغيرات RECOVER_* من الإعدادات")
 
 
 DEMO_COMPANY = "شركة تجريبية"
