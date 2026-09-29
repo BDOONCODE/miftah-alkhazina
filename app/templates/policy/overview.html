@@ -1,0 +1,68 @@
+{% extends "entity_base.html" %}
+{% from "policy/_table.html" import buckets_table, policy_meta, decision_forms %}
+{% block entity_content %}
+{% set can_edit = user.role.value in ("accountant", "admin") %}
+
+{% if open %}
+<section class="card card-highlight">
+  <div class="card-head">
+    <h2>نسخة {{ open.version }} <span class="pill pill-{{ open.status.value }}">{{ POLICY_STATUS_LABELS[open.status.value] }}</span></h2>
+    {% if open.status.value == 'draft' and can_edit %}
+      <a class="btn btn-primary" href="/policies/{{ open.id }}/edit">متابعة التعديل</a>
+    {% endif %}
+  </div>
+  {% if open.buckets %}{{ buckets_table(open) }}{% else %}<p class="muted">المسودة فاضية.</p>{% endif %}
+  {% if open_changes %}
+  <div class="alert alert-warning">تعديلات على بنود محمية: {{ open_changes | join('، ') }}</div>
+  {% endif %}
+  {{ policy_meta(open) }}
+  {% if open.status.value == 'pending' and user.role.value != 'approver' %}
+  <div class="alert alert-warning">
+    بانتظار اعتماد المراجع:
+    {% for r in entity.reviewers %}<strong>{{ r.full_name }}</strong> (<span dir="ltr">{{ r.username }}</span>){{ '، ' if not loop.last }}{% endfor %}.
+    المراجع يدخل بحسابه{% if entity.reviewers | selectattr('must_change_password') | list %} (أول دخول بكلمة المرور المؤقتة اللي حددتها عند تسجيل الشركة){% endif %}
+    ويفتح هذي الصفحة ويضغط «اعتماد». أنت كمحاسب ما تقدر تعتمد سياستك بنفسك.
+  </div>
+  {% endif %}
+  {{ decision_forms(open, user) }}
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="card-head">
+    <h2>السياسة النشطة</h2>
+    {% if can_edit and not open %}
+    <form method="post" action="/entities/{{ entity.id }}/policy/draft">
+      <button class="btn {{ 'btn-primary' if not active }}" type="submit">{{ 'تعديل السياسة (نسخة جديدة)' if active else '+ إنشاء سياسة التقسيم' }}</button>
+    </form>
+    {% endif %}
+  </div>
+  {% if active %}
+    <p class="muted">نسخة {{ active.version }} — أي مبلغ يدخل حساب الشركة يتقسم حسب هذي البنود بالترتيب.</p>
+    {{ buckets_table(active) }}
+    {{ policy_meta(active) }}
+  {% else %}
+    <p class="muted">ما في سياسة نشطة. المبالغ الواردة ما تتقسم إلا بعد ما يعتمد المراجع السياسة.</p>
+  {% endif %}
+</section>
+
+{% if history %}
+<section class="card">
+  <h2>كل النسخ</h2>
+  <table class="table">
+    <thead><tr><th>النسخة</th><th>الحالة</th><th>أنشأها</th><th>القرار</th><th></th></tr></thead>
+    <tbody>
+    {% for p in history %}
+      <tr>
+        <td class="num">{{ p.version }}</td>
+        <td><span class="pill pill-{{ p.status.value }}">{{ POLICY_STATUS_LABELS[p.status.value] }}</span></td>
+        <td>{{ p.creator.full_name }}</td>
+        <td>{% if p.decider %}{{ p.decider.full_name }} · {{ p.decided_at | riyadh('%Y-%m-%d') }}{% endif %}</td>
+        <td><a href="/policies/{{ p.id }}">عرض</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

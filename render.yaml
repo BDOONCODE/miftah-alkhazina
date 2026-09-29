@@ -1,0 +1,30 @@
+# إعداد النشر على Render (الخطة المجانية). الخطوات كاملة في DEPLOY.md
+services:
+  - type: web
+    name: miftah-alkhazina
+    runtime: python
+    plan: free
+    region: frankfurt  # أقرب منطقة للسعودية، ونفس منطقة قاعدة Supabase
+    buildCommand: pip install -r requirements.txt
+    startCommand: >-
+      alembic upgrade head &&
+      python -m app.cli bootstrap &&
+      uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
+    healthCheckPath: /login
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: DATABASE_URL  # رابط Session pooler من Supabase
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: HTTPS_ONLY_COOKIES
+        value: "1"
+      - key: ADMIN_USERNAME  # حساب المدير الأول
+        sync: false
+      - key: ADMIN_PASSWORD  # مؤقتة، النظام يطلب تغييرها أول دخول
+        sync: false
+      - key: DEMO_SEED  # 1 = شركة تجريبية بسياسة ومعاملات للعرض
+        value: "1"
+      - key: DEMO_PASSWORD  # كلمة مرور حسابات العرض demo-acc و demo-rev2
+        sync: false

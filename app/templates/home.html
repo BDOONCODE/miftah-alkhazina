@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1>الشركات</h1>
+  {% if user.role.value in ("accountant", "admin") %}
+  <a href="/companies/new" class="btn btn-primary">+ تسجيل شركة</a>
+  {% endif %}
+</div>
+
+{% if rows %}
+<div class="grid-cards">
+  {% for r in rows %}
+  <a class="card card-link" href="/entities/{{ r.entity.id }}/{{ 'dashboard' if r.active else 'policy' }}">
+    <h3>{{ r.entity.name }}</h3>
+    {% if r.active %}
+      <span class="pill pill-active">سياسة نشطة · نسخة {{ r.active.version }}</span>
+    {% else %}
+      <span class="pill pill-muted">ما في سياسة نشطة</span>
+    {% endif %}
+    {% if r.open %}
+      <span class="pill pill-{{ r.open.status.value }}">{{ POLICY_STATUS_LABELS[r.open.status.value] }}</span>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty">
+  {% if user.role.value in ("accountant", "admin") %}
+    ما سجّلت أي شركة بعد. <a href="/companies/new">سجّل أول شركة</a>
+  {% else %}
+    ما في شركات مرتبطة بحسابك بعد.
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "entity_base.html" %}
+{% from "policy/_table.html" import buckets_table, policy_meta, decision_forms %}
+{% block entity_content %}
+<section class="card">
+  <div class="card-head">
+    <h2>نسخة {{ policy.version }} <span class="pill pill-{{ policy.status.value }}">{{ POLICY_STATUS_LABELS[policy.status.value] }}</span></h2>
+    <a href="/entities/{{ entity.id }}/policy">← كل النسخ</a>
+  </div>
+  {{ buckets_table(policy) }}
+  {% if protected_changes %}
+  <div class="alert alert-warning">تعديلات على بنود محمية: {{ protected_changes | join('، ') }}</div>
+  {% endif %}
+  {{ policy_meta(policy) }}
+  {{ decision_forms(policy, user) }}
+</section>
+{% endblock %}

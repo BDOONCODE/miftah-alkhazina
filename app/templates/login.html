@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}تسجيل الدخول — مفتاح الخزينة{% endblock %}
+{% block content %}
+<div class="login-card card">
+  <h1>🔑 مفتاح الخزينة</h1>
+  <p class="muted">سجّل دخولك للمتابعة</p>
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/login" class="stack">
+    <label>اسم المستخدم
+      <input name="username" autocomplete="username" required autofocus dir="ltr">
+    </label>
+    <label>كلمة المرور
+      <input name="password" type="password" autocomplete="current-password" required dir="ltr">
+    </label>
+    <button type="submit" class="btn btn-primary">دخول</button>
+  </form>
+</div>
+{% endblock %}

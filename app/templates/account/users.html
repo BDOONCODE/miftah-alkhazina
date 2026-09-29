@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>المستخدمين</h1>
+<section class="card">
+  <h2>إضافة محاسب</h2>
+  <form method="post" class="form-grid">
+    <label>الاسم الكامل <input name="full_name" required></label>
+    <label>اسم المستخدم <input name="username" dir="ltr" required></label>
+    <label>كلمة مرور مؤقتة <input name="password" type="password" minlength="8" dir="ltr" autocomplete="new-password" required></label>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">إضافة</button></div>
+  </form>
+</section>
+
+<section class="card">
+  <table class="table">
+    <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th>الشركات</th><th>الحالة</th><th></th></tr></thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td>{{ u.full_name }}</td>
+        <td dir="ltr">{{ u.username }}</td>
+        <td>{{ ROLE_LABELS[u.role.value] }}</td>
+        <td>{{ u.entities | map(attribute='name') | join('، ') }}</td>
+        <td>{{ 'نشط' if u.is_active else 'معطّل' }}</td>
+        <td>
+          {% if u.id != user.id %}
+          <form method="post" action="/admin/users/{{ u.id }}/toggle">
+            <button class="btn-link" type="submit">{{ 'تعطيل' if u.is_active else 'تفعيل' }}</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

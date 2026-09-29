@@ -1,0 +1,57 @@
+{% extends "entity_base.html" %}
+{% block entity_content %}
+{% if user.role.value in ("accountant", "admin") %}
+<section class="card">
+  <h2>مبلغ وارد جديد</h2>
+  {% if policy %}
+  <p class="muted">يتقسم فورًا حسب السياسة النشطة (نسخة {{ policy.version }}). لاحقًا يوصل تلقائيًا من البنك.</p>
+  <form method="post" class="form-grid">
+    <label>المبلغ (ر.س) *
+      <input name="amount" inputmode="decimal" required class="num" placeholder="0.00" autofocus>
+    </label>
+    <label>تاريخ الإيداع *
+      <input name="occurred_at" type="datetime-local" value="{{ now }}" max="{{ now }}" required>
+    </label>
+    <label>ملاحظة
+      <input name="note" placeholder="مثال: دفعة عميل">
+    </label>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">تسجيل وتقسيم</button></div>
+  </form>
+  {% else %}
+  <div class="alert alert-warning">ما في سياسة نشطة. <a href="/entities/{{ entity.id }}/policy">حدد سياسة التقسيم</a> وخلّ المراجع يعتمدها أول.</div>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>المعاملات</h2>
+  {% if txns %}
+  <div class="table-scroll">
+  <table class="table">
+    <thead><tr><th>#</th><th>تاريخ الإيداع</th><th>المبلغ</th><th>التوزيع</th><th>الفائض</th><th>ملاحظة</th><th></th></tr></thead>
+    <tbody>
+    {% for t in txns %}
+      <tr class="{{ 'row-muted' if t.id in reversed_ids or t.reversal_of }}">
+        <td class="num">{{ t.id }}</td>
+        <td>{{ t.occurred_at | riyadh }}</td>
+        <td class="num {{ 'negative' if t.amount < 0 }}">{{ t.amount | sar }}</td>
+        <td class="small">
+          {% for e in t.events if e.allocated %}{{ names.get(e.bucket_id, '؟') }}: <span class="num">{{ e.allocated | sar }}</span>{{ '، ' if not loop.last }}{% endfor %}
+        </td>
+        <td class="num">{{ t.surplus | sar }}</td>
+        <td>
+          {% if t.reversal_of %}<span class="pill pill-rejected">قيد عكسي لـ#{{ t.reversal_of }}</span>
+          {% elif t.id in reversed_ids %}<span class="pill">معكوسة</span>{% endif %}
+          {{ t.note }}
+        </td>
+        <td><a href="/transactions/{{ t.id }}">التفاصيل</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">ما في معاملات بعد.</p>
+  {% endif %}
+</section>
+{% endblock %}

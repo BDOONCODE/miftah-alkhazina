@@ -1,0 +1,111 @@
+{% extends "entity_base.html" %}
+{% macro row(r) %}
+<tr class="bucket-row">
+  <td>
+    <input type="hidden" name="bucket_id" value="{{ r.bucket_id }}">
+    <input name="priority" type="number" min="1" value="{{ r.priority }}" class="w-xs num" required aria-label="الأولوية">
+  </td>
+  <td><input name="name" value="{{ r.name }}" placeholder="مثال: الضريبة" required aria-label="اسم البند"></td>
+  <td>
+    <select name="calc_type" class="js-calc" aria-label="النوع">
+      {% for k, label in CALC_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if r.calc_type == k }}>{{ label }}</option>{% endfor %}
+    </select>
+  </td>
+  <td>
+    <div class="input-unit">
+      <input name="value" value="{{ r.value }}" inputmode="decimal" class="w-sm num js-value" required aria-label="القيمة">
+      <span class="unit js-unit">{{ '%' if r.calc_type == 'percentage' else 'ر.س' }}</span>
+    </div>
+  </td>
+  <td>
+    <select name="frequency" class="js-freq" aria-label="الاستحقاق">
+      {% for k, label in FREQ_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if r.frequency == k }}>{{ label }}</option>{% endfor %}
+    </select>
+    <input name="settlement_day" type="number" min="1" max="31" value="{{ r.settlement_day }}" placeholder="اليوم"
+           class="w-xs num js-day" {{ 'hidden' if r.frequency != 'day_of_month' }} aria-label="يوم الاستحقاق">
+  </td>
+  <td><input name="destination" value="{{ r.destination }}" placeholder="نفس الحساب" aria-label="الوجهة"></td>
+  <td>
+    <select name="protected" aria-label="محمي">
+      <option value="0" {{ 'selected' if r.protected != '1' }}>لا</option>
+      <option value="1" {{ 'selected' if r.protected == '1' }}>🔒 نعم</option>
+    </select>
+  </td>
+  <td><button type="button" class="btn-icon js-remove" title="حذف البند" aria-label="حذف البند">✕</button></td>
+</tr>
+{% endmacro %}
+
+{% block entity_content %}
+<ol class="steps">
+  <li class="done">بيانات الشركة والمراجع</li>
+  <li class="current">سياسة التقسيم</li>
+  <li>اعتماد المراجع</li>
+</ol>
+
+<form method="post" id="policy-form" class="stack">
+  <section class="card">
+    <div class="card-head">
+      <h2>مسودة نسخة {{ policy.version }}</h2>
+      <span class="muted">مجموع النسب: <strong class="num js-pct-total">{{ '%g' % pct_total }}%</strong></span>
+    </div>
+    <p class="muted">
+      كل مبلغ يدخل الحساب يمر على البنود <strong>بالترتيب حسب الأولوية</strong>: الأولوية 1 تاخذ نصيبها أول، وبعدها 2،
+      وهكذا. اللي يتبقى بعد كل البنود يظهر كـ<strong>فائض</strong>.
+    </p>
+    <details class="help">
+      <summary>وش معنى «الوجهة» و«محمي»؟</summary>
+      <dl>
+        <dt>الوجهة</dt>
+        <dd>وين يروح مبلغ البند. اتركها فاضية (<strong>نفس الحساب</strong>) لو المبلغ يبقى في حساب الشركة ويتحجز دفتريًا بس
+          (مثلًا: ضريبة تنحجز لين موعد السداد). أو اكتب اسم حساب ثاني (مثل «حساب الرواتب») لو المبلغ لازم يتحول له.
+          التحويل الفعلي يجي مع الربط البنكي؛ حاليًا الاسم يتسجّل للتوثيق.</dd>
+        <dt>محمي 🔒</dt>
+        <dd>بند حساس ما نبي أحد يغيّره بسهولة (مثل الضريبة أو الرواتب). بعد ما يتموّل في الفترة الحالية، أي تغيير على
+          قيمته أو أولويته أو استحقاقه أو حذفه يحتاج <strong>تبرير مكتوب</strong> يشوفه المراجع وينحفظ في السجل.</dd>
+      </dl>
+    </details>
+
+    {% for e in errors %}<div class="alert alert-error">{{ e }}</div>{% endfor %}
+
+    <div class="table-scroll">
+      <table class="table table-form">
+        <thead>
+          <tr><th>الأولوية</th><th>البند</th><th>النوع</th><th>القيمة</th><th>الاستحقاق</th><th>الوجهة</th><th>محمي</th><th></th></tr>
+        </thead>
+        <tbody id="rows">
+          {% for r in rows %}{{ row(r) }}{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <template id="row-template">{{ row({'bucket_id': '', 'name': '', 'priority': '', 'calc_type': 'percentage', 'value': '', 'frequency': 'immediate', 'settlement_day': '', 'destination': '', 'protected': '0'}) }}</template>
+    <div><button type="button" class="btn" id="add-row">+ إضافة بند</button></div>
+
+    <label>ملاحظات للمراجع
+      <textarea name="notes" rows="2">{{ notes }}</textarea>
+    </label>
+  </section>
+
+  <section class="card">
+    {% if protected_changes %}
+    <div class="alert alert-warning">
+      هذي التعديلات تمس بنودًا محمية تموّلت في الفترة الحالية: {{ protected_changes | join('، ') }}
+    </div>
+    <label>التبرير (20 حرفًا على الأقل) *
+      <textarea name="justification" rows="2" minlength="20"></textarea>
+    </label>
+    {% else %}
+    <input type="hidden" name="justification" value="">
+    {% endif %}
+    <div class="form-actions">
+      <button class="btn" type="submit" name="intent" value="save">حفظ المسودة</button>
+      <button class="btn btn-primary" type="submit" name="intent" value="submit">حفظ وإرسال للمراجع ←</button>
+    </div>
+  </section>
+</form>
+
+<form method="post" action="/policies/{{ policy.id }}/discard" onsubmit="return confirm('تحذف المسودة؟')">
+  <button class="btn-link danger" type="submit">حذف المسودة</button>
+</form>
+{% endblock %}
+
+{% block scripts %}<script src="/static/policy_editor.js"></script>{% endblock %}

@@ -1,0 +1,176 @@
+{% extends "entity_base.html" %}
+{% block head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack.min.css">
+{% endblock %}
+
+{% block entity_content %}
+<div class="page-head">
+  <span class="muted">{{ dashboard.title }}</span>
+  {% if can_edit %}
+  <div class="form-actions">
+    <button class="btn" type="button" id="toggle-edit">✎ ترتيب العناصر</button>
+    <button class="btn btn-primary" type="button" data-open-widget="new">+ إضافة عنصر</button>
+  </div>
+  {% endif %}
+</div>
+
+{% if not views %}
+<div class="card empty">اللوحة فاضية. {% if can_edit %}اضغط «إضافة عنصر» وابدأ.{% endif %}</div>
+{% endif %}
+
+<div class="grid-stack" data-layout-url="/entities/{{ entity.id }}/dashboard/layout">
+  {% for v in views %}{% set w = v.widget %}
+  <div class="grid-stack-item" gs-id="{{ w.id }}" gs-x="{{ w.x }}" gs-y="{{ w.y }}" gs-w="{{ w.w }}" gs-h="{{ w.h }}">
+    <div class="grid-stack-item-content widget widget-{{ w.kind }}">
+      <div class="widget-head">
+        <span class="widget-title">{{ w.title }}</span>
+        <span class="widget-period">{{ v.period_label }}</span>
+        {% if can_edit %}
+        <span class="widget-actions">
+          <button type="button" class="btn-icon" title="تعديل" aria-label="تعديل"
+                  data-open-widget="{{ w.id }}" data-kind="{{ w.kind }}" data-title="{{ w.title }}"
+                  data-config='{{ w.config | tojson }}'>✎</button>
+          <form method="post" action="/dashboard/widgets/{{ w.id }}/delete" onsubmit="return confirm('تحذف العنصر؟')">
+            <button class="btn-icon" title="حذف" aria-label="حذف">✕</button>
+          </form>
+        </span>
+        {% endif %}
+      </div>
+      <div class="widget-body">
+        {% if v.kind == 'kpi' %}
+          <div class="kpi-big num {{ 'negative' if v.negative }}">{{ v.display }}</div>
+          <div class="muted small">{{ v.label }}</div>
+
+        {% elif v.kind == 'bucket_progress' %}
+          {% for b in v.buckets %}
+          <div class="progress-row">
+            <div class="progress-label">
+              <span>{{ b.name }}</span>
+              {% if b.target %}
+                <span class="num small">{{ b.funded | sar }} / {{ b.target | sar }}</span>
+              {% else %}
+                <span class="num small">{{ b.funded | sar }}{% if b.deficit %} · <span class="negative">عجز {{ b.deficit | sar }}</span>{% endif %}</span>
+              {% endif %}
+            </div>
+            {% if b.target %}
+            <div class="bar"><span style="width: {{ (b.progress * 100) | round(1) }}%" class="{{ 'full' if b.progress >= 1 }}"></span></div>
+            {% endif %}
+          </div>
+          {% else %}<p class="muted">ما في سياسة نشطة.</p>{% endfor %}
+
+        {% elif v.kind in ('allocation', 'timeseries') %}
+          {% if (v.chart.data if v.kind == 'allocation' else v.chart.labels) %}
+          <div class="chart" data-chart='{{ v.chart | tojson }}'></div>
+          {% else %}<p class="muted">ما في معاملات في هذي الفترة.</p>{% endif %}
+
+        {% elif v.kind == 'deficits' %}
+          {% for b in v.rows %}
+          <div class="list-row"><span>{{ b.name }}</span><span class="num negative">{{ b.deficit | sar }}</span></div>
+          {% else %}<p class="muted">ما في عجز 👍</p>{% endfor %}
+
+        {% elif v.kind == 'recent' %}
+          <table class="table compact">
+            <tbody>
+            {% for t in v.rows %}
+              <tr>
+                <td>{{ t.occurred_at | riyadh('%m-%d %H:%M') }}</td>
+                <td class="num {{ 'negative' if t.amount < 0 }}">{{ t.amount | sar }}</td>
+                <td class="num muted">فائض {{ t.surplus | sar }}</td>
+                <td><a href="/transactions/{{ t.id }}">↗</a></td>
+              </tr>
+            {% else %}<tr><td class="muted">ما في معاملات.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<section class="card" id="metrics">
+  <h2>المؤشرات المخصصة</h2>
+  <p class="muted">مؤشرات بمعادلات خاصة بالشركة، تنعرض كبطاقة رقم في اللوحة. القيم هنا لهذا الشهر.</p>
+  {% if customs %}
+  <table class="table">
+    <thead><tr><th>المؤشر</th><th>المعادلة</th><th>القيمة</th><th></th></tr></thead>
+    <tbody>
+    {% for c, value in customs %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td><code>{{ c.formula }}</code></td>
+        <td class="num">{{ value }}</td>
+        <td>
+          {% if can_edit %}
+          <button type="button" class="btn-link" data-edit-metric='{{ {"id": c.id, "name": c.name, "formula": c.formula, "fmt": c.fmt} | tojson }}'>تعديل</button>
+          <form method="post" action="/metrics/{{ c.id }}/delete" class="inline" onsubmit="return confirm('تحذف المؤشر؟ العناصر اللي تعرضه بتنحذف بعد')">
+            <button class="btn-link danger">حذف</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if can_edit %}
+  <form method="post" action="/entities/{{ entity.id }}/metrics" class="stack" id="metric-form">
+    <input type="hidden" name="metric_id" value="">
+    <div class="form-grid">
+      <label>اسم المؤشر *<input name="name" required placeholder="مثال: نسبة الفائض"></label>
+      <label>التنسيق
+        <select name="fmt">{% for k, label in FORMATS.items() %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <label>المعادلة *
+      <input name="formula" required class="formula-input" placeholder="الفائض / الوارد * 100">
+    </label>
+    <div class="chips" aria-label="المؤشرات المتاحة">
+      <span class="muted small">اضغط لإضافة مؤشر:</span>
+      {% for name in variable_names %}<button type="button" class="chip" data-insert="{{ name }}">{{ name }}</button>{% endfor %}
+      {% for op in ['+', '-', '*', '/', '(', ')'] %}<button type="button" class="chip chip-op" data-insert=" {{ op }} ">{{ op }}</button>{% endfor %}
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">حفظ المؤشر</button>
+      <button class="btn" type="reset">جديد</button>
+    </div>
+  </form>
+  {% endif %}
+</section>
+
+{% if can_edit %}
+<dialog id="widget-dialog">
+  <form method="post" class="stack" id="widget-form" data-add-url="/entities/{{ entity.id }}/dashboard/widgets">
+    <h2 id="widget-dialog-title">إضافة عنصر</h2>
+    <label>النوع
+      <select name="kind" id="widget-kind">{% for k, label in KINDS.items() %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select>
+    </label>
+    <label>العنوان<input name="title" placeholder="اختياري"></label>
+    <label data-for="kpi">المؤشر
+      <select name="metric">{% for k, label in catalog %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select>
+    </label>
+    <label>الفترة
+      <select name="period">{% for k, label in PERIODS.items() %}<option value="{{ k }}" {{ 'selected' if k == 'this_month' }}>{{ label }}</option>{% endfor %}</select>
+    </label>
+    <label data-for="allocation">شكل الرسم
+      <select name="chart">{% for k, label in CHARTS.items() %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select>
+    </label>
+    <label data-for="timeseries">التجميع
+      <select name="granularity">{% for k, label in GRANULARITIES.items() %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select>
+    </label>
+    <label data-for="recent">عدد الصفوف<input name="limit" type="number" min="1" max="50" value="10"></label>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">حفظ</button>
+      <button class="btn" type="button" data-close>إلغاء</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack-all.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script src="/static/dashboard.js"></script>
+{% endblock %}

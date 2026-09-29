@@ -1,0 +1,40 @@
+{% macro company_fields(v, readonly=false) %}
+<div class="form-grid">
+  <label>اسم الشركة *
+    <input name="name" value="{{ v.name or '' }}" required {{ 'readonly' if readonly }}>
+  </label>
+  <label>السجل التجاري
+    <input name="cr_number" value="{{ v.cr_number or '' }}" dir="ltr" {{ 'readonly' if readonly }}>
+  </label>
+  <label>الرقم الضريبي
+    <input name="vat_number" value="{{ v.vat_number or '' }}" dir="ltr" {{ 'readonly' if readonly }}>
+  </label>
+  <label>البنك
+    <input name="bank_name" value="{{ v.bank_name or '' }}" {{ 'readonly' if readonly }}>
+  </label>
+  <label>الآيبان
+    <input name="iban" value="{{ v.iban or '' }}" dir="ltr" placeholder="SA…" {{ 'readonly' if readonly }}>
+  </label>
+  <label>مسؤول التواصل
+    <input name="contact_name" value="{{ v.contact_name or '' }}" {{ 'readonly' if readonly }}>
+  </label>
+  <label>جوال التواصل
+    <input name="contact_phone" value="{{ v.contact_phone or '' }}" dir="ltr" {{ 'readonly' if readonly }}>
+  </label>
+</div>
+{% endmacro %}
+
+{% macro reviewer_fields(v) %}
+<div class="form-grid">
+  <label>اسم المراجع *
+    <input name="reviewer_full_name" value="{{ v.reviewer_full_name or '' }}" required>
+  </label>
+  <label>اسم المستخدم للدخول *
+    <input name="reviewer_username" value="{{ v.reviewer_username or '' }}" dir="ltr" required>
+  </label>
+  <label>كلمة مرور مؤقتة *
+    <input name="reviewer_password" type="password" minlength="8" dir="ltr" autocomplete="new-password" required>
+    <small class="muted">بيطلب منه النظام يغيّرها أول ما يدخل</small>
+  </label>
+</div>
+{% endmacro %}

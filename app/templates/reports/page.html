@@ -1,0 +1,59 @@
+{% extends "entity_base.html" %}
+{% block entity_content %}
+{% set s = report.snap %}
+<section class="card">
+  <form method="get" class="form-grid">
+    <label>نوع التقرير
+      <select name="kind">{% for k, label in KINDS.items() %}<option value="{{ k }}" {{ 'selected' if k == kind }}>{{ label }}</option>{% endfor %}</select>
+    </label>
+    <label>الفترة اللي فيها يوم
+      <input type="date" name="anchor" value="{{ anchor }}">
+    </label>
+    <div class="form-actions">
+      <button class="btn" type="submit">عرض</button>
+      <a class="btn btn-primary" href="/entities/{{ entity.id }}/reports.xlsx?kind={{ kind }}&anchor={{ anchor }}">⬇ تنزيل Excel</a>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h2>{{ report.title }}</h2>
+  <div class="kpis">
+    <div class="kpi"><span class="kpi-label">إجمالي الوارد</span><span class="kpi-value num">{{ s.incoming | sar }}</span></div>
+    <div class="kpi"><span class="kpi-label">المخصص للبنود</span><span class="kpi-value num">{{ s.allocated | sar }}</span></div>
+    <div class="kpi"><span class="kpi-label">الفائض</span><span class="kpi-value num positive">{{ s.surplus | sar }}</span></div>
+    <div class="kpi"><span class="kpi-label">عجز الفترات المقفلة</span><span class="kpi-value num {{ 'negative' if s.closed_deficit }}">{{ s.closed_deficit | sar }}</span></div>
+    <div class="kpi"><span class="kpi-label">عدد المعاملات</span><span class="kpi-value num">{{ s.count }}</span></div>
+  </div>
+
+  <h3>البنود</h3>
+  <table class="table">
+    <thead><tr><th>البند</th><th>المخصص خلال الفترة</th><th>الهدف</th><th>المتجمّع حاليًا</th><th>العجز الحالي</th></tr></thead>
+    <tbody>
+    {% for b in s.buckets %}
+      <tr>
+        <td>{{ b.name }}{% if not b.in_policy %} <span class="pill">محذوف من السياسة</span>{% endif %}</td>
+        <td class="num">{{ b.allocated | sar }}</td>
+        <td class="num">{{ (b.target | sar) if b.target else '—' }}</td>
+        <td class="num">{{ b.funded | sar }}</td>
+        <td class="num {{ 'negative' if b.deficit }}">{{ b.deficit | sar }}</td>
+      </tr>
+    {% else %}<tr><td colspan="5" class="muted">ما في بنود.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+
+  {% if report.closures %}
+  <h3>فترات انقفلت</h3>
+  <table class="table">
+    <thead><tr><th>البند</th><th>بداية الفترة</th><th>الهدف</th><th>المموّل</th><th>العجز النهائي</th></tr></thead>
+    <tbody>
+    {% for item in report.closures %}{% set c = item.closure %}
+      <tr><td>{{ item.name }}</td><td class="num">{{ c.period_key }}</td><td class="num">{{ c.target | sar }}</td>
+          <td class="num">{{ c.funded | sar }}</td><td class="num {{ 'negative' if c.closed_deficit }}">{{ c.closed_deficit | sar }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <p class="muted small">ملف Excel فيه كمان كل معاملة وتوزيعها على البنود.</p>
+</section>
+{% endblock %}

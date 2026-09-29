@@ -1,0 +1,32 @@
+{% extends "entity_base.html" %}
+{% block entity_content %}
+<section class="card">
+  <h2>سجل التدقيق</h2>
+  <p class="muted">كل إجراء على هذي الشركة: مين سوّاه ومتى. السجل ما يتعدّل ولا ينحذف.</p>
+  <div class="table-scroll">
+  <table class="table">
+    <thead><tr><th>الوقت</th><th>المستخدم</th><th>الإجراء</th><th>التفاصيل</th></tr></thead>
+    <tbody>
+    {% for e in entries %}
+      <tr>
+        <td class="num">{{ e.created_at | riyadh }}</td>
+        <td>{{ e.user.full_name if e.user else '—' }}</td>
+        <td>{{ LABELS.get(e.action, e.action) }}</td>
+        <td class="small muted">
+          {% if e.details.transaction_id %}<a href="/transactions/{{ e.details.reversal_id or e.details.transaction_id }}">معاملة #{{ e.details.transaction_id }}</a>{% endif %}
+          {% if e.details.amount is defined %} · <span class="num">{{ e.details.amount | sar }}</span>{% endif %}
+          {% if e.details.version %}نسخة {{ e.details.version }}{% endif %}
+          {% if e.details.reason %} · {{ e.details.reason }}{% endif %}
+          {% if e.details.note %} · {{ e.details.note }}{% endif %}
+          {% if e.details.protected_changes %} · 🔒 {{ e.details.protected_changes | join('، ') }}{% endif %}
+          {% if e.details.name %}{{ e.details.name }}{% endif %}
+          {% if e.details.formula %} · <code>{{ e.details.formula }}</code>{% endif %}
+          {% if e.details.reviewer %}المراجع: {{ e.details.reviewer }}{% endif %}
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="4" class="muted">ما في سجلات.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ entity.name }} — مفتاح الخزينة{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ entity.name }}</h1>
+</div>
+<nav class="tabs">
+  {% for key, label, url in [
+    ('dashboard', 'اللوحة', 'dashboard'),
+    ('transactions', 'المعاملات', 'transactions'),
+    ('policy', 'سياسة التقسيم', 'policy'),
+    ('reports', 'التقارير', 'reports'),
+    ('audit', 'سجل التدقيق', 'audit'),
+    ('settings', 'بيانات الشركة', 'settings'),
+  ] %}
+  <a href="/entities/{{ entity.id }}/{{ url }}" class="{{ 'active' if tab == key }}">{{ label }}</a>
+  {% endfor %}
+</nav>
+{% block entity_content %}{% endblock %}
+{% endblock %}

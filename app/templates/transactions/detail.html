@@ -1,0 +1,53 @@
+{% extends "entity_base.html" %}
+{% block entity_content %}
+<section class="card">
+  <div class="card-head">
+    <h2>معاملة #{{ txn.id }}
+      {% if txn.reversal_of %}<span class="pill pill-rejected">قيد عكسي</span>{% elif reversal %}<span class="pill">معكوسة</span>{% endif %}
+    </h2>
+    <a href="/entities/{{ entity.id }}/transactions">← كل المعاملات</a>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><span class="kpi-label">المبلغ</span><span class="kpi-value num">{{ txn.amount | sar }}</span></div>
+    <div class="kpi"><span class="kpi-label">المخصص للبنود</span><span class="kpi-value num">{{ (txn.amount - txn.surplus) | sar }}</span></div>
+    <div class="kpi"><span class="kpi-label">الفائض</span><span class="kpi-value num positive">{{ txn.surplus | sar }}</span></div>
+  </div>
+
+  <table class="table">
+    <thead><tr><th>البند</th><th>المطلوب</th><th>المخصص</th><th>الحالة</th><th>المتجمّع بالفترة</th><th>عجز مرحَّل</th></tr></thead>
+    <tbody>
+    {% for e in txn.events %}
+      <tr>
+        <td>{{ names.get(e.bucket_id, '؟') }}</td>
+        <td class="num">{{ e.required | sar }}</td>
+        <td class="num">{{ e.allocated | sar }}</td>
+        <td><span class="status status-{{ e.status.value | lower }}">{{ FUNDING_LABELS[e.status.value] }}</span></td>
+        <td class="num">{{ e.funded_after | sar }}</td>
+        <td class="num {{ 'negative' if e.carried_deficit_after }}">{{ e.carried_deficit_after | sar }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <dl class="meta">
+    <div><dt>تاريخ الإيداع</dt><dd>{{ txn.occurred_at | riyadh }}</dd></div>
+    <div><dt>سجّلها</dt><dd>{{ txn.creator.full_name }} · {{ txn.created_at | riyadh }}</dd></div>
+    <div><dt>المصدر</dt><dd>{{ 'إدخال يدوي' if txn.source.value == 'manual' else 'البنك' }}</dd></div>
+    {% if txn.note %}<div><dt>{{ 'سبب التصحيح' if txn.reversal_of else 'ملاحظة' }}</dt><dd>{{ txn.note }}</dd></div>{% endif %}
+    {% if original %}<div><dt>تعكس</dt><dd><a href="/transactions/{{ original.id }}">معاملة #{{ original.id }}</a></dd></div>{% endif %}
+    {% if reversal %}<div><dt>انعكست بـ</dt><dd><a href="/transactions/{{ reversal.id }}">قيد #{{ reversal.id }}</a></dd></div>{% endif %}
+  </dl>
+
+  {% if can_reverse and user.role.value in ("accountant", "admin") %}
+  <details>
+    <summary>تصحيح: عكس هذي المعاملة</summary>
+    <form method="post" action="/transactions/{{ txn.id }}/reverse" class="stack">
+      <p class="muted">يرجّع أرصدة البنود كما كانت قبل المعاملة، ويبقى الأصل والعكس في السجل.</p>
+      <label>سبب التصحيح *<input name="reason" required placeholder="مثال: المبلغ مُدخل بالغلط"></label>
+      <div><button class="btn btn-danger" type="submit">عكس المعاملة</button></div>
+    </form>
+  </details>
+  {% endif %}
+</section>
+{% endblock %}

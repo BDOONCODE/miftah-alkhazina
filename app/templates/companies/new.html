@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "companies/_fields.html" import company_fields, reviewer_fields %}
+{% block content %}
+<h1>تسجيل شركة جديدة</h1>
+<ol class="steps">
+  <li class="current">بيانات الشركة والمراجع</li>
+  <li>سياسة التقسيم</li>
+  <li>اعتماد المراجع</li>
+</ol>
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+<form method="post" class="stack">
+  <section class="card">
+    <h2>بيانات الشركة</h2>
+    {{ company_fields(form) }}
+  </section>
+  <section class="card">
+    <h2>المراجع</h2>
+    <p class="muted">الشخص اللي يراجع سياسة التقسيم ويعتمدها معك، مثل صاحب الشركة أو المدير المالي.</p>
+    {{ reviewer_fields(form) }}
+  </section>
+  <div><button class="btn btn-primary" type="submit">تسجيل الشركة والمتابعة ←</button></div>
+</form>
+{% endblock %}

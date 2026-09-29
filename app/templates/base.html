@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}مفتاح الخزينة{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/app.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  {% if user %}
+  <header class="topbar">
+    <a href="/" class="brand">🔑 مفتاح الخزينة</a>
+    <nav class="topnav">
+      <a href="/">الشركات</a>
+      {% if user.role.value == "admin" %}<a href="/admin/users">المستخدمين</a>{% endif %}
+    </nav>
+    <div class="who">
+      <a href="/account/password" class="muted" title="تغيير كلمة المرور">{{ user.full_name }}</a>
+      <span class="badge">{{ ROLE_LABELS[user.role.value] }}</span>
+      <form method="post" action="/logout"><button class="btn-link" type="submit">خروج</button></form>
+    </div>
+  </header>
+  {% endif %}
+  <main class="container">
+    {% for f in pop_flashes(request) %}
+    <div class="alert alert-{{ f.kind }}">{{ f.message }}</div>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

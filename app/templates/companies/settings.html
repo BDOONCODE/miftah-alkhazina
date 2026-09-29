@@ -1,0 +1,42 @@
+{% extends "entity_base.html" %}
+{% from "companies/_fields.html" import company_fields, reviewer_fields %}
+{% block entity_content %}
+{% set can_edit = user.role.value in ("accountant", "admin") %}
+<form method="post" class="stack">
+  <section class="card">
+    <h2>بيانات الشركة</h2>
+    {{ company_fields(entity, readonly=not can_edit) }}
+    {% if can_edit %}<div><button class="btn btn-primary" type="submit">حفظ</button></div>{% endif %}
+  </section>
+</form>
+
+<section class="card">
+  <h2>المراجعين</h2>
+  {% if entity.reviewers %}
+  <table class="table">
+    <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الحالة</th></tr></thead>
+    <tbody>
+    {% for r in entity.reviewers %}
+      <tr>
+        <td>{{ r.full_name }}</td>
+        <td dir="ltr">{{ r.username }}</td>
+        <td>{{ 'بانتظار أول دخول' if r.must_change_password else ('نشط' if r.is_active else 'معطّل') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">ما في مراجع.</p>
+  {% endif %}
+
+  {% if can_edit %}
+  <details>
+    <summary>+ إضافة مراجع</summary>
+    <form method="post" action="/entities/{{ entity.id }}/reviewers" class="stack">
+      {{ reviewer_fields({}) }}
+      <div><button class="btn" type="submit">إضافة</button></div>
+    </form>
+  </details>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% macro buckets_table(policy) %}
+<table class="table">
+  <thead>
+    <tr><th>الأولوية</th><th>البند</th><th>النوع</th><th>القيمة</th><th>الاستحقاق</th><th>الوجهة</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for b in policy.buckets %}
+    <tr>
+      <td class="num">{{ b.priority }}</td>
+      <td>{{ b.name }}</td>
+      <td>{{ CALC_LABELS[b.calc_type.value] }}</td>
+      <td class="num">{{ b.value | pct if b.calc_type.value == 'percentage' else (b.value | sar) ~ ' ر.س' }}</td>
+      <td>{{ FREQ_LABELS[b.frequency.value] }}{% if b.settlement_day %} ({{ b.settlement_day }}){% endif %}</td>
+      <td>{{ b.destination or 'نفس الحساب' }}</td>
+      <td>{% if b.protected %}<span class="pill pill-protected" title="أي تعديل عليه بعد التمويل يحتاج تبرير">🔒 محمي</span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% macro policy_meta(policy) %}
+<dl class="meta">
+  <div><dt>أنشأها</dt><dd>{{ policy.creator.full_name }} · {{ policy.created_at | riyadh }}</dd></div>
+  {% if policy.submitted_at %}<div><dt>أُرسلت للاعتماد</dt><dd>{{ policy.submitted_at | riyadh }}</dd></div>{% endif %}
+  {% if policy.decider %}
+  <div><dt>{{ 'اعتمدها' if policy.status.value in ('active', 'archived') else 'رفضها' }}</dt>
+       <dd>{{ policy.decider.full_name }} · {{ policy.decided_at | riyadh }}</dd></div>
+  {% endif %}
+  {% if policy.justification %}<div><dt>التبرير</dt><dd>{{ policy.justification }}</dd></div>{% endif %}
+  {% if policy.decision_note %}<div><dt>ملاحظة المراجع</dt><dd>{{ policy.decision_note }}</dd></div>{% endif %}
+  {% if policy.notes %}<div><dt>ملاحظات</dt><dd>{{ policy.notes }}</dd></div>{% endif %}
+</dl>
+{% endmacro %}
+
+{% macro decision_forms(policy, user) %}
+{% if policy.status.value == 'pending' and user.role.value in ('approver', 'admin') %}
+  {% if policy.created_by == user.id %}
+    <p class="muted">أنشأت هذي السياسة بنفسك، فاعتمادها يكون من مراجع ثاني.</p>
+  {% else %}
+  <div class="decision">
+    <form method="post" action="/policies/{{ policy.id }}/approve" class="stack">
+      <label>ملاحظة (اختياري)<input name="note"></label>
+      <button class="btn btn-primary" type="submit">✓ اعتماد السياسة</button>
+    </form>
+    <form method="post" action="/policies/{{ policy.id }}/reject" class="stack">
+      <label>سبب الرفض *<input name="note" required></label>
+      <button class="btn btn-danger" type="submit">رفض</button>
+    </form>
+  </div>
+  {% endif %}
+{% endif %}
+{% endmacro %}
