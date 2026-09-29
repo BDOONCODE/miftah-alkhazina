@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}أكّد بريدك — مفتاح الخزينة{% endblock %}
+{% block content %}
+<div class="login-card card">
+  <h1>📧 أكّد بريدك</h1>
+  <p>أرسلنا رابط تأكيد إلى{% if email %} <strong dir="ltr">{{ email }}</strong>{% else %} بريدك{% endif %}.</p>
+  <p class="muted">افتح الرسالة واضغط «تأكيد البريد» عشان يتفعّل حسابك. لو ما لقيتها، شوف مجلد الرسائل غير المرغوبة (Spam).</p>
+  <form method="post" action="/verify-email/resend" class="stack">
+    <label>ما وصلتك؟ أرسل الرابط مرة ثانية إلى:
+      <input name="email" type="email" value="{{ email }}" required dir="ltr">
+    </label>
+    <button class="btn" type="submit">إعادة الإرسال</button>
+  </form>
+  <div class="auth-links"><a href="/login">← تسجيل الدخول</a></div>
+</div>
+{% endblock %}

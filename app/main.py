@@ -5,7 +5,7 @@ import logging
 from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import func, select, text
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
@@ -15,9 +15,10 @@ from .auth import LoginRequired, PasswordChangeRequired, accessible_entities, cu
 from .config import BASE_DIR, HTTPS_ONLY_COOKIES, SECRET_KEY
 from .db import get_session
 from .models import AuditLog, User
-from .routes import account, companies, dashboard, policies, reports, transactions
+from .routes import account, companies, dashboard, policies, reports, signup, transactions
 from .security import verify_password
 from .services.policies import active_policy, open_policy
+from .services.signup import find_by_login
 from .templating import templates
 from .web import redirect
 
@@ -26,6 +27,7 @@ app.add_middleware(
     SessionMiddleware, secret_key=SECRET_KEY, https_only=HTTPS_ONLY_COOKIES, same_site="lax", max_age=12 * 3600
 )
 app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
+app.include_router(signup.router)
 app.include_router(account.router)
 app.include_router(companies.router)
 app.include_router(policies.router)
@@ -93,13 +95,18 @@ def login(
         return templates.TemplateResponse(
             request, "login.html", {"error": "محاولات دخول كثيرة. حاول بعد ١٠ دقائق"}, status_code=429
         )
-    user = session.scalar(select(User).where(func.lower(User.username) == username.strip().lower()))
+    user = find_by_login(session, username)
     if user is None or not user.is_active or not verify_password(user.password_hash, password):
         throttle.record_failure(ip, username)
         return templates.TemplateResponse(
-            request, "login.html", {"error": "اسم المستخدم أو كلمة المرور غير صحيحة"}, status_code=401
+            request, "login.html", {"error": "البريد/اسم المستخدم أو كلمة المرور غير صحيحة"}, status_code=401
         )
     throttle.reset(ip, username)
+    if not user.email_verified:
+        # نكشف إن البريد ما تأكد بس بعد كلمة مرور صحيحة
+        return templates.TemplateResponse(
+            request, "login.html", {"error": None, "unverified_email": user.email}, status_code=403
+        )
     request.session.clear()
     request.session["user_id"] = user.id
     session.add(AuditLog(user_id=user.id, action="user.login"))

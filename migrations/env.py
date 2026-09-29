@@ -25,6 +25,10 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     with engine.connect() as connection:
+        if connection.dialect.name == "sqlite":
+            # SQLite يعيد بناء الجدول عند تعديله، وفحص المفاتيح الأجنبية يمنع ذلك أثناء الترحيل
+            connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            connection.commit()  # نقفل المعاملة الضمنية عشان Alembic يفتح معاملته ويثبّتها
         # render_as_batch: يخلي تعديل الأعمدة يشتغل على SQLite كذلك
         context.configure(connection=connection, target_metadata=target_metadata, render_as_batch=True)
         with context.begin_transaction():

@@ -54,7 +54,7 @@ def seed_demo(password: str | None = None) -> None:
                 continue  # مدير الإنتاج يجي من ADMIN_USERNAME
             if not session.scalar(select(User).where(User.username == username)):
                 session.add(
-                    User(username=username, full_name=full_name, password_hash=hash_password(password or default_password), role=role)
+                    User(username=username, full_name=full_name, password_hash=hash_password(password or default_password, enforce_rules=False), role=role)
                 )
         session.commit()
         if not session.scalar(select(Entity).where(Entity.name == DEMO_COMPANY)):
@@ -77,7 +77,7 @@ def bootstrap() -> None:
             user = User(
                 username=username,
                 full_name=os.environ.get("ADMIN_FULL_NAME", "مدير النظام"),
-                password_hash=hash_password(password),
+                password_hash=hash_password(password, enforce_rules=False),
                 role=Role.ADMIN,
                 must_change_password=True,  # كلمة البيئة مؤقتة، تتغيّر أول دخول
             )
@@ -110,7 +110,7 @@ def _recover_account(session) -> None:
         print(f"الاسترجاع: ما في مستخدم باسم «{username}»، الأسماء الموجودة: "
               + "، ".join(session.scalars(select(User.username))))
         return
-    user.password_hash = hash_password(password)
+    user.password_hash = hash_password(password, enforce_rules=False)
     user.must_change_password = True
     user.is_active = True
     if os.environ.get("RECOVER_AS_ADMIN") == "1":
@@ -137,6 +137,7 @@ def _seed_demo_company(session, password: str | None = None) -> None:
     entity = companies.register_company(
         session, accountant, companies.CompanyInput(name=DEMO_COMPANY, bank_name="بنك تجريبي"),
         companies.ReviewerInput(full_name, username, password or default_password),
+        enforce_password_rules=False,  # كلمة تجريبية من الإعدادات
     )
     reviewer = session.scalar(select(User).where(User.username == username))
     reviewer.must_change_password = False

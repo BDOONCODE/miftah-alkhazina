@@ -54,7 +54,9 @@ def _apply(entity: Entity, data: CompanyInput) -> None:
     entity.contact_phone = data.contact_phone.strip()
 
 
-def create_user(session: Session, *, full_name: str, username: str, password: str, role: Role, actor: User) -> User:
+def create_user(
+    session: Session, *, full_name: str, username: str, password: str, role: Role, actor: User, enforce_rules: bool = True
+) -> User:
     username = username.strip()
     if not full_name.strip():
         raise CompanyError("الاسم الكامل مطلوب")
@@ -63,7 +65,7 @@ def create_user(session: Session, *, full_name: str, username: str, password: st
     if session.scalar(select(User).where(User.username == username)):
         raise CompanyError(f"اسم المستخدم «{username}» مستخدم مسبقًا")
     try:
-        password_hash = hash_password(password)
+        password_hash = hash_password(password, enforce_rules=enforce_rules)
     except ValueError as exc:
         raise CompanyError(str(exc)) from exc
     user = User(
@@ -85,6 +87,8 @@ def register_company(
     company: CompanyInput,
     reviewer: ReviewerInput | None,
     approval_mode: str = "reviewer",
+    *,
+    enforce_password_rules: bool = True,
 ) -> Entity:
     """الاعتماد الذاتي ما يحتاج مراجع؛ الاعتماد بمراجع يحتاج بيانات المراجع."""
     _validate_company(company)
@@ -108,6 +112,7 @@ def register_company(
             password=reviewer.password,
             role=Role.APPROVER,
             actor=accountant,
+            enforce_rules=enforce_password_rules,
         )
         entity.users.append(reviewer_user)
     dashboard = Dashboard(entity_id=entity.id, title=f"لوحة {entity.name}", updated_by=accountant.id)

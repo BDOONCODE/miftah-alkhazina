@@ -34,7 +34,7 @@ def client(db):
 def make_user(db):
     def _make(username="acc", role=models.Role.ACCOUNTANT, password="password123", entities=()):
         user = models.User(
-            username=username, full_name=username, password_hash=hash_password(password), role=role
+            username=username, full_name=username, password_hash=hash_password(password, enforce_rules=False), role=role
         )
         user.entities.extend(entities)
         db.add(user)

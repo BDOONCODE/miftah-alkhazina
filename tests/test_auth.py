@@ -82,9 +82,9 @@ def test_admin_resets_password(client, db, make_user):
     target = make_user("ahmed.arfaj", password="forgotten-pass")
     make_user("boss", role=models.Role.ADMIN)
     login(client, "boss")
-    client.post(f"/admin/users/{target.id}/reset-password", data={"password": "new-temp-pass"})
+    client.post(f"/admin/users/{target.id}/reset-password", data={"password": "New-temp-pass1!"})
     client.post("/logout")
-    assert login(client, "ahmed.arfaj", "new-temp-pass").headers["location"] == "/account/password"
+    assert login(client, "ahmed.arfaj", "New-temp-pass1!").headers["location"] == "/account/password"
 
 
 def test_non_admin_cannot_reset_password(client, make_user):

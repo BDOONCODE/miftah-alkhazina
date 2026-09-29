@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}إنشاء حساب — مفتاح الخزينة{% endblock %}
+{% block content %}
+<div class="login-card card wide">
+  <h1>🔑 إنشاء حساب</h1>
+  <p class="muted">سجّل، وأكّد بريدك، وابدأ تقسّم إيرادات شركتك.</p>
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/signup" class="stack">
+    <fieldset class="stack plain">
+      <legend>نوع الحساب</legend>
+      {% set chosen = form.account_type or 'business' %}
+      {% for key, label in TYPES.items() %}
+      <label class="radio">
+        <input type="radio" name="account_type" value="{{ key }}" {{ 'checked' if chosen == key }} required>
+        <span><strong>{{ label }}</strong><br>
+          <small class="muted">{{ 'أدير تقسيم شركتي بنفسي.' if key == 'business' else 'أدير شركات عملائي، ومعي فريق محاسبين.' }}</small>
+        </span>
+      </label>
+      {% endfor %}
+    </fieldset>
+    <label>الاسم الكامل
+      <input name="full_name" value="{{ form.full_name or '' }}" autocomplete="name" required>
+    </label>
+    <label>البريد الإلكتروني
+      <input name="email" type="email" value="{{ form.email or '' }}" autocomplete="email" required dir="ltr">
+    </label>
+    <label>كلمة المرور
+      <input name="password" type="password" autocomplete="new-password" required dir="ltr" data-rules>
+    </label>
+    <label>أعد كتابة كلمة المرور
+      <input name="confirm" type="password" autocomplete="new-password" required dir="ltr">
+    </label>
+    <button type="submit" class="btn btn-primary">إنشاء الحساب</button>
+  </form>
+  <div class="auth-links"><span>عندك حساب؟ <a href="/login">سجّل دخولك</a></span></div>
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}نسيت كلمة المرور — مفتاح الخزينة{% endblock %}
+{% block content %}
+<div class="login-card card">
+  <h1>🔑 نسيت كلمة المرور</h1>
+  {% if sent %}
+    <div class="alert alert-success">لو الحساب مسجّل ببريد، وصله رابط لتغيير كلمة المرور. الرابط صالح لمدة ساعة.</div>
+    <p class="muted">ما وصلك شي؟ شوف مجلد Spam. والحسابات اللي ما لها بريد (مثل اللي أنشأها المدير) يعيد المدير تعيين كلمتها.</p>
+  {% else %}
+    <p class="muted">اكتب بريدك أو اسم المستخدم، ونرسل لك رابط تختار منه كلمة مرور جديدة.</p>
+    <form method="post" action="/forgot-password" class="stack">
+      <label>البريد الإلكتروني أو اسم المستخدم
+        <input name="login" required autofocus dir="ltr">
+      </label>
+      <button class="btn btn-primary" type="submit">أرسل الرابط</button>
+    </form>
+  {% endif %}
+  <div class="auth-links"><a href="/login">← تسجيل الدخول</a></div>
+</div>
+{% endblock %}

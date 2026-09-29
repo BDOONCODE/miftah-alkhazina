@@ -28,3 +28,9 @@ services:
         value: "1"
       - key: DEMO_PASSWORD  # كلمة مرور حسابات العرض demo-acc و demo-rev2
         sync: false
+      - key: APP_URL  # رابط الموقع اللي ينحط في رسائل البريد
+        value: https://miftah-alkhazina.onrender.com
+      - key: BREVO_API_KEY  # مفتاح Brevo لإرسال بريد التأكيد (مجاني)
+        sync: false
+      - key: MAIL_FROM  # البريد المرسِل المؤكد في Brevo
+        sync: false

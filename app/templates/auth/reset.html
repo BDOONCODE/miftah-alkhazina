@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}كلمة مرور جديدة — مفتاح الخزينة{% endblock %}
+{% block content %}
+<div class="login-card card">
+  <h1>🔑 كلمة مرور جديدة</h1>
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/reset-password" class="stack">
+    <input type="hidden" name="token" value="{{ token }}">
+    <label>كلمة المرور الجديدة
+      <input name="password" type="password" autocomplete="new-password" required autofocus dir="ltr" data-rules>
+    </label>
+    <label>أعد كتابتها
+      <input name="confirm" type="password" autocomplete="new-password" required dir="ltr">
+    </label>
+    <button class="btn btn-primary" type="submit">حفظ</button>
+  </form>
+</div>
+{% endblock %}

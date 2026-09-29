@@ -17,7 +17,7 @@ def register(client, **overrides):
         "iban": "SA03 8000 0000 6080 1016 7519",
         "reviewer_full_name": "سارة المالك",
         "reviewer_username": "sara",
-        "reviewer_password": "temp-pass-1",
+        "reviewer_password": "Temp-pass-1!",
     } | overrides
     return client.post("/companies/new", data=data, follow_redirects=False)
 
@@ -75,9 +75,9 @@ def test_full_flow_accountant_builds_reviewer_approves(client, company, db):
 
     # المراجع: أول دخول يجبره يغيّر كلمة المرور
     client.post("/logout")
-    assert login(client, "sara", "temp-pass-1").headers["location"] == "/account/password"
+    assert login(client, "sara", "Temp-pass-1!").headers["location"] == "/account/password"
     assert client.get("/", follow_redirects=False).headers["location"] == "/account/password"
-    client.post("/account/password", data={"current": "temp-pass-1", "new": "sara-new-pass", "confirm": "sara-new-pass"})
+    client.post("/account/password", data={"current": "Temp-pass-1!", "new": "Sara-new-pass1!", "confirm": "Sara-new-pass1!"})
 
     client.post(f"/policies/{draft.id}/approve", data={"note": "تمام"})
     db.refresh(draft)

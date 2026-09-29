@@ -24,7 +24,7 @@ def at(y, mo, d, h=12):
 def setup(db, make_user):
     accountant = make_user("acc")
     entity = companies.register_company(
-        db, accountant, companies.CompanyInput(name="مؤسسة النخيل"), companies.ReviewerInput("سارة", "sara", "password123")
+        db, accountant, companies.CompanyInput(name="مؤسسة النخيل"), companies.ReviewerInput("سارة", "sara", "Password-123!")
     )
     reviewer = db.query(models.User).filter_by(username="sara").one()
     reviewer.must_change_password = False
@@ -78,7 +78,7 @@ def test_occurred_at_round_trips_with_timezone(db, setup):
 
 def test_requires_active_policy(db, make_user):
     user = make_user("acc2")
-    entity = companies.register_company(db, user, companies.CompanyInput(name="بدون سياسة"), companies.ReviewerInput("ر", "rev2", "password123"))
+    entity = companies.register_company(db, user, companies.CompanyInput(name="بدون سياسة"), companies.ReviewerInput("ر", "rev2", "Password-123!"))
     with pytest.raises(txs.TransactionError, match="سياسة نشطة"):
         txs.record_transaction(db, entity, user, 100, at(2026, 9, 1))
 
@@ -176,7 +176,7 @@ def test_transaction_pages_and_roles(client, db, setup):
     assert "600.00" in detail and "ممول جزئيًا" in detail
 
     client.post("/logout")
-    login(client, "sara")
+    login(client, "sara", "Password-123!")
     assert "4,000.00" in client.get(f"/entities/{entity.id}/transactions").text  # المراجع يشوف
     assert client.post(f"/entities/{entity.id}/transactions", data={"amount": "1", "occurred_at": "2026-09-02T10:00"}).status_code == 403
 
@@ -224,7 +224,7 @@ def test_dashboard_default_widgets_and_customization(client, db, setup):
 
 def test_reviewer_cannot_edit_dashboard(client, db, setup):
     entity, _, _ = setup
-    login(client, "sara")
+    login(client, "sara", "Password-123!")
     page = client.get(f"/entities/{entity.id}/dashboard").text
     assert "إضافة عنصر" not in page
     assert client.post(f"/entities/{entity.id}/dashboard/widgets", data={"kind": "kpi", "metric": "surplus"}).status_code == 403

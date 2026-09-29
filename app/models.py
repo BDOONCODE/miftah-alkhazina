@@ -87,6 +87,10 @@ class User(Base):
     role: Mapped[Role] = mapped_column(_enum(Role))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
+    # التسجيل الذاتي: البريد لازم يتأكد قبل الدخول. الحسابات اللي ينشئها المدير أو المحاسب مؤكدة أصلًا
+    email: Mapped[str | None] = mapped_column(String(254), unique=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
+    account_type: Mapped[str | None] = mapped_column(String(16))  # office | business (للتسجيل الذاتي)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
     entities: Mapped[list[Entity]] = relationship(secondary="user_entities", back_populates="users")
