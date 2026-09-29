@@ -61,3 +61,13 @@ def test_login_blocked_after_repeated_failures(client, make_user):
     assert login(client, "acc").status_code == 429  # حتى الكلمة الصحيحة تنرفض مؤقتًا
     throttle._failures.clear()
     assert login(client, "acc").status_code == 303
+
+
+def test_healthz_is_public_and_light(client):
+    response = client.get("/healthz")
+    assert (response.status_code, response.text) == (200, "ok")
+
+
+def test_keepalive_touches_database(client):
+    response = client.get("/keepalive")
+    assert (response.status_code, response.text) == (200, "ok")

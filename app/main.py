@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import Depends, FastAPI, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
@@ -30,6 +32,31 @@ app.include_router(policies.router)
 app.include_router(transactions.router)
 app.include_router(dashboard.router)
 app.include_router(reports.router)
+
+
+class _HideHealthChecks(logging.Filter):
+    """فحوصات الاستضافة والإبقاء مستيقظًا تتكرر كثير وتزحم السجل، فما نسجّلها."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        return "/healthz" not in message and "/keepalive" not in message
+
+
+logging.getLogger("uvicorn.access").addFilter(_HideHealthChecks())
+
+
+@app.get("/healthz", include_in_schema=False)
+def healthz():
+    """فحص Render (كل ٥ ثواني): خفيف، بدون قاعدة بيانات ولا صفحات."""
+    return PlainTextResponse("ok")
+
+
+@app.get("/keepalive", include_in_schema=False)
+def keepalive(session: Session = Depends(get_session)):
+    """تزوره خدمة مراقبة خارجية كل ٥ دقائق: تمنع الاستضافة المجانية من النوم،
+    واستعلام بسيط يمنع Supabase من إيقاف القاعدة بعد أسبوع بدون نشاط."""
+    session.execute(text("SELECT 1"))
+    return PlainTextResponse("ok")
 
 
 @app.exception_handler(LoginRequired)
