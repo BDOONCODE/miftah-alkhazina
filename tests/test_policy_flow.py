@@ -183,3 +183,36 @@ def test_removed_bucket_with_state_is_closed_on_approval(db, company):
     closure = db.query(models.PeriodClosure).one()
     assert (closure.bucket_id, closure.closed_deficit, closure.closed_by_policy_id) == (profit_id, 30, v2.id)
     assert db.get(models.BucketPeriodState, profit_id) is None
+
+
+def test_withdraw_pending_and_edit_after_rejection(db, company):
+    accountant = db.query(models.User).filter_by(username="acc").one()
+    reviewer = db.query(models.User).filter_by(username="sara").one()
+    tax = svc.BucketInput(None, "الضريبة", 1, models.CalcType.PERCENTAGE, 1500, models.Frequency.IMMEDIATE, None, "", True)
+
+    draft = svc.start_draft(db, company, accountant)
+    svc.save_draft(db, draft, [tax], "", accountant)
+    svc.submit(db, draft, accountant, "")
+
+    # سحب من المراجع للتعديل
+    svc.withdraw(db, draft, accountant)
+    assert draft.status is PolicyStatus.DRAFT and draft.submitted_at is None
+    svc.submit(db, draft, accountant, "")
+
+    # الرفض ثم مسودة جديدة تبدأ من البنود المرفوضة
+    svc.reject(db, draft, reviewer, "النسبة عالية")
+    db.commit()
+    v2 = svc.start_draft(db, company, accountant)
+    assert [(b.name, b.value, b.bucket_id) for b in v2.buckets] == [("الضريبة", 1500, draft.buckets[0].bucket_id)]
+    assert v2.version == 2
+
+
+def test_withdraw_via_page(client, company, db):
+    client.post(f"/entities/{company.id}/policy/draft")
+    draft = svc.open_policy(db, company.id)
+    client.post(f"/policies/{draft.id}/edit", data=POLICY_FORM | {"intent": "submit"})
+    assert "سحب للتعديل" in client.get(f"/entities/{company.id}/policy").text
+    response = client.post(f"/policies/{draft.id}/withdraw", follow_redirects=False)
+    assert response.headers["location"] == f"/policies/{draft.id}/edit"
+    db.refresh(draft)
+    assert draft.status is PolicyStatus.DRAFT

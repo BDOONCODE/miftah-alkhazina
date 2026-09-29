@@ -224,6 +224,20 @@ async def reject(request: Request, policy_id: int, user: User = Depends(decider)
     )
 
 
+@router.post("/policies/{policy_id}/withdraw")
+def withdraw(request: Request, policy_id: int, user: User = Depends(editor), session: Session = Depends(get_session)):
+    policy = _policy_for(user, policy_id, session)
+    try:
+        svc.withdraw(session, policy, user)
+    except svc.PolicyError as exc:
+        session.rollback()
+        flash(request, str(exc), "error")
+        return redirect(f"/entities/{policy.entity_id}/policy")
+    session.commit()
+    flash(request, "رجعت السياسة مسودة. عدّل عليها وأرسلها مرة ثانية للمراجع")
+    return redirect(f"/policies/{policy.id}/edit")
+
+
 @router.post("/policies/{policy_id}/discard")
 def discard(request: Request, policy_id: int, user: User = Depends(editor), session: Session = Depends(get_session)):
     return _action(request, policy_id, user, session, svc.discard_draft, "انحذفت المسودة")

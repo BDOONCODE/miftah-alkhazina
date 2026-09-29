@@ -90,13 +90,25 @@ def _audit(session: Session, user: User, policy: Policy, action: str, **details)
     )
 
 
+def _draft_base(session: Session, entity_id: int) -> Policy | None:
+    """المسودة الجديدة تبدأ من آخر نسخة نشطة، أو من آخر نسخة مرفوضة لو كانت أحدث
+    (عشان المحاسب يعدّل على اللي رفضه المراجع بدل ما يبدأ من الصفر)."""
+    return session.scalar(
+        select(Policy)
+        .where(Policy.entity_id == entity_id, Policy.status.in_((PolicyStatus.ACTIVE, PolicyStatus.REJECTED)))
+        .order_by(Policy.version.desc())
+        .limit(1)
+    )
+
+
 def start_draft(session: Session, entity: Entity, user: User) -> Policy:
-    """مسودة جديدة تبدأ من نسخة السياسة النشطة (بنفس هويات البنود)."""
+    """مسودة جديدة تبدأ من آخر نسخة (بنفس هويات البنود)."""
     if open_policy(session, entity.id):
         raise PolicyError("فيه مسودة أو سياسة بانتظار الاعتماد لهذي الشركة")
     last_version = session.scalar(select(func.max(Policy.version)).where(Policy.entity_id == entity.id)) or 0
     draft = Policy(entity_id=entity.id, version=last_version + 1, created_by=user.id)
-    if current := active_policy(session, entity.id):
+    if current := _draft_base(session, entity.id):
+        draft.notes = current.notes if current.status is PolicyStatus.REJECTED else ""
         draft.buckets = [
             PolicyBucket(
                 bucket_id=pb.bucket_id,
@@ -246,6 +258,15 @@ def reject(session: Session, policy: Policy, user: User, note: str) -> None:
     policy.decided_at = utcnow()
     policy.decision_note = note.strip()
     _audit(session, user, policy, "policy.rejected", note=note.strip())
+
+
+def withdraw(session: Session, policy: Policy, user: User) -> None:
+    """المحاسب يسحب السياسة من المراجع ويرجّعها مسودة عشان يعدّل عليها."""
+    if policy.status is not PolicyStatus.PENDING:
+        raise PolicyError("السياسة مو بانتظار الاعتماد")
+    policy.status = PolicyStatus.DRAFT
+    policy.submitted_at = None
+    _audit(session, user, policy, "policy.withdrawn")
 
 
 def discard_draft(session: Session, policy: Policy, user: User) -> None:

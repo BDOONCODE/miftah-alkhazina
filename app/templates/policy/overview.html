@@ -8,7 +8,11 @@
   <div class="card-head">
     <h2>نسخة {{ open.version }} <span class="pill pill-{{ open.status.value }}">{{ POLICY_STATUS_LABELS[open.status.value] }}</span></h2>
     {% if open.status.value == 'draft' and can_edit %}
-      <a class="btn btn-primary" href="/policies/{{ open.id }}/edit">متابعة التعديل</a>
+      <a class="btn btn-primary" href="/policies/{{ open.id }}/edit">✎ متابعة التعديل</a>
+    {% elif open.status.value == 'pending' and can_edit %}
+      <form method="post" action="/policies/{{ open.id }}/withdraw">
+        <button class="btn" type="submit" title="ترجع مسودة، تعدّل عليها وترسلها مرة ثانية">✎ سحب للتعديل</button>
+      </form>
     {% endif %}
   </div>
   {% if open.buckets %}{{ buckets_table(open) }}{% else %}<p class="muted">المسودة فاضية.</p>{% endif %}
@@ -25,6 +29,22 @@
   </div>
   {% endif %}
   {{ decision_forms(open, user) }}
+</section>
+{% elif history and history[0].status.value == 'rejected' %}
+{% set rejected = history[0] %}
+<section class="card card-highlight">
+  <div class="card-head">
+    <h2>نسخة {{ rejected.version }} <span class="pill pill-rejected">مرفوضة</span></h2>
+    {% if can_edit %}
+    <form method="post" action="/entities/{{ entity.id }}/policy/draft">
+      <button class="btn btn-primary" type="submit">✎ تعديل وإعادة الإرسال</button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="alert alert-error">
+    رفضها {{ rejected.decider.full_name }}: {{ rejected.decision_note }}
+  </div>
+  {% if can_edit %}<p class="muted">التعديل يبدأ من نفس بنود النسخة المرفوضة، فما تحتاج تعيد كتابتها.</p>{% endif %}
 </section>
 {% endif %}
 

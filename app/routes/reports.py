@@ -86,6 +86,7 @@ ACTION_LABELS = {
     "policy.approved": "اعتماد سياسة",
     "policy.rejected": "رفض سياسة",
     "policy.draft_discarded": "حذف مسودة",
+    "policy.withdrawn": "سحب السياسة للتعديل",
     "transaction.recorded": "تسجيل معاملة",
     "transaction.reversed": "قيد عكسي",
     "dashboard.widget_added": "إضافة عنصر للوحة",
