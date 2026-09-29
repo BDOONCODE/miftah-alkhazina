@@ -3,9 +3,9 @@
 {% block content %}
 <h1>تسجيل شركة جديدة</h1>
 <ol class="steps">
-  <li class="current">بيانات الشركة والمراجع</li>
+  <li class="current">بيانات الشركة</li>
   <li>سياسة التقسيم</li>
-  <li>اعتماد المراجع</li>
+  <li>الاعتماد</li>
 </ol>
 {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
 <form method="post" class="stack">
@@ -14,10 +14,34 @@
     {{ company_fields(form) }}
   </section>
   <section class="card">
-    <h2>المراجع</h2>
-    <p class="muted">الشخص اللي يراجع سياسة التقسيم ويعتمدها معك، مثل صاحب الشركة أو المدير المالي.</p>
-    {{ reviewer_fields(form) }}
+    <h2>مين يعتمد سياسة التقسيم؟</h2>
+    {% set mode = form.approval_mode or 'self' %}
+    {% for key, label in APPROVAL_MODES.items() %}
+    <label class="radio">
+      <input type="radio" name="approval_mode" value="{{ key }}" {{ 'checked' if mode == key }} class="js-mode">
+      <span><strong>{{ label }}</strong><br>
+        <small class="muted">{{ 'تبني السياسة وتعتمدها مباشرة.' if key == 'self' else 'شخص ثاني يراجعها ويعتمدها، مثل صاحب الشركة أو المدير المالي.' }}</small>
+      </span>
+    </label>
+    {% endfor %}
+    <div id="reviewer-fields" {{ 'hidden' if mode == 'self' }}>
+      <h3>بيانات المراجع</h3>
+      {{ reviewer_fields(form) }}
+    </div>
   </section>
   <div><button class="btn btn-primary" type="submit">تسجيل الشركة والمتابعة ←</button></div>
 </form>
+<script>
+  // حقول المراجع تظهر وتصير مطلوبة بس لما يُختار «مراجع مستقل»
+  (() => {
+    const box = document.getElementById("reviewer-fields");
+    const sync = () => {
+      const needed = document.querySelector(".js-mode:checked").value === "reviewer";
+      box.hidden = !needed;
+      box.querySelectorAll("input").forEach((i) => (i.required = needed));
+    };
+    document.querySelectorAll(".js-mode").forEach((r) => r.addEventListener("change", sync));
+    sync();
+  })();
+</script>
 {% endblock %}

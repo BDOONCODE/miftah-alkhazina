@@ -105,6 +105,8 @@ class Entity(Base):
     iban: Mapped[str] = mapped_column(String(34), default="")
     contact_name: Mapped[str] = mapped_column(String(128), default="")
     contact_phone: Mapped[str] = mapped_column(String(32), default="")
+    # من يعتمد السياسات: "self" = منشئ السياسة يعتمدها بنفسه، "reviewer" = مراجع مستقل
+    approval_mode: Mapped[str] = mapped_column(String(16), default="reviewer", server_default="reviewer")
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 

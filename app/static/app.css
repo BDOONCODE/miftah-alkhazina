@@ -183,3 +183,13 @@ dialog::backdrop { background: rgba(20, 26, 36, .35); }
 .help summary { margin: .5rem 0; }
 .help dt { font-weight: 600; margin-top: .5rem; }
 .help dd { margin: 0 0 .5rem; color: var(--muted); }
+
+.radio { flex-direction: row; align-items: flex-start; gap: .6rem; font-weight: 400; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.radio:has(input:checked) { border-color: var(--primary); background: #f3faf7; }
+.radio input { margin-top: .35rem; }
+
+.row-actions { display: flex; gap: .75rem; align-items: flex-start; flex-wrap: wrap; }
+.row-actions form { margin: 0; }
+.row-actions details summary { margin: 0; font-size: .9rem; }
+.inline-form { display: flex; gap: .4rem; margin-top: .4rem; }
+.inline-form input { width: 9rem; }

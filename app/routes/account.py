@@ -77,6 +77,29 @@ async def create_accountant(request: Request, user: User = Depends(admin_only), 
     return redirect("/admin/users")
 
 
+@router.post("/admin/users/{user_id}/reset-password")
+async def reset_password(
+    request: Request, user_id: int, user: User = Depends(admin_only), session: Session = Depends(get_session)
+):
+    """المدير يعطي المستخدم كلمة مرور مؤقتة جديدة، والنظام يطلب تغييرها أول دخول."""
+    target = session.get(User, user_id)
+    if target is None:
+        flash(request, "المستخدم غير موجود", "error")
+        return redirect("/admin/users")
+    form = await request.form()
+    try:
+        target.password_hash = hash_password(str(form.get("password", "")))
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+        return redirect("/admin/users")
+    target.must_change_password = True
+    target.is_active = True
+    session.add(AuditLog(user_id=user.id, action="user.password_reset", details={"username": target.username}))
+    session.commit()
+    flash(request, f"تغيّرت كلمة مرور «{target.username}». أعطه الكلمة المؤقتة، وبيطلب منه النظام يغيّرها أول دخول")
+    return redirect("/admin/users")
+
+
 @router.post("/admin/users/{user_id}/toggle")
 def toggle_user(request: Request, user_id: int, user: User = Depends(admin_only), session: Session = Depends(get_session)):
     target = session.get(User, user_id)

@@ -37,9 +37,9 @@
 
 {% block entity_content %}
 <ol class="steps">
-  <li class="done">بيانات الشركة والمراجع</li>
+  <li class="done">بيانات الشركة</li>
   <li class="current">سياسة التقسيم</li>
-  <li>اعتماد المراجع</li>
+  <li>الاعتماد</li>
 </ol>
 
 <form method="post" id="policy-form" class="stack">
@@ -98,7 +98,7 @@
     {% endif %}
     <div class="form-actions">
       <button class="btn" type="submit" name="intent" value="save">حفظ المسودة</button>
-      <button class="btn btn-primary" type="submit" name="intent" value="submit">حفظ وإرسال للمراجع ←</button>
+      <button class="btn btn-primary" type="submit" name="intent" value="submit">{{ "✓ حفظ واعتماد" if self_approval else "حفظ وإرسال للمراجع ←" }}</button>
     </div>
   </section>
 </form>

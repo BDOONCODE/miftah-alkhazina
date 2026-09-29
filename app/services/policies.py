@@ -198,17 +198,36 @@ def submit(session: Session, policy: Policy, user: User, justification: str) -> 
     _audit(session, user, policy, "policy.submitted", protected_changes=changes)
 
 
-def _check_decider(policy: Policy, user: User) -> None:
+SELF_APPROVAL = "self"
+REVIEWER_APPROVAL = "reviewer"
+APPROVAL_MODES = {SELF_APPROVAL: "أنا أعتمد السياسات بنفسي", REVIEWER_APPROVAL: "مراجع مستقل يعتمدها"}
+
+
+def is_self_approval(session: Session, policy: Policy) -> bool:
+    entity = session.get(Entity, policy.entity_id)
+    return entity is not None and entity.approval_mode == SELF_APPROVAL
+
+
+def can_decide(session: Session, policy: Policy, user: User) -> bool:
+    """هل يقدر هذا المستخدم يعتمد أو يرفض السياسة؟"""
+    if is_self_approval(session, policy):
+        # الشركة اختارت الاعتماد الذاتي: المحاسب/المدير يعتمد حتى لو هو المنشئ
+        return user.role in (Role.ACCOUNTANT, Role.ADMIN, Role.APPROVER)
+    return user.role in (Role.APPROVER, Role.ADMIN) and policy.created_by != user.id
+
+
+def _check_decider(session: Session, policy: Policy, user: User) -> None:
     if policy.status is not PolicyStatus.PENDING:
         raise PolicyError("السياسة مو بانتظار الاعتماد")
-    if user.role not in (Role.APPROVER, Role.ADMIN):
-        raise PolicyError("الاعتماد للمعتمِد فقط")
+    if can_decide(session, policy, user):
+        return
     if policy.created_by == user.id:
-        raise PolicyError("ما يمكن تعتمد سياسة أنشأتها بنفسك")
+        raise PolicyError("ما يمكن تعتمد سياسة أنشأتها بنفسك. غيّر طريقة الاعتماد من «بيانات الشركة» لو تبي تعتمد بنفسك")
+    raise PolicyError("الاعتماد للمراجع فقط")
 
 
 def approve(session: Session, policy: Policy, user: User, note: str = "") -> None:
-    _check_decider(policy, user)
+    _check_decider(session, policy, user)
     if errors := validate_policy(specs(policy)):  # احتياط لو تغيّر شي بعد الإرسال
         raise PolicyError("؛ ".join(errors))
 
@@ -225,7 +244,20 @@ def approve(session: Session, policy: Policy, user: User, note: str = "") -> Non
     policy.decided_by = user.id
     policy.decided_at = utcnow()
     policy.decision_note = note.strip()
-    _audit(session, user, policy, "policy.approved", removed_buckets=removed)
+    _audit(
+        session, user, policy, "policy.approved", removed_buckets=removed, self_approved=policy.created_by == user.id
+    )
+
+
+def set_approval_mode(session: Session, entity: Entity, user: User, mode: str) -> None:
+    if mode not in APPROVAL_MODES:
+        raise PolicyError("طريقة اعتماد غير معروفة")
+    if mode == entity.approval_mode:
+        return
+    entity.approval_mode = mode
+    session.add(
+        AuditLog(user_id=user.id, entity_id=entity.id, action="company.approval_mode_changed", details={"mode": mode})
+    )
 
 
 def _close_removed_buckets(session: Session, policy: Policy, bucket_ids: list[int]) -> None:
@@ -250,7 +282,7 @@ def _close_removed_buckets(session: Session, policy: Policy, bucket_ids: list[in
 
 
 def reject(session: Session, policy: Policy, user: User, note: str) -> None:
-    _check_decider(policy, user)
+    _check_decider(session, policy, user)
     if not note.strip():
         raise PolicyError("اكتب سبب الرفض")
     policy.status = PolicyStatus.REJECTED

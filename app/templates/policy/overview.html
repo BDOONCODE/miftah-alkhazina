@@ -20,7 +20,7 @@
   <div class="alert alert-warning">تعديلات على بنود محمية: {{ open_changes | join('، ') }}</div>
   {% endif %}
   {{ policy_meta(open) }}
-  {% if open.status.value == 'pending' and user.role.value != 'approver' %}
+  {% if open.status.value == 'pending' and not can_decide and user.role.value != 'approver' %}
   <div class="alert alert-warning">
     بانتظار اعتماد المراجع:
     {% for r in entity.reviewers %}<strong>{{ r.full_name }}</strong> (<span dir="ltr">{{ r.username }}</span>){{ '، ' if not loop.last }}{% endfor %}.
@@ -28,7 +28,7 @@
     ويفتح هذي الصفحة ويضغط «اعتماد». أنت كمحاسب ما تقدر تعتمد سياستك بنفسك.
   </div>
   {% endif %}
-  {{ decision_forms(open, user) }}
+  {{ decision_forms(open, user, can_decide) }}
 </section>
 {% elif history and history[0].status.value == 'rejected' %}
 {% set rejected = history[0] %}

@@ -11,6 +11,6 @@
   <div class="alert alert-warning">تعديلات على بنود محمية: {{ protected_changes | join('، ') }}</div>
   {% endif %}
   {{ policy_meta(policy) }}
-  {{ decision_forms(policy, user) }}
+  {{ decision_forms(policy, user, can_decide) }}
 </section>
 {% endblock %}

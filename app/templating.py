@@ -3,6 +3,7 @@ from fastapi.templating import Jinja2Templates
 from .config import BASE_DIR
 from .domain.money import format_amount, format_percent
 from .domain.periods import RIYADH
+from .services.policies import APPROVAL_MODES
 from .web import pop_flashes
 
 templates = Jinja2Templates(directory=BASE_DIR / "app" / "templates")
@@ -10,6 +11,7 @@ templates.env.filters["sar"] = format_amount
 templates.env.filters["pct"] = format_percent
 templates.env.filters["riyadh"] = lambda dt, fmt="%Y-%m-%d %H:%M": dt.astimezone(RIYADH).strftime(fmt) if dt else ""
 templates.env.globals["pop_flashes"] = pop_flashes
+templates.env.globals["APPROVAL_MODES"] = APPROVAL_MODES
 
 templates.env.globals.update(
     ROLE_LABELS={"admin": "مدير", "accountant": "محاسب", "approver": "معتمِد"},

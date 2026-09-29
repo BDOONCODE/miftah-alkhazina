@@ -8,6 +8,8 @@ from ..auth import current_user, get_entity_for, require_role
 from ..db import get_session
 from ..models import Role, User
 from ..services import companies as svc
+from ..services.policies import PolicyError
+from ..services.policies import set_approval_mode as set_mode
 from ..templating import templates
 from ..web import flash, redirect
 
@@ -38,7 +40,9 @@ def new_company_form(request: Request, user: User = Depends(accountant)):
 async def register_company(request: Request, user: User = Depends(accountant), session: Session = Depends(get_session)):
     form = await request.form()
     try:
-        entity = svc.register_company(session, user, _company_input(form), _reviewer_input(form))
+        mode = str(form.get("approval_mode", "reviewer"))
+        reviewer = _reviewer_input(form) if mode == "reviewer" else None
+        entity = svc.register_company(session, user, _company_input(form), reviewer, mode)
     except svc.CompanyError as exc:
         session.rollback()
         values = {k: v for k, v in form.items() if k != "reviewer_password"}
@@ -46,7 +50,8 @@ async def register_company(request: Request, user: User = Depends(accountant), s
             request, "companies/new.html", {"user": user, "form": values, "error": str(exc)}, status_code=422
         )
     session.commit()
-    flash(request, f"تم تسجيل «{entity.name}». الخطوة الجاية: حدد سياسة التقسيم وأرسلها للمراجع")
+    next_step = "حدد سياسة التقسيم واعتمدها" if entity.approval_mode == "self" else "حدد سياسة التقسيم وأرسلها للمراجع"
+    flash(request, f"تم تسجيل «{entity.name}». الخطوة الجاية: {next_step}")
     return redirect(f"/entities/{entity.id}/policy")
 
 
@@ -91,4 +96,21 @@ async def add_reviewer(
         return redirect(f"/entities/{entity_id}/settings")
     session.commit()
     flash(request, f"أُضيف المراجع «{reviewer.full_name}». أعطه اسم المستخدم وكلمة المرور المؤقتة")
+    return redirect(f"/entities/{entity_id}/settings")
+
+
+@router.post("/entities/{entity_id}/approval-mode")
+async def set_approval_mode(
+    request: Request, entity_id: int, user: User = Depends(accountant), session: Session = Depends(get_session)
+):
+    entity = get_entity_for(user, entity_id, session)
+    form = await request.form()
+    try:
+        set_mode(session, entity, user, str(form.get("approval_mode", "")))
+    except PolicyError as exc:
+        session.rollback()
+        flash(request, str(exc), "error")
+        return redirect(f"/entities/{entity_id}/settings")
+    session.commit()
+    flash(request, "تغيّرت طريقة اعتماد السياسات")
     return redirect(f"/entities/{entity_id}/settings")

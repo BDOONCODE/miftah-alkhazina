@@ -71,3 +71,24 @@ def test_healthz_is_public_and_light(client):
 def test_keepalive_touches_database(client):
     response = client.get("/keepalive")
     assert (response.status_code, response.text) == (200, "ok")
+
+
+def test_username_is_case_insensitive(client, make_user):
+    make_user("ahmed.arfaj")
+    assert login(client, "Ahmed.Arfaj ").status_code == 303
+
+
+def test_admin_resets_password(client, db, make_user):
+    target = make_user("ahmed.arfaj", password="forgotten-pass")
+    make_user("boss", role=models.Role.ADMIN)
+    login(client, "boss")
+    client.post(f"/admin/users/{target.id}/reset-password", data={"password": "new-temp-pass"})
+    client.post("/logout")
+    assert login(client, "ahmed.arfaj", "new-temp-pass").headers["location"] == "/account/password"
+
+
+def test_non_admin_cannot_reset_password(client, make_user):
+    target = make_user("victim")
+    make_user("acc")
+    login(client, "acc")
+    assert client.post(f"/admin/users/{target.id}/reset-password", data={"password": "hijack-pass"}).status_code == 403

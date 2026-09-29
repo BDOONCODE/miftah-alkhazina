@@ -16,7 +16,6 @@ from ..web import flash, redirect
 
 router = APIRouter()
 editor = require_role(Role.ACCOUNTANT, Role.ADMIN)
-decider = require_role(Role.APPROVER, Role.ADMIN)
 
 
 def _policy_for(user: User, policy_id: int, session: Session) -> Policy:
@@ -96,6 +95,7 @@ def policy_overview(
             "active": svc.active_policy(session, entity_id),
             "open": open_,
             "open_changes": svc.protected_changes_for(session, open_) if open_ else [],
+            "can_decide": bool(open_) and svc.can_decide(session, open_, user),
             "history": svc.history(session, entity_id),
         },
     )
@@ -126,6 +126,7 @@ def _render_editor(request, user, policy, session, rows, errors, notes, status_c
             "errors": errors,
             "notes": notes,
             "protected_changes": svc.protected_changes_for(session, policy),
+            "self_approval": svc.is_self_approval(session, policy),
             "pct_total": sum(pb.value for pb in policy.buckets if pb.calc_type is CalcType.PERCENTAGE)
             / (BASIS_POINTS_FULL / 100),
         },
@@ -157,16 +158,22 @@ async def save_draft(request: Request, policy_id: int, user: User = Depends(edit
     session.commit()
 
     if form.get("intent") == "submit":
+        self_approval = svc.is_self_approval(session, policy)
         try:
             svc.submit(session, policy, user, str(form.get("justification", "")))
+            if self_approval:
+                svc.approve(session, policy, user)
         except svc.PolicyError as exc:
             session.rollback()
             # أخطاء التحقق تظهر أصلًا فوق الجدول، فما نكررها في التنبيه
             detail = "راجع الملاحظات تحت" if validate_policy(svc.specs(policy)) else str(exc)
-            flash(request, f"انحفظت المسودة لكن ما انرسلت للمراجع: {detail}", "error")
+            flash(request, f"انحفظت المسودة لكن ما {'اعتُمدت' if self_approval else 'انرسلت للمراجع'}: {detail}", "error")
             return redirect(f"/policies/{policy.id}/edit")
         session.commit()
-        flash(request, "انرسلت السياسة للمراجع. بتصير نشطة أول ما يعتمدها")
+        if self_approval:
+            flash(request, "اعتُمدت السياسة وصارت نشطة. أي مبلغ وارد يتقسم حسبها من الحين")
+        else:
+            flash(request, "انرسلت السياسة للمراجع. بتصير نشطة أول ما يعتمدها")
         return redirect(f"/entities/{policy.entity_id}/policy")
 
     if validate_policy(svc.specs(policy)):
@@ -190,6 +197,7 @@ def view_policy(request: Request, policy_id: int, user: User = Depends(current_u
             "protected_changes": svc.protected_changes_for(session, policy)
             if policy.status in svc.OPEN_STATUSES
             else [],
+            "can_decide": svc.can_decide(session, policy, user),
         },
     )
 
@@ -208,7 +216,7 @@ def _action(request: Request, policy_id: int, user: User, session: Session, fn, 
 
 
 @router.post("/policies/{policy_id}/approve")
-async def approve(request: Request, policy_id: int, user: User = Depends(decider), session: Session = Depends(get_session)):
+async def approve(request: Request, policy_id: int, user: User = Depends(current_user), session: Session = Depends(get_session)):
     form = await request.form()
     return _action(
         request, policy_id, user, session, svc.approve, "اعتُمدت السياسة وصارت نشطة",
@@ -217,7 +225,7 @@ async def approve(request: Request, policy_id: int, user: User = Depends(decider
 
 
 @router.post("/policies/{policy_id}/reject")
-async def reject(request: Request, policy_id: int, user: User = Depends(decider), session: Session = Depends(get_session)):
+async def reject(request: Request, policy_id: int, user: User = Depends(current_user), session: Session = Depends(get_session)):
     form = await request.form()
     return _action(
         request, policy_id, user, session, svc.reject, "رُفضت السياسة", note=str(form.get("note", ""))

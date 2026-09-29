@@ -5,7 +5,7 @@ import logging
 from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
@@ -93,7 +93,7 @@ def login(
         return templates.TemplateResponse(
             request, "login.html", {"error": "محاولات دخول كثيرة. حاول بعد ١٠ دقائق"}, status_code=429
         )
-    user = session.scalar(select(User).where(User.username == username.strip()))
+    user = session.scalar(select(User).where(func.lower(User.username) == username.strip().lower()))
     if user is None or not user.is_active or not verify_password(user.password_hash, password):
         throttle.record_failure(ip, username)
         return templates.TemplateResponse(

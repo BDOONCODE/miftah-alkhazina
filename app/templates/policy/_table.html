@@ -33,10 +33,12 @@
 </dl>
 {% endmacro %}
 
-{% macro decision_forms(policy, user) %}
-{% if policy.status.value == 'pending' and user.role.value in ('approver', 'admin') %}
-  {% if policy.created_by == user.id %}
-    <p class="muted">أنشأت هذي السياسة بنفسك، فاعتمادها يكون من مراجع ثاني.</p>
+{% macro decision_forms(policy, user, can_decide) %}
+{% if policy.status.value == 'pending' %}
+  {% if not can_decide %}
+    {% if policy.created_by == user.id %}
+    <p class="muted">أنشأت هذي السياسة بنفسك، فاعتمادها يكون من المراجع. تقدر تغيّر طريقة الاعتماد من «بيانات الشركة».</p>
+    {% endif %}
   {% else %}
   <div class="decision">
     <form method="post" action="/policies/{{ policy.id }}/approve" class="stack">

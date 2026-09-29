@@ -68,8 +68,10 @@ def test_full_flow_accountant_builds_reviewer_approves(client, company, db):
     assert draft.status is PolicyStatus.PENDING
     assert [(b.name, b.value) for b in draft.buckets] == [("الضريبة", 1500), ("الإيجار", 1_000_000), ("الأرباح", 500)]
 
-    # المحاسب ما يقدر يعتمد
-    assert client.post(f"/policies/{draft.id}/approve").status_code == 403
+    # المحاسب ما يقدر يعتمد سياسته (الشركة على الاعتماد بمراجع)
+    client.post(f"/policies/{draft.id}/approve")
+    db.refresh(draft)
+    assert draft.status is PolicyStatus.PENDING
 
     # المراجع: أول دخول يجبره يغيّر كلمة المرور
     client.post("/logout")
@@ -216,3 +218,46 @@ def test_withdraw_via_page(client, company, db):
     assert response.headers["location"] == f"/policies/{draft.id}/edit"
     db.refresh(draft)
     assert draft.status is PolicyStatus.DRAFT
+
+
+def test_self_approval_company_without_reviewer(client, db, make_user):
+    make_user("solo")
+    login(client, "solo")
+    response = client.post("/companies/new", data={"name": "مجموعة العرفج", "approval_mode": "self"}, follow_redirects=False)
+    assert response.status_code == 303
+    entity = db.query(models.Entity).filter_by(name="مجموعة العرفج").one()
+    assert entity.approval_mode == "self" and entity.reviewers == []
+
+    client.post(f"/entities/{entity.id}/policy/draft")
+    draft = svc.open_policy(db, entity.id)
+    edit = client.get(f"/policies/{draft.id}/edit").text
+    assert "حفظ واعتماد" in edit
+    client.post(f"/policies/{draft.id}/edit", data=POLICY_FORM | {"intent": "submit"})
+    db.refresh(draft)
+    assert draft.status is PolicyStatus.ACTIVE and draft.decider.username == "solo"
+    audit = db.query(models.AuditLog).filter_by(action="policy.approved").one()
+    assert audit.details["self_approved"] is True
+
+
+def test_reviewer_mode_still_requires_reviewer(client, db, make_user):
+    make_user("acc")
+    login(client, "acc")
+    assert register(client, approval_mode="reviewer", reviewer_username="").status_code == 422
+
+
+def test_switching_to_self_unblocks_pending_policy(client, company, db):
+    """حالة المدير اللي أنشأ السياسة وعلّقت لأنه ما يقدر يعتمد نفسه."""
+    client.post(f"/entities/{company.id}/policy/draft")
+    draft = svc.open_policy(db, company.id)
+    client.post(f"/policies/{draft.id}/edit", data=POLICY_FORM | {"intent": "submit"})
+    client.post(f"/policies/{draft.id}/approve")
+    db.refresh(draft)
+    assert draft.status is PolicyStatus.PENDING  # الاعتماد بمراجع: المنشئ ممنوع
+
+    client.post(f"/entities/{company.id}/approval-mode", data={"approval_mode": "self"})
+    page = client.get(f"/entities/{company.id}/policy").text
+    assert "اعتماد السياسة" in page
+    client.post(f"/policies/{draft.id}/approve")
+    db.refresh(draft)
+    assert draft.status is PolicyStatus.ACTIVE
+    assert db.query(models.AuditLog).filter_by(action="company.approval_mode_changed").count() == 1

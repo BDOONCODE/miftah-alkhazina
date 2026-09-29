@@ -79,22 +79,37 @@ def create_user(session: Session, *, full_name: str, username: str, password: st
     return user
 
 
-def register_company(session: Session, accountant: User, company: CompanyInput, reviewer: ReviewerInput) -> Entity:
+def register_company(
+    session: Session,
+    accountant: User,
+    company: CompanyInput,
+    reviewer: ReviewerInput | None,
+    approval_mode: str = "reviewer",
+) -> Entity:
+    """الاعتماد الذاتي ما يحتاج مراجع؛ الاعتماد بمراجع يحتاج بيانات المراجع."""
     _validate_company(company)
-    entity = Entity(created_by=accountant.id)
+    if approval_mode not in ("self", "reviewer"):
+        raise CompanyError("طريقة اعتماد غير معروفة")
+    if approval_mode == "reviewer" and reviewer is None:
+        raise CompanyError("حدد المراجع اللي يعتمد السياسات، أو اختر إنك تعتمدها بنفسك")
+    entity = Entity(created_by=accountant.id, approval_mode=approval_mode)
     _apply(entity, company)
     session.add(entity)
     session.flush()
 
-    reviewer_user = create_user(
-        session,
-        full_name=reviewer.full_name,
-        username=reviewer.username,
-        password=reviewer.password,
-        role=Role.APPROVER,
-        actor=accountant,
-    )
-    entity.users.extend([accountant, reviewer_user] if accountant.role is not Role.ADMIN else [reviewer_user])
+    if accountant.role is not Role.ADMIN:  # المدير يشوف كل الشركات أصلًا
+        entity.users.append(accountant)
+    reviewer_user = None
+    if reviewer is not None:
+        reviewer_user = create_user(
+            session,
+            full_name=reviewer.full_name,
+            username=reviewer.username,
+            password=reviewer.password,
+            role=Role.APPROVER,
+            actor=accountant,
+        )
+        entity.users.append(reviewer_user)
     dashboard = Dashboard(entity_id=entity.id, title=f"لوحة {entity.name}", updated_by=accountant.id)
     apply_default_layout(dashboard)
     session.add(dashboard)
@@ -103,7 +118,11 @@ def register_company(session: Session, accountant: User, company: CompanyInput, 
             user_id=accountant.id,
             entity_id=entity.id,
             action="company.registered",
-            details={"name": entity.name, "reviewer": reviewer_user.username},
+            details={
+                "name": entity.name,
+                "reviewer": reviewer_user.username if reviewer_user else None,
+                "approval_mode": approval_mode,
+            },
         )
     )
     return entity

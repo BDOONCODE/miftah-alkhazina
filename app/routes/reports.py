@@ -80,6 +80,7 @@ ACTION_LABELS = {
     "company.registered": "تسجيل الشركة",
     "company.updated": "تعديل بيانات الشركة",
     "company.reviewer_added": "إضافة مراجع",
+    "company.approval_mode_changed": "تغيير طريقة الاعتماد",
     "policy.draft_created": "إنشاء مسودة سياسة",
     "policy.saved": "حفظ مسودة",
     "policy.submitted": "إرسال للاعتماد",

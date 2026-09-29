@@ -11,6 +11,25 @@
 </form>
 
 <section class="card">
+  <h2>مين يعتمد سياسة التقسيم؟</h2>
+  <form method="post" action="/entities/{{ entity.id }}/approval-mode" class="stack">
+    {% for key, label in APPROVAL_MODES.items() %}
+    <label class="radio">
+      <input type="radio" name="approval_mode" value="{{ key }}" {{ 'checked' if entity.approval_mode == key }} {{ 'disabled' if not can_edit }}>
+      <span>
+        <strong>{{ label }}</strong><br>
+        <small class="muted">
+          {% if key == 'self' %}اللي يبني السياسة يعتمدها مباشرة بزر «حفظ واعتماد». الاعتماد ينسجّل في سجل التدقيق كاعتماد ذاتي.
+          {% else %}السياسة تروح للمراجع، وما تصير نشطة إلا بعد ما يعتمدها. اللي يبني السياسة ما يقدر يعتمدها بنفسه.{% endif %}
+        </small>
+      </span>
+    </label>
+    {% endfor %}
+    {% if can_edit %}<div><button class="btn" type="submit">حفظ</button></div>{% endif %}
+  </form>
+</section>
+
+<section class="card">
   <h2>المراجعين</h2>
   {% if entity.reviewers %}
   <table class="table">

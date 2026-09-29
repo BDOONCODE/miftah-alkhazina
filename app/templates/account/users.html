@@ -22,12 +22,19 @@
         <td>{{ ROLE_LABELS[u.role.value] }}</td>
         <td>{{ u.entities | map(attribute='name') | join('، ') }}</td>
         <td>{{ 'نشط' if u.is_active else 'معطّل' }}</td>
-        <td>
+        <td class="row-actions">
           {% if u.id != user.id %}
           <form method="post" action="/admin/users/{{ u.id }}/toggle">
             <button class="btn-link" type="submit">{{ 'تعطيل' if u.is_active else 'تفعيل' }}</button>
           </form>
           {% endif %}
+          <details>
+            <summary>كلمة مرور جديدة</summary>
+            <form method="post" action="/admin/users/{{ u.id }}/reset-password" class="inline-form">
+              <input name="password" type="password" minlength="8" required placeholder="كلمة مؤقتة" dir="ltr" autocomplete="new-password">
+              <button class="btn" type="submit">حفظ</button>
+            </form>
+          </details>
         </td>
       </tr>
     {% endfor %}
