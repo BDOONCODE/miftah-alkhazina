@@ -62,7 +62,7 @@ def register(session: Session, data: SignupInput) -> User:
         raise SignupError("البريد الإلكتروني غير صحيح")
     if data.account_type not in ACCOUNT_TYPES:
         raise SignupError("اختر نوع الحساب")
-    if data.password != data.confirm:
+    if data.confirm and data.password != data.confirm:
         raise SignupError("كلمتا المرور غير متطابقتين")
     if find_by_login(session, email):
         raise SignupError("هذا البريد مسجّل. سجّل دخولك، أو استخدم «نسيت كلمة المرور»")
@@ -165,8 +165,8 @@ def send_reset(user: User, base_url: str) -> bool:
     )
 
 
-def reset_password(session: Session, user: User, password: str, confirm: str) -> None:
-    if password != confirm:
+def reset_password(session: Session, user: User, password: str, confirm: str = "") -> None:
+    if confirm and password != confirm:
         raise SignupError("كلمتا المرور غير متطابقتين")
     try:
         user.password_hash = hash_password(password)

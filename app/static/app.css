@@ -196,11 +196,13 @@ dialog::backdrop { background: rgba(20, 26, 36, .35); }
 
 /* كلمة المرور: زر العين وقائمة الشروط */
 .pw-wrap { position: relative; display: block; }
-.pw-wrap input { width: 100%; padding-inline-end: 2.6rem; }
+/* الخانة نفسها dir=ltr، فالعين على اليمين والمسافة يمين بشكل ثابت */
+.pw-wrap input { width: 100%; padding-right: 2.6rem; }
+.pw-wrap input::-ms-reveal, .pw-wrap input::-ms-clear { display: none; }
 .inline-form .pw-wrap { display: inline-block; }
 .inline-form .pw-wrap input { width: 11rem; }
-.pw-eye { position: absolute; inset-inline-end: .35rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1rem; padding: .2rem .35rem; opacity: .7; }
-.pw-eye:hover { opacity: 1; }
+.pw-eye { position: absolute; right: .45rem; top: 50%; transform: translateY(-50%); display: flex; background: none; border: none; cursor: pointer; padding: .25rem; color: var(--muted); border-radius: 6px; }
+.pw-eye:hover, .pw-eye:focus-visible { color: var(--text); }
 .pw-rules { list-style: none; padding: 0; margin: .35rem 0 0; display: flex; flex-wrap: wrap; gap: .25rem .75rem; font-size: .8rem; font-weight: 400; color: var(--muted); }
 .pw-rules li::before { content: "○ "; }
 .pw-rules li.ok { color: var(--positive); }

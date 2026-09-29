@@ -32,7 +32,7 @@ async def change_password(
     error = None
     if not verify_password(user.password_hash, current):
         error = "كلمة المرور الحالية غير صحيحة"
-    elif new != confirm:
+    elif confirm and new != confirm:
         error = "كلمتا المرور الجديدتان غير متطابقتين"
     elif new == current:
         error = "اختر كلمة مرور مختلفة عن الحالية"
