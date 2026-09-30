@@ -229,3 +229,5 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 .intake .card { margin-bottom: 0; }
 .card-sim { border-color: #b9d9cf; }
 .toggle { flex-direction: row; align-items: center; gap: .4rem; font-weight: 400; cursor: pointer; }
+.pw-rules li.bad { color: var(--negative); }
+.pw-rules li.bad::before { content: "✗ "; }

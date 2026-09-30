@@ -52,6 +52,7 @@
       RULES.forEach(([passes], i) => {
         const pass = passes(input.value);
         items[i].classList.toggle("ok", pass);
+        items[i].classList.toggle("bad", !pass && input.value.length > 0);  // أحمر بعد ما يبدأ يكتب
         ok = ok && pass;
       });
       input.setCustomValidity(ok || !input.value ? "" : "كلمة المرور ما تحقق كل الشروط");

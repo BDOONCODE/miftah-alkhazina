@@ -1,3 +1,5 @@
+import hashlib
+
 from fastapi.templating import Jinja2Templates
 
 from .config import BASE_DIR
@@ -11,6 +13,18 @@ templates.env.filters["sar"] = format_amount
 templates.env.filters["pct"] = format_percent
 templates.env.filters["riyadh"] = lambda dt, fmt="%Y-%m-%d %H:%M": dt.astimezone(RIYADH).strftime(fmt) if dt else ""
 templates.env.globals["pop_flashes"] = pop_flashes
+
+
+def _asset_version() -> str:
+    """رقم نسخة يتغيّر مع كل تحديث للملفات الثابتة، عشان المتصفح ياخذ النسخة الجديدة بدل المحفوظة عنده."""
+    digest = hashlib.sha1()
+    for path in sorted((BASE_DIR / "app" / "static").rglob("*")):
+        if path.is_file():
+            digest.update(path.read_bytes())
+    return digest.hexdigest()[:10]
+
+
+templates.env.globals["ASSET_VERSION"] = _asset_version()
 templates.env.globals["APPROVAL_MODES"] = APPROVAL_MODES
 
 templates.env.globals.update(

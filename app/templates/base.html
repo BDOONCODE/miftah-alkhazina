@@ -6,7 +6,7 @@
   <title>{% block title %}مفتاح الخزينة{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/app.css?v={{ ASSET_VERSION }}">
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -30,7 +30,7 @@
     {% endfor %}
     {% block content %}{% endblock %}
   </main>
-  <script src="/static/password.js"></script>
+  <script src="/static/password.js?v={{ ASSET_VERSION }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
