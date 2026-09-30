@@ -21,7 +21,14 @@
         <td dir="ltr">{{ u.username }}</td>
         <td>{{ ROLE_LABELS[u.role.value] }}</td>
         <td>{{ u.entities | map(attribute='name') | join('، ') }}</td>
-        <td>{{ 'نشط' if u.is_active else 'معطّل' }}</td>
+        <td>
+          {% if not u.email_verified %}
+            <span class="pill pill-pending">بانتظار تأكيد البريد</span>
+            <form method="post" action="/admin/users/{{ u.id }}/verify-email" class="inline">
+              <button class="btn-link" type="submit">تفعيل يدوي</button>
+            </form>
+          {% else %}{{ 'نشط' if u.is_active else 'معطّل' }}{% endif %}
+        </td>
         <td class="row-actions">
           {% if u.id != user.id %}
           <form method="post" action="/admin/users/{{ u.id }}/toggle">

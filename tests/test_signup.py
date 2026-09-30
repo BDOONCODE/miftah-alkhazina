@@ -116,3 +116,14 @@ def test_arabic_letters_are_not_symbols():
     assert "رمز خاص مثل ! @ # $" in password_problems("يبيسيصصصصضض")
     assert password_problems("Strongpass1ع!") == ["حروف وأرقام ورموز إنجليزية فقط (بدون عربي أو مسافات)"]
     assert password_problems("Strong pass1!") == ["حروف وأرقام ورموز إنجليزية فقط (بدون عربي أو مسافات)"]
+
+
+def test_admin_can_verify_email_manually(client, db, make_user):
+    signup(client)
+    user = db.query(models.User).filter_by(email="ahmed@example.com").one()
+    make_user("boss", role=models.Role.ADMIN)
+    client.post("/login", data={"username": "boss", "password": "password123"})
+    assert "بانتظار تأكيد البريد" in client.get("/admin/users").text
+    client.post(f"/admin/users/{user.id}/verify-email")
+    db.refresh(user)
+    assert user.email_verified

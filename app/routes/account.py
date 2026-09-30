@@ -100,6 +100,22 @@ async def reset_password(
     return redirect("/admin/users")
 
 
+@router.post("/admin/users/{user_id}/verify-email")
+def verify_email_manually(
+    request: Request, user_id: int, user: User = Depends(admin_only), session: Session = Depends(get_session)
+):
+    """لو رسالة التأكيد ما وصلت، المدير يفعّل البريد يدويًا."""
+    target = session.get(User, user_id)
+    if target is None:
+        flash(request, "المستخدم غير موجود", "error")
+        return redirect("/admin/users")
+    target.email_verified = True
+    session.add(AuditLog(user_id=user.id, action="user.email_verified_by_admin", details={"username": target.username}))
+    session.commit()
+    flash(request, f"تفعّل حساب «{target.username}». يقدر يدخل الحين")
+    return redirect("/admin/users")
+
+
 @router.post("/admin/users/{user_id}/toggle")
 def toggle_user(request: Request, user_id: int, user: User = Depends(admin_only), session: Session = Depends(get_session)):
     target = session.get(User, user_id)
