@@ -18,6 +18,13 @@ BREVO_URL = "https://api.brevo.com/v3/smtp/email"
 outbox: list[dict] | None = None
 
 
+def is_configured() -> bool:
+    """هل إرسال البريد مفعّل؟ (أو الاختبارات تلتقط الرسائل)"""
+    if outbox is not None:
+        return True
+    return bool(os.environ.get("BREVO_API_KEY", "").strip() and os.environ.get("MAIL_FROM", "").strip())
+
+
 def send_email(to: str, subject: str, html: str, text: str) -> bool:
     """يرجّع True لو انرسلت فعلًا."""
     message = {"to": to, "subject": subject, "html": html, "text": text}

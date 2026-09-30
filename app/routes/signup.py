@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
-from .. import throttle
+from .. import mailer, throttle
 from ..db import get_session
 from ..services import signup as svc
 from ..templating import templates
@@ -61,6 +61,14 @@ async def signup(request: Request, session: Session = Depends(get_session)):
     except svc.SignupError as exc:
         session.rollback()
         return _page(request, "signup", {"form": values, "error": str(exc), "TYPES": svc.ACCOUNT_TYPES}, 422)
+    if not mailer.is_configured():
+        # إرسال البريد مو مُعدّ: ما نعلّق المستخدم على رابط ما بيوصله، نفعّله مباشرة
+        user.email_verified = True
+        session.commit()
+        request.session.clear()
+        request.session["user_id"] = user.id
+        flash(request, "تم إنشاء حسابك 🎉 ابدأ بتسجيل أول شركة")
+        return redirect("/")
     session.commit()
     svc.send_verification(user, _base_url(request))
     request.session["pending_email"] = user.email
@@ -103,7 +111,7 @@ def verify_email(request: Request, token: str = "", session: Session = Depends(g
 
 @router.get("/forgot-password", response_class=HTMLResponse)
 def forgot_form(request: Request):
-    return _page(request, "forgot", {"sent": False})
+    return _page(request, "forgot", {"sent": False, "mail_ready": mailer.is_configured()})
 
 
 @router.post("/forgot-password")

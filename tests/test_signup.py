@@ -4,7 +4,7 @@ import re
 import pytest
 
 from app import mailer, models
-from app.security import password_problems
+from app.security import hash_password, password_problems
 
 STRONG = "Strong-pass1!"
 
@@ -127,3 +127,31 @@ def test_admin_can_verify_email_manually(client, db, make_user):
     client.post(f"/admin/users/{user.id}/verify-email")
     db.refresh(user)
     assert user.email_verified
+
+
+@pytest.fixture
+def mail_not_configured(monkeypatch):
+    monkeypatch.setattr(mailer, "outbox", None)
+    monkeypatch.delenv("BREVO_API_KEY", raising=False)
+    monkeypatch.delenv("MAIL_FROM", raising=False)
+
+
+def test_without_email_service_signup_logs_in_directly(client, db, mail_not_configured):
+    response = signup(client)
+    assert response.headers["location"] == "/"
+    assert db.query(models.User).one().email_verified
+    assert client.get("/", follow_redirects=False).status_code == 200
+
+
+def test_without_email_service_stuck_account_gets_in(client, db, mail_not_configured):
+    user = models.User(
+        username="old@example.com", email="old@example.com", full_name="قديم", role=models.Role.ACCOUNTANT,
+        password_hash=hash_password(STRONG), email_verified=False,
+    )
+    db.add(user)
+    db.commit()
+    response = client.post("/login", data={"username": "old@example.com", "password": STRONG}, follow_redirects=False)
+    assert response.status_code == 303
+    db.refresh(user)
+    assert user.email_verified
+    assert "غير متاحة حاليًا" in client.get("/forgot-password").text

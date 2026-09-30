@@ -6,6 +6,8 @@
   {% if sent %}
     <div class="alert alert-success">لو الحساب مسجّل ببريد، وصله رابط لتغيير كلمة المرور. الرابط صالح لمدة ساعة.</div>
     <p class="muted">ما وصلك شي؟ شوف مجلد Spam. والحسابات اللي ما لها بريد (مثل اللي أنشأها المدير) يعيد المدير تعيين كلمتها.</p>
+  {% elif not mail_ready %}
+    <div class="alert alert-warning">استعادة كلمة المرور بالبريد غير متاحة حاليًا. تواصل مع مدير النظام، ويعطيك كلمة مرور مؤقتة جديدة.</div>
   {% else %}
     <p class="muted">اكتب بريدك أو اسم المستخدم، ونرسل لك رابط تختار منه كلمة مرور جديدة.</p>
     <form method="post" action="/forgot-password" class="stack">

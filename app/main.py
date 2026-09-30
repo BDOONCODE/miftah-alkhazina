@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import throttle
+from . import mailer, throttle
 from .auth import LoginRequired, PasswordChangeRequired, accessible_entities, current_user
 from .config import BASE_DIR, HTTPS_ONLY_COOKIES, SECRET_KEY
 from .db import get_session
@@ -102,6 +102,9 @@ def login(
             request, "login.html", {"error": "البريد/اسم المستخدم أو كلمة المرور غير صحيحة"}, status_code=401
         )
     throttle.reset(ip, username)
+    if not user.email_verified and not mailer.is_configured():
+        # سجّل قبل ما يتفعّل إرسال البريد: رابط التأكيد ما وصله أصلًا، فنفعّله بعد كلمة مرور صحيحة
+        user.email_verified = True
     if not user.email_verified:
         # نكشف إن البريد ما تأكد بس بعد كلمة مرور صحيحة
         return templates.TemplateResponse(
