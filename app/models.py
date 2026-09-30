@@ -222,7 +222,7 @@ class Transaction(Base):
     reversal_of: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), unique=True)
     policy_id: Mapped[int] = mapped_column(ForeignKey("policies.id"))
     note: Mapped[str] = mapped_column(Text, default="")
-    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))  # فاضي = وصلت تلقائيًا من البنك
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
     events: Mapped[list[AllocationEvent]] = relationship(back_populates="transaction", order_by="AllocationEvent.id")

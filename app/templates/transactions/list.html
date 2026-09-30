@@ -1,26 +1,72 @@
 {% extends "entity_base.html" %}
 {% block entity_content %}
-{% if user.role.value in ("accountant", "admin") %}
-<section class="card">
-  <h2>مبلغ وارد جديد</h2>
-  {% if policy %}
-  <p class="muted">يتقسم فورًا حسب السياسة النشطة (نسخة {{ policy.version }}). لاحقًا يوصل تلقائيًا من البنك.</p>
-  <form method="post" class="form-grid">
-    <label>المبلغ (ر.س) *
-      <input name="amount" inputmode="decimal" required class="num" placeholder="0.00" autofocus>
-    </label>
-    <label>تاريخ الإيداع *
-      <input name="occurred_at" type="datetime-local" value="{{ now }}" max="{{ now }}" required>
-    </label>
-    <label>ملاحظة
-      <input name="note" placeholder="مثال: دفعة عميل">
-    </label>
-    <div class="form-actions"><button class="btn btn-primary" type="submit">تسجيل وتقسيم</button></div>
-  </form>
+{% set can_edit = user.role.value in ("accountant", "admin") %}
+
+{% if can_edit %}
+  {% if not policy %}
+  <div class="alert alert-warning">ما في سياسة نشطة. <a href="/entities/{{ entity.id }}/policy">حدد سياسة التقسيم</a> واعتمدها أول، عشان المبالغ تتقسّم.</div>
   {% else %}
-  <div class="alert alert-warning">ما في سياسة نشطة. <a href="/entities/{{ entity.id }}/policy">حدد سياسة التقسيم</a> وخلّ المراجع يعتمدها أول.</div>
+  <div class="intake">
+    <section class="card">
+      <h2>إدخال يدوي</h2>
+      <p class="muted">لمبلغ وصل وتبي تسجله بنفسك. يتقسّم فورًا حسب السياسة (نسخة {{ policy.version }}).</p>
+      <form method="post" class="stack">
+        <div class="form-grid">
+          <label>المبلغ (ر.س) *
+            <input name="amount" inputmode="decimal" required class="num" placeholder="0.00">
+          </label>
+          <label>تاريخ الإيداع *
+            <input name="occurred_at" type="datetime-local" value="{{ now }}" max="{{ now }}" required>
+          </label>
+          <label>من أي حساب؟
+            <select name="source_account_id">
+              <option value="">غير محدد</option>
+              {% for a in sources %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>ملاحظة
+            <input name="note" placeholder="مثال: دفعة عميل">
+          </label>
+        </div>
+        <div><button class="btn btn-primary" type="submit">تسجيل وتقسيم</button></div>
+      </form>
+    </section>
+
+    <section class="card card-sim">
+      <div class="card-head">
+        <h2>تلقائي من البنك <span class="pill">محاكاة</span></h2>
+      </div>
+      <p class="muted">
+        كأن البنك أرسل إشعار بوصول مبلغ: يمر بنفس مسار الربط البنكي الحقيقي، ويتقسّم بدون ما أحد يدخله.
+        لما يكتمل الربط مع نيوتك، الإيداعات الحقيقية توصل بنفس الطريقة.
+      </p>
+      {% if sources %}
+      <form method="post" action="/entities/{{ entity.id }}/bank-simulator" class="stack" id="sim-form">
+        <div class="form-grid">
+          <label>وصل المبلغ لحساب
+            <select name="account_id" required>
+              {% for a in sources %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>المبلغ (ر.س)
+            <input name="amount" inputmode="decimal" class="num" placeholder="فاضي = مبلغ عشوائي">
+          </label>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">محاكاة إيداع من البنك</button>
+          <label class="toggle"><input type="checkbox" id="sim-auto"> إيداع تلقائي كل ٢٠ ثانية</label>
+        </div>
+        <p class="muted small" id="sim-status" aria-live="polite"></p>
+      </form>
+      {% else %}
+      <div class="alert alert-warning">
+        أضف حساب <strong>مصدر إيراد</strong> أو <strong>مجمّع</strong> من
+        <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a> عشان تجرب الإيداع التلقائي.
+      </div>
+      {% endif %}
+    </section>
+  </div>
   {% endif %}
-</section>
 {% endif %}
 
 <section class="card">
@@ -28,13 +74,17 @@
   {% if txns %}
   <div class="table-scroll">
   <table class="table">
-    <thead><tr><th>#</th><th>تاريخ الإيداع</th><th>المبلغ</th><th>التوزيع</th><th>الفائض</th><th>ملاحظة</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th>تاريخ الإيداع</th><th>المبلغ</th><th>المصدر</th><th>التوزيع</th><th>الفائض</th><th>ملاحظة</th><th></th></tr></thead>
     <tbody>
     {% for t in txns %}
       <tr class="{{ 'row-muted' if t.id in reversed_ids or t.reversal_of }}">
         <td class="num">{{ t.id }}</td>
         <td>{{ t.occurred_at | riyadh }}</td>
         <td class="num {{ 'negative' if t.amount < 0 }}">{{ t.amount | sar }}</td>
+        <td>
+          <span class="channel channel-{{ t.source.value }}">{{ CHANNEL_LABELS[t.source.value] }}</span>
+          {% if t.source_account_id %}<div class="small muted">{{ account_names.get(t.source_account_id, '') }}</div>{% endif %}
+        </td>
         <td class="small">
           {% for e in t.events if e.allocated %}{{ names.get(e.bucket_id, '؟') }}: <span class="num">{{ e.allocated | sar }}</span>{{ '، ' if not loop.last }}{% endfor %}
         </td>
@@ -54,4 +104,50 @@
   <p class="muted">ما في معاملات بعد.</p>
   {% endif %}
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // الإيداع التلقائي: يرسل إيداع تجريبي كل ٢٠ ثانية ويحدّث الصفحة، ويتذكر التشغيل بعد التحديث
+  (() => {
+    const form = document.getElementById("sim-form");
+    const auto = document.getElementById("sim-auto");
+    if (!form || !auto) return;
+    const status = document.getElementById("sim-status");
+    const key = "sim-auto-{{ entity.id }}";
+    let timer = null;
+
+    const send = async () => {
+      const data = new FormData(form);
+      data.set("amount", "");  // التلقائي دائمًا بمبلغ عشوائي
+      status.textContent = "يرسل إيداع…";
+      try {
+        const r = await fetch(form.action, { method: "POST", body: data, headers: { Accept: "application/json" } });
+        const body = await r.json();
+        if (!r.ok) { status.textContent = body.error || "ما انرسل"; stop(); return; }
+        location.reload();
+      } catch { status.textContent = "تعذّر الاتصال"; }
+    };
+    const start = () => {
+      try { sessionStorage.setItem(key, "1"); } catch {}
+      let left = 20;
+      status.textContent = `الإيداع الجاي بعد ${left} ثانية`;
+      timer = setInterval(() => {
+        left -= 1;
+        if (left <= 0) { clearInterval(timer); send(); }
+        else status.textContent = `الإيداع الجاي بعد ${left} ثانية`;
+      }, 1000);
+    };
+    const stop = () => {
+      clearInterval(timer);
+      try { sessionStorage.removeItem(key); } catch {}
+      auto.checked = false;
+      status.textContent = status.textContent.startsWith("الإيداع الجاي") ? "" : status.textContent;
+    };
+    auto.addEventListener("change", () => (auto.checked ? start() : stop()));
+    let resume = false;
+    try { resume = sessionStorage.getItem(key) === "1"; } catch {}
+    if (resume) { auto.checked = true; start(); }
+  })();
+</script>
 {% endblock %}

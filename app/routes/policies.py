@@ -11,6 +11,7 @@ from ..domain.policy_rules import validate_policy
 from ..domain.types import BASIS_POINTS_FULL, CalcType, Frequency
 from ..models import Policy, PolicyStatus, Role, User
 from ..services import policies as svc
+from ..services.accounts import DESTINATION_KINDS, accounts_for, pool_account
 from ..templating import templates
 from ..web import flash, redirect
 
@@ -37,7 +38,9 @@ def _row_view(pb) -> dict:
         "value": value,
         "frequency": pb.frequency.value,
         "settlement_day": str(pb.settlement_day or ""),
-        "destination": pb.destination,
+        "destination": str(pb.destination_account_id or ""),
+        # وجهة قديمة مكتوبة نص (قبل الحسابات البنكية): نعرضها تلميح عشان يختار حسابها
+        "legacy_destination": "" if pb.destination_account_id else pb.destination,
         "protected": "1" if pb.protected else "0",
     }
 
@@ -72,7 +75,8 @@ def _parse_rows(form) -> tuple[list[dict], list[svc.BucketInput], list[str]]:
                 value=value,
                 frequency=freq,
                 settlement_day=day,
-                destination=row["destination"],
+                destination="",
+                destination_account_id=int(row["destination"]) if row["destination"].isdigit() else None,
                 protected=row["protected"] == "1",
             )
         )
@@ -127,6 +131,10 @@ def _render_editor(request, user, policy, session, rows, errors, notes, status_c
             "notes": notes,
             "protected_changes": svc.protected_changes_for(session, policy),
             "self_approval": svc.is_self_approval(session, policy),
+            "destinations": [
+                a for a in accounts_for(session, policy.entity_id, active_only=True) if a.kind in DESTINATION_KINDS
+            ],
+            "has_pool": pool_account(session, policy.entity_id) is not None,
             "pct_total": sum(pb.value for pb in policy.buckets if pb.calc_type is CalcType.PERCENTAGE)
             / (BASIS_POINTS_FULL / 100),
         },

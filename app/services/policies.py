@@ -10,8 +10,10 @@ from sqlalchemy.orm import Session
 from ..domain.periods import local_date, period_key
 from ..domain.policy_rules import justification_error, protected_changes, validate_policy
 from ..domain.types import BucketSpec, CalcType, Frequency
+from .accounts import DESTINATION_KINDS
 from ..models import (
     AuditLog,
+    BankAccount,
     Bucket,
     BucketPeriodState,
     Entity,
@@ -42,6 +44,7 @@ class BucketInput:
     settlement_day: int | None
     destination: str
     protected: bool
+    destination_account_id: int | None = None  # فاضي = يبقى في الحساب المجمّع
 
 
 def bucket_spec(pb: PolicyBucket) -> BucketSpec:
@@ -119,6 +122,7 @@ def start_draft(session: Session, entity: Entity, user: User) -> Policy:
                 frequency=pb.frequency,
                 settlement_day=pb.settlement_day,
                 destination=pb.destination,
+                destination_account_id=pb.destination_account_id,
                 protected=pb.protected,
             )
             for pb in current.buckets
@@ -134,6 +138,16 @@ def save_draft(session: Session, policy: Policy, rows: list[BucketInput], notes:
         raise PolicyError("ما يمكن تعديل سياسة بعد إرسالها للاعتماد")
 
     owned = set(session.scalars(select(Bucket.id).where(Bucket.entity_id == policy.entity_id)))
+    destinations = {
+        a.id: a
+        for a in session.scalars(
+            select(BankAccount).where(
+                BankAccount.entity_id == policy.entity_id,
+                BankAccount.is_active.is_(True),
+                BankAccount.kind.in_(DESTINATION_KINDS),
+            )
+        )
+    }
     new_buckets: list[PolicyBucket] = []
     for row in rows:
         bucket_id = row.bucket_id
@@ -144,6 +158,11 @@ def save_draft(session: Session, policy: Policy, rows: list[BucketInput], notes:
             bucket_id = bucket.id
         elif bucket_id not in owned:
             raise PolicyError("بند غير تابع لهذي الشركة")
+        account = None
+        if row.destination_account_id is not None:
+            account = destinations.get(row.destination_account_id)
+            if account is None:
+                raise PolicyError(f"وجهة البند «{row.name.strip()}» مو حساب فرعي أو خارجي نشط لهذي الشركة")
         new_buckets.append(
             PolicyBucket(
                 bucket_id=bucket_id,
@@ -153,7 +172,8 @@ def save_draft(session: Session, policy: Policy, rows: list[BucketInput], notes:
                 value=row.value,
                 frequency=row.frequency,
                 settlement_day=row.settlement_day if row.frequency is Frequency.DAY_OF_MONTH else None,
-                destination=row.destination.strip(),
+                destination=account.name if account else row.destination.strip(),
+                destination_account_id=account.id if account else None,
                 protected=row.protected,
             )
         )

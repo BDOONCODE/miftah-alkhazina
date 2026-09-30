@@ -32,8 +32,10 @@
 
   <dl class="meta">
     <div><dt>تاريخ الإيداع</dt><dd>{{ txn.occurred_at | riyadh }}</dd></div>
-    <div><dt>سجّلها</dt><dd>{{ txn.creator.full_name }} · {{ txn.created_at | riyadh }}</dd></div>
-    <div><dt>المصدر</dt><dd>{{ 'إدخال يدوي' if txn.source.value == 'manual' else 'البنك' }}</dd></div>
+    <div><dt>سجّلها</dt><dd>{{ txn.creator.full_name if txn.creator else 'البنك (تلقائي)' }} · {{ txn.created_at | riyadh }}</dd></div>
+    <div><dt>طريقة الوصول</dt><dd><span class="channel channel-{{ txn.source.value }}">{{ CHANNEL_LABELS[txn.source.value] }}</span>
+      {% if txn.external_ref %}<span class="muted small num">{{ txn.external_ref }}</span>{% endif %}</dd></div>
+    {% if source_account %}<div><dt>حساب المصدر</dt><dd>{{ source_account.name }} <span class="muted small num">{{ source_account.iban }}</span></dd></div>{% endif %}
     {% if txn.note %}<div><dt>{{ 'سبب التصحيح' if txn.reversal_of else 'ملاحظة' }}</dt><dd>{{ txn.note }}</dd></div>{% endif %}
     {% if original %}<div><dt>تعكس</dt><dd><a href="/transactions/{{ original.id }}">معاملة #{{ original.id }}</a></dd></div>{% endif %}
     {% if reversal %}<div><dt>انعكست بـ</dt><dd><a href="/transactions/{{ reversal.id }}">قيد #{{ reversal.id }}</a></dd></div>{% endif %}

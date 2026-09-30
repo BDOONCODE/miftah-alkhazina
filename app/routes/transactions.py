@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import random
+import uuid
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -11,13 +13,15 @@ from ..auth import current_user, get_entity_for, require_role
 from ..db import get_session
 from ..domain.money import parse_amount
 from ..domain.periods import RIYADH
-from ..models import PolicyBucket, Transaction, User, Role, utcnow
+from ..models import AccountKind, BankAccount, PolicyBucket, Role, Transaction, User, utcnow
 from ..services import transactions as svc
+from ..services.accounts import accounts_for
 from ..services.policies import active_policy
 from ..templating import templates
 from ..web import flash, redirect
 
 router = APIRouter()
+INCOMING_KINDS = (AccountKind.SOURCE, AccountKind.POOL)
 editor = require_role(Role.ACCOUNTANT, Role.ADMIN)
 PAGE_SIZE = 50
 
@@ -62,6 +66,8 @@ def transactions_page(
             "now": _now_local(),
             "names": _bucket_names(session, txns),
             "form": {},
+            "sources": [a for a in accounts_for(session, entity_id, active_only=True) if a.kind in INCOMING_KINDS],
+            "account_names": {a.id: a.name for a in accounts_for(session, entity_id)},
         },
     )
 
@@ -82,12 +88,52 @@ async def add_transaction(
         flash(request, "تاريخ المعاملة ما يصير في المستقبل", "error")
         return redirect(f"/entities/{entity_id}/transactions")
     try:
-        txn = svc.record_transaction(session, entity, user, amount, occurred_at, str(form.get("note", "")))
+        source_id = str(form.get("source_account_id", ""))
+        txn = svc.record_transaction(
+            session, entity, user, amount, occurred_at, str(form.get("note", "")),
+            source_account_id=int(source_id) if source_id.isdigit() else None,
+        )
     except svc.TransactionError as exc:
         session.rollback()
         flash(request, str(exc), "error")
         return redirect(f"/entities/{entity_id}/transactions")
     session.commit()
+    return redirect(f"/transactions/{txn.id}")
+
+
+@router.post("/entities/{entity_id}/bank-simulator")
+async def simulate_bank_credit(
+    request: Request, entity_id: int, user: User = Depends(editor), session: Session = Depends(get_session)
+):
+    """محاكاة إيداع يوصل من البنك: يمر بنفس مسار إشعار البنك الحقيقي بالضبط."""
+    entity = get_entity_for(user, entity_id, session)
+    form = await request.form()
+    wants_json = "application/json" in request.headers.get("accept", "")
+    account_id = str(form.get("account_id", ""))
+    account = session.get(BankAccount, int(account_id)) if account_id.isdigit() else None
+    error = None
+    if account is None or account.entity_id != entity.id or account.kind not in INCOMING_KINDS:
+        error = "اختر حساب مصدر أو الحساب المجمّع"
+    else:
+        try:
+            raw = str(form.get("amount", "")).strip()
+            # بدون مبلغ: مبلغ عشوائي واقعي بين ٥٠٠ و١٥,٠٠٠ ريال
+            amount = parse_amount(raw) if raw else random.randint(500, 15_000) * 100
+            txn = svc.ingest_bank_credit(
+                session, account.iban, amount, utcnow(), f"SIM-{uuid.uuid4().hex[:12]}", note="إيداع تجريبي (محاكاة البنك)"
+            )
+        except ValueError as exc:  # يشمل TransactionError
+            error = str(exc)
+    if error:
+        session.rollback()
+        if wants_json:
+            return JSONResponse({"error": error}, status_code=422)
+        flash(request, error, "error")
+        return redirect(f"/entities/{entity_id}/transactions")
+    session.commit()
+    if wants_json:
+        return JSONResponse({"transaction_id": txn.id, "amount": txn.amount / 100, "surplus": txn.surplus / 100})
+    flash(request, f"وصل إيداع من «{account.name}» وتقسّم تلقائيًا")
     return redirect(f"/transactions/{txn.id}")
 
 
@@ -118,6 +164,7 @@ def transaction_detail(
             "can_reverse": reversible is not None and reversible.id == txn.id,
             "reversal": reversal,
             "original": session.get(Transaction, txn.reversal_of) if txn.reversal_of else None,
+            "source_account": session.get(BankAccount, txn.source_account_id) if txn.source_account_id else None,
         },
     )
 

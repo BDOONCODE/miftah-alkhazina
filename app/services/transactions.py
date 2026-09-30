@@ -10,8 +10,10 @@ from ..domain.allocation import ClosedPeriodError, allocate
 from ..domain.periods import local_date
 from ..domain.types import BucketState
 from ..models import (
+    AccountKind,
     AllocationEvent,
     AuditLog,
+    BankAccount,
     BucketPeriodState,
     Entity,
     PeriodClosure,
@@ -43,14 +45,21 @@ def _as_domain(row: BucketPeriodState) -> BucketState:
 def record_transaction(
     session: Session,
     entity: Entity,
-    user: User,
+    user: User | None,
     amount: int,
     occurred_at: datetime,
     note: str = "",
     source: TransactionSource = TransactionSource.MANUAL,
     external_ref: str | None = None,
+    source_account_id: int | None = None,
 ) -> Transaction:
+    """user=None: المبلغ وصل تلقائيًا من البنك."""
     _lock_entity(session, entity.id)
+
+    if source_account_id is not None:
+        account = session.get(BankAccount, source_account_id)
+        if account is None or account.entity_id != entity.id or account.kind not in (AccountKind.SOURCE, AccountKind.POOL):
+            raise TransactionError("حساب المصدر لازم يكون مصدر إيراد أو الحساب المجمّع لهذي الشركة")
 
     if external_ref:
         existing = session.scalar(select(Transaction).where(Transaction.external_ref == external_ref))
@@ -78,7 +87,8 @@ def record_transaction(
         external_ref=external_ref or None,
         policy_id=policy.id,
         note=note.strip(),
-        created_by=user.id,
+        created_by=user.id if user else None,
+        source_account_id=source_account_id,
     )
     session.add(txn)
     session.flush()
@@ -128,10 +138,15 @@ def record_transaction(
 
     session.add(
         AuditLog(
-            user_id=user.id,
+            user_id=user.id if user else None,
             entity_id=entity.id,
             action="transaction.recorded",
-            details={"transaction_id": txn.id, "amount": amount, "surplus": result.surplus},
+            details={
+                "transaction_id": txn.id,
+                "amount": amount,
+                "surplus": result.surplus,
+                "source": source.value,
+            },
         )
     )
     return txn
@@ -174,6 +189,7 @@ def reverse_transaction(session: Session, txn: Transaction, user: User, reason: 
         occurred_at=txn.occurred_at,  # نفس الفترة، فالتقارير تصفّي الأثر
         source=txn.source,
         reversal_of=txn.id,
+        source_account_id=txn.source_account_id,
         policy_id=txn.policy_id,
         note=reason.strip(),
         created_by=user.id,
@@ -219,3 +235,39 @@ def reverse_transaction(session: Session, txn: Transaction, user: User, reason: 
         )
     )
     return reversal
+
+
+# ------------------------------------------------------------------ الوارد من البنك
+
+
+def ingest_bank_credit(
+    session: Session,
+    iban: str,
+    amount: int,
+    occurred_at: datetime,
+    reference: str,
+    note: str = "",
+) -> Transaction:
+    """مبلغ وصل لحساب الشركة في البنك (إشعار مزوّد الربط أو المحاكي): يتقسّم فورًا.
+
+    نفس المرجع ما يتقسّم مرتين، لأن البنوك تعيد إرسال الإشعار أحيانًا.
+    """
+    from .accounts import find_by_iban
+
+    if not reference.strip():
+        raise TransactionError("الإشعار بدون رقم مرجعي")
+    account = find_by_iban(session, iban)
+    if account is None:
+        raise TransactionError("الآيبان غير مسجّل كمصدر إيراد أو حساب مجمّع لأي شركة")
+    entity = session.get(Entity, account.entity_id)
+    return record_transaction(
+        session,
+        entity,
+        None,
+        amount,
+        occurred_at,
+        note=note,
+        source=TransactionSource.OPEN_BANKING,
+        external_ref=reference.strip(),
+        source_account_id=account.id,
+    )

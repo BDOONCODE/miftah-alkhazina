@@ -14,6 +14,7 @@ templates.env.globals["pop_flashes"] = pop_flashes
 templates.env.globals["APPROVAL_MODES"] = APPROVAL_MODES
 
 templates.env.globals.update(
+    CHANNEL_LABELS={"manual": "يدوي", "open_banking": "تلقائي من البنك"},
     ROLE_LABELS={"admin": "مدير", "accountant": "محاسب", "approver": "معتمِد"},
     CALC_LABELS={"percentage": "نسبة", "fixed_amount": "مبلغ ثابت"},
     FREQ_LABELS={

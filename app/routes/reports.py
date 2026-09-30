@@ -81,6 +81,8 @@ ACTION_LABELS = {
     "company.updated": "تعديل بيانات الشركة",
     "company.reviewer_added": "إضافة مراجع",
     "company.approval_mode_changed": "تغيير طريقة الاعتماد",
+    "account.added": "إضافة حساب بنكي",
+    "account.toggled": "تفعيل/تعطيل حساب بنكي",
     "policy.draft_created": "إنشاء مسودة سياسة",
     "policy.saved": "حفظ مسودة",
     "policy.submitted": "إرسال للاعتماد",

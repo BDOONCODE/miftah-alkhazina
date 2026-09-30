@@ -34,3 +34,5 @@ services:
         sync: false
       - key: MAIL_FROM  # البريد المرسِل المؤكد في Brevo
         sync: false
+      - key: BANK_WEBHOOK_SECRET  # سر توقيع إشعارات البنك (نعطيه لنيوتك عند الربط)
+        generateValue: true

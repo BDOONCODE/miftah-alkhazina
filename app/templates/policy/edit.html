@@ -24,7 +24,13 @@
     <input name="settlement_day" type="number" min="1" max="31" value="{{ r.settlement_day }}" placeholder="اليوم"
            class="w-xs num js-day" {{ 'hidden' if r.frequency != 'day_of_month' }} aria-label="يوم الاستحقاق">
   </td>
-  <td><input name="destination" value="{{ r.destination }}" placeholder="نفس الحساب" aria-label="الوجهة"></td>
+  <td>
+    <select name="destination" aria-label="الوجهة">
+      <option value="">يبقى في المجمّع</option>
+      {% for a in destinations %}<option value="{{ a.id }}" {{ 'selected' if r.destination == a.id|string }}>{{ a.name }}</option>{% endfor %}
+    </select>
+    {% if r.legacy_destination %}<small class="muted">كانت: {{ r.legacy_destination }}</small>{% endif %}
+  </td>
   <td>
     <select name="protected" aria-label="محمي">
       <option value="0" {{ 'selected' if r.protected != '1' }}>لا</option>
@@ -56,14 +62,21 @@
       <summary>وش معنى «الوجهة» و«محمي»؟</summary>
       <dl>
         <dt>الوجهة</dt>
-        <dd>وين يروح مبلغ البند. اتركها فاضية (<strong>نفس الحساب</strong>) لو المبلغ يبقى في حساب الشركة ويتحجز دفتريًا بس
-          (مثلًا: ضريبة تنحجز لين موعد السداد). أو اكتب اسم حساب ثاني (مثل «حساب الرواتب») لو المبلغ لازم يتحول له.
-          التحويل الفعلي يجي مع الربط البنكي؛ حاليًا الاسم يتسجّل للتوثيق.</dd>
+        <dd>وين يروح مبلغ البند. <strong>«يبقى في المجمّع»</strong> يعني المبلغ يبقى في الحساب المجمّع ويتحجز للبند.
+          أو اختر <strong>حساب فرعي</strong> (مثل حساب الضريبة) أو <strong>خارجي</strong> (مثل حساب المؤجر) عشان يتحوّل له.
+          الحسابات تنضاف من تبويب <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a>.
+          التحويل الفعلي يجي مع الربط البنكي؛ حاليًا يتسجّل وين المفروض يروح.</dd>
         <dt>محمي 🔒</dt>
         <dd>بند حساس ما نبي أحد يغيّره بسهولة (مثل الضريبة أو الرواتب). بعد ما يتموّل في الفترة الحالية، أي تغيير على
           قيمته أو أولويته أو استحقاقه أو حذفه يحتاج <strong>تبرير مكتوب</strong> يشوفه المراجع وينحفظ في السجل.</dd>
       </dl>
     </details>
+    {% if not destinations %}
+    <div class="alert alert-warning">
+      ما في حسابات فرعية أو خارجية للشركة، فكل البنود «تبقى في المجمّع».
+      <a href="/entities/{{ entity.id }}/accounts">أضف الحسابات البنكية</a> عشان تحدد وين يروح كل بند.
+    </div>
+    {% endif %}
 
     {% for e in errors %}<div class="alert alert-error">{{ e }}</div>{% endfor %}
 
@@ -77,7 +90,7 @@
         </tbody>
       </table>
     </div>
-    <template id="row-template">{{ row({'bucket_id': '', 'name': '', 'priority': '', 'calc_type': 'percentage', 'value': '', 'frequency': 'immediate', 'settlement_day': '', 'destination': '', 'protected': '0'}) }}</template>
+    <template id="row-template">{{ row({'bucket_id': '', 'name': '', 'priority': '', 'calc_type': 'percentage', 'value': '', 'frequency': 'immediate', 'settlement_day': '', 'destination': '', 'legacy_destination': '', 'protected': '0'}) }}</template>
     <div><button type="button" class="btn" id="add-row">+ إضافة بند</button></div>
 
     <label>ملاحظات للمراجع

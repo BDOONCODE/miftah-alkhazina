@@ -213,3 +213,19 @@ dialog::backdrop { background: rgba(20, 26, 36, .35); }
 .auth-links { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; font-size: .9rem; }
 fieldset.plain { border: none; padding: 0; margin: 0; }
 fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
+
+/* الحسابات البنكية */
+.kind-grid { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.kind-pool { background: #e3f4ea; color: var(--positive); }
+.kind-source { background: #e8f0fb; color: #2b5ea7; }
+.kind-sub { background: #f1ecfa; color: #6a44a8; }
+.kind-external { background: #fff1d6; color: var(--warning); }
+.channel { font-size: .75rem; padding: 0 .45rem; border-radius: 999px; white-space: nowrap; }
+.channel-manual { background: #eef0f3; color: var(--muted); }
+.channel-open_banking { background: #e3f4ea; color: var(--positive); }
+
+/* صفحة المعاملات: الإدخال اليدوي والتلقائي جنب بعض */
+.intake { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); margin-bottom: 1rem; }
+.intake .card { margin-bottom: 0; }
+.card-sim { border-color: #b9d9cf; }
+.toggle { flex-direction: row; align-items: center; gap: .4rem; font-weight: 400; cursor: pointer; }

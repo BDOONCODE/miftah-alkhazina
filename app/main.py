@@ -15,7 +15,7 @@ from .auth import LoginRequired, PasswordChangeRequired, accessible_entities, cu
 from .config import BASE_DIR, HTTPS_ONLY_COOKIES, SECRET_KEY
 from .db import get_session
 from .models import AuditLog, User
-from .routes import account, companies, dashboard, policies, reports, signup, transactions
+from .routes import account, accounts, bank, companies, dashboard, policies, reports, signup, transactions
 from .security import verify_password
 from .services.policies import active_policy, open_policy
 from .services.signup import find_by_login
@@ -30,6 +30,8 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="s
 app.include_router(signup.router)
 app.include_router(account.router)
 app.include_router(companies.router)
+app.include_router(accounts.router)
+app.include_router(bank.router)
 app.include_router(policies.router)
 app.include_router(transactions.router)
 app.include_router(dashboard.router)
