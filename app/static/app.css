@@ -231,3 +231,21 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 .toggle { flex-direction: row; align-items: center; gap: .4rem; font-weight: 400; cursor: pointer; }
 .pw-rules li.bad { color: var(--negative); }
 .pw-rules li.bad::before { content: "✗ "; }
+
+/* محرر السياسة: كل بند بطاقة، وكل خانة لها عنوان */
+.bucket-list { display: flex; flex-direction: column; gap: .75rem; margin-bottom: .75rem; }
+.bucket-card { border: 1px solid var(--border); border-radius: var(--radius); padding: .85rem 1rem; display: flex; flex-direction: column; gap: .75rem; background: var(--surface); }
+.bucket-card label { font-size: .85rem; color: var(--muted); font-weight: 500; }
+.bucket-card label > input, .bucket-card label > select, .bucket-card label > span { color: var(--text); font-size: 1rem; }
+.bucket-top { display: grid; grid-template-columns: 6rem 1fr auto; gap: .75rem; align-items: end; }
+.bucket-fields { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); align-items: end; }
+.bucket-dest { display: flex; flex-direction: column; gap: .5rem; padding-top: .75rem; border-top: 1px dashed var(--border); }
+.dest-new { display: grid; gap: .75rem; grid-template-columns: 2fr 1fr; }
+.input-unit input { flex: 1; min-width: 0; }
+.freq-pair { display: flex; gap: .4rem; }
+.freq-pair select { flex: 1; min-width: 0; }
+.freq-pair .js-day { width: 5rem; margin: 0; }
+@media (max-width: 560px) {
+  .bucket-top { grid-template-columns: 5rem 1fr auto; }
+  .dest-new { grid-template-columns: 1fr; }
+}

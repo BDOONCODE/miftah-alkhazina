@@ -157,3 +157,43 @@ def test_bank_webhook(client, db, company, accounts, monkeypatch):
     unknown = post_webhook(client, payload | {"iban": LANDLORD, "reference": "NEO-2"})
     assert unknown.status_code == 422  # حساب خارجي، مو مصدر إيراد
     assert post_webhook(client, {"iban": POS}).status_code == 400
+
+
+def _draft_form(**overrides):
+    return {
+        "bucket_id": [""], "name": ["الضريبة"], "priority": ["1"], "calc_type": ["percentage"], "value": ["15"],
+        "frequency": ["immediate"], "settlement_day": [""], "protected": ["0"], "notes": "", "justification": "",
+        "intent": "submit",
+    } | overrides
+
+
+def test_policy_needs_destination_iban(client, db, company):
+    client.post(f"/entities/{company.id}/policy/draft")
+    draft = pol.open_policy(db, company.id)
+    client.post(f"/policies/{draft.id}/edit", data=_draft_form(destination=[""]))
+    db.refresh(draft)
+    assert draft.status is models.PolicyStatus.DRAFT
+    assert "ما له آيبان وجهة" in client.get(f"/policies/{draft.id}/edit").text
+
+
+def test_new_iban_from_policy_creates_account(client, db, company):
+    client.post(f"/entities/{company.id}/policy/draft")
+    draft = pol.open_policy(db, company.id)
+    client.post(
+        f"/policies/{draft.id}/edit",
+        data=_draft_form(destination=["new"], dest_iban=["sa11 1000 0000 0000 0000 0001"], dest_kind=["sub"]),
+    )
+    db.refresh(draft)
+    assert draft.status is models.PolicyStatus.ACTIVE  # اعتماد ذاتي
+    account = db.query(models.BankAccount).one()
+    assert (account.iban, account.kind, account.name) == (TAX, AccountKind.SUB, "الضريبة")
+    assert draft.buckets[0].destination_account_id == account.id
+
+
+def test_source_iban_cannot_be_destination(client, db, company, accounts):
+    client.post(f"/entities/{company.id}/policy/draft")
+    draft = pol.open_policy(db, company.id)
+    response = client.post(
+        f"/policies/{draft.id}/edit", data=_draft_form(destination=["new"], dest_iban=[POS], dest_kind=["sub"])
+    )
+    assert response.status_code == 422 and "مصدر أو مجمّع" in response.text

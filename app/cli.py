@@ -143,10 +143,10 @@ def _seed_demo_company(session, password: str | None = None) -> None:
     reviewer.must_change_password = False
     draft = policies.start_draft(session, entity, accountant)
     policies.save_draft(session, draft, [
-        policies.BucketInput(None, "الضريبة", 1, CalcType.PERCENTAGE, 1500, Frequency.IMMEDIATE, None, "", True),
-        policies.BucketInput(None, "الإيجار", 2, CalcType.FIXED_AMOUNT, 1_000_000, Frequency.DAY_OF_MONTH, 25, "حساب الإيجار", False),
-        policies.BucketInput(None, "الرواتب", 3, CalcType.FIXED_AMOUNT, 1_500_000, Frequency.MONTHLY, None, "حساب الرواتب", True),
-        policies.BucketInput(None, "الأرباح", 4, CalcType.PERCENTAGE, 500, Frequency.MONTHLY, None, "", False),
+        policies.BucketInput(None, "الضريبة", 1, CalcType.PERCENTAGE, 1500, Frequency.IMMEDIATE, None, "", True, new_destination_iban="SA1100000000000000000001"),
+        policies.BucketInput(None, "الإيجار", 2, CalcType.FIXED_AMOUNT, 1_000_000, Frequency.DAY_OF_MONTH, 25, "حساب الإيجار", False, new_destination_iban="SA1100000000000000000003"),
+        policies.BucketInput(None, "الرواتب", 3, CalcType.FIXED_AMOUNT, 1_500_000, Frequency.MONTHLY, None, "حساب الرواتب", True, new_destination_iban="SA1100000000000000000004"),
+        policies.BucketInput(None, "الأرباح", 4, CalcType.PERCENTAGE, 500, Frequency.MONTHLY, None, "", False, new_destination_iban="SA1100000000000000000002"),
     ], "سياسة تجريبية", accountant)
     policies.submit(session, draft, accountant, "")
     policies.approve(session, draft, reviewer)

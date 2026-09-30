@@ -30,7 +30,9 @@ POLICY_FORM = {
     "value": ["15", "10,000", "5"],
     "frequency": ["immediate", "monthly", "monthly"],
     "settlement_day": ["", "", ""],
-    "destination": ["", "حساب الإيجار", ""],
+    "destination": ["new", "new", "new"],
+    "dest_iban": ["SA1100000000000000000001", "SA1100000000000000000003", "SA1100000000000000000002"],
+    "dest_kind": ["sub", "external", "sub"],
     "protected": ["1", "0", "0"],
     "notes": "",
     "justification": "",
@@ -117,8 +119,8 @@ def _activate(db, entity, accountant, reviewer):
         db,
         draft,
         [
-            svc.BucketInput(None, "الضريبة", 1, models.CalcType.PERCENTAGE, 1500, models.Frequency.IMMEDIATE, None, "", True),
-            svc.BucketInput(None, "الأرباح", 2, models.CalcType.PERCENTAGE, 500, models.Frequency.MONTHLY, None, "", False),
+            svc.BucketInput(None, "الضريبة", 1, models.CalcType.PERCENTAGE, 1500, models.Frequency.IMMEDIATE, None, "", True, new_destination_iban="SA1100000000000000000001"),
+            svc.BucketInput(None, "الأرباح", 2, models.CalcType.PERCENTAGE, 500, models.Frequency.MONTHLY, None, "", False, new_destination_iban="SA1100000000000000000002"),
         ],
         "",
         accountant,
@@ -141,7 +143,7 @@ def test_four_eyes_and_protected_bucket_justification(db, company):
 
     v2 = svc.start_draft(db, company, accountant)
     assert [b.bucket_id for b in v2.buckets] == [b.bucket_id for b in v1.buckets]  # نفس الهويات
-    changed = [svc.BucketInput(tax_id, "الضريبة", 1, models.CalcType.PERCENTAGE, 1000, models.Frequency.IMMEDIATE, None, "", True)]
+    changed = [svc.BucketInput(tax_id, "الضريبة", 1, models.CalcType.PERCENTAGE, 1000, models.Frequency.IMMEDIATE, None, "", True, new_destination_iban="SA1100000000000000000001")]
     svc.save_draft(db, v2, changed, "", accountant)
 
     with pytest.raises(svc.PolicyError, match="محمي"):
@@ -177,7 +179,7 @@ def test_removed_bucket_with_state_is_closed_on_approval(db, company):
     db.commit()
 
     v2 = svc.start_draft(db, company, accountant)
-    svc.save_draft(db, v2, [svc.BucketInput(v1.buckets[0].bucket_id, "الضريبة", 1, models.CalcType.PERCENTAGE, 1500, models.Frequency.IMMEDIATE, None, "", True)], "", accountant)
+    svc.save_draft(db, v2, [svc.BucketInput(v1.buckets[0].bucket_id, "الضريبة", 1, models.CalcType.PERCENTAGE, 1500, models.Frequency.IMMEDIATE, None, "", True, new_destination_iban="SA1100000000000000000001")], "", accountant)
     svc.submit(db, v2, accountant, "")
     svc.approve(db, v2, reviewer)
     db.commit()
@@ -190,7 +192,7 @@ def test_removed_bucket_with_state_is_closed_on_approval(db, company):
 def test_withdraw_pending_and_edit_after_rejection(db, company):
     accountant = db.query(models.User).filter_by(username="acc").one()
     reviewer = db.query(models.User).filter_by(username="sara").one()
-    tax = svc.BucketInput(None, "الضريبة", 1, models.CalcType.PERCENTAGE, 1500, models.Frequency.IMMEDIATE, None, "", True)
+    tax = svc.BucketInput(None, "الضريبة", 1, models.CalcType.PERCENTAGE, 1500, models.Frequency.IMMEDIATE, None, "", True, new_destination_iban="SA1100000000000000000001")
 
     draft = svc.start_draft(db, company, accountant)
     svc.save_draft(db, draft, [tax], "", accountant)

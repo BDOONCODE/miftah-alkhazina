@@ -1,44 +1,69 @@
 {% extends "entity_base.html" %}
 {% macro row(r) %}
-<tr class="bucket-row">
-  <td>
-    <input type="hidden" name="bucket_id" value="{{ r.bucket_id }}">
-    <input name="priority" type="number" min="1" value="{{ r.priority }}" class="w-xs num" required aria-label="الأولوية">
-  </td>
-  <td><input name="name" value="{{ r.name }}" placeholder="مثال: الضريبة" required aria-label="اسم البند"></td>
-  <td>
-    <select name="calc_type" class="js-calc" aria-label="النوع">
-      {% for k, label in CALC_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if r.calc_type == k }}>{{ label }}</option>{% endfor %}
-    </select>
-  </td>
-  <td>
-    <div class="input-unit">
-      <input name="value" value="{{ r.value }}" inputmode="decimal" class="w-sm num js-value" required aria-label="القيمة">
-      <span class="unit js-unit">{{ '%' if r.calc_type == 'percentage' else 'ر.س' }}</span>
+{% set dest = r.destination or ('new' if not destinations else '') %}
+<div class="bucket-card bucket-row">
+  <input type="hidden" name="bucket_id" value="{{ r.bucket_id }}">
+  <div class="bucket-top">
+    <label class="f-prio">الأولوية
+      <input name="priority" type="number" min="1" value="{{ r.priority }}" class="num" required>
+    </label>
+    <label class="f-name">اسم البند
+      <input name="name" value="{{ r.name }}" placeholder="مثال: الضريبة" required>
+    </label>
+    <button type="button" class="btn-icon js-remove" title="حذف البند" aria-label="حذف البند">✕</button>
+  </div>
+  <div class="bucket-fields">
+    <label>النوع
+      <select name="calc_type" class="js-calc">
+        {% for k, label in CALC_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if r.calc_type == k }}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>القيمة
+      <span class="input-unit">
+        <input name="value" value="{{ r.value }}" inputmode="decimal" class="num js-value" required>
+        <span class="unit js-unit">{{ '%' if r.calc_type == 'percentage' else 'ر.س' }}</span>
+      </span>
+    </label>
+    <label>الاستحقاق
+      <span class="freq-pair">
+        <select name="frequency" class="js-freq">
+          {% for k, label in FREQ_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if r.frequency == k }}>{{ label }}</option>{% endfor %}
+        </select>
+        <input name="settlement_day" type="number" min="1" max="31" value="{{ r.settlement_day }}" placeholder="اليوم"
+               class="num js-day" {{ 'hidden' if r.frequency != 'day_of_month' }} aria-label="يوم الاستحقاق">
+      </span>
+    </label>
+    <label>محمي
+      <select name="protected">
+        <option value="0" {{ 'selected' if r.protected != '1' }}>لا</option>
+        <option value="1" {{ 'selected' if r.protected == '1' }}>🔒 نعم</option>
+      </select>
+    </label>
+  </div>
+  <div class="bucket-dest">
+    <label>الوجهة: آيبان البند
+      <select name="destination" class="js-dest">
+        <option value="" {{ 'selected' if not dest }}>اختر الحساب…</option>
+        {% for a in destinations %}
+        <option value="{{ a.id }}" {{ 'selected' if dest == a.id|string }}>{{ a.name }} · {{ KIND_LABELS[a.kind.value] }} · ••{{ a.iban[-4:] }}</option>
+        {% endfor %}
+        <option value="new" {{ 'selected' if dest == 'new' }}>+ آيبان جديد</option>
+      </select>
+    </label>
+    <div class="dest-new js-new-dest" {{ 'hidden' if dest != 'new' }}>
+      <label>الآيبان
+        <input name="dest_iban" value="{{ r.dest_iban or '' }}" dir="ltr" placeholder="SA…">
+      </label>
+      <label>نوع الحساب
+        <select name="dest_kind">
+          <option value="sub" {{ 'selected' if r.dest_kind != 'external' }}>فرعي تحت المجمّع (للبند)</option>
+          <option value="external" {{ 'selected' if r.dest_kind == 'external' }}>خارجي (جهة ثانية مثل المؤجر)</option>
+        </select>
+      </label>
     </div>
-  </td>
-  <td>
-    <select name="frequency" class="js-freq" aria-label="الاستحقاق">
-      {% for k, label in FREQ_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if r.frequency == k }}>{{ label }}</option>{% endfor %}
-    </select>
-    <input name="settlement_day" type="number" min="1" max="31" value="{{ r.settlement_day }}" placeholder="اليوم"
-           class="w-xs num js-day" {{ 'hidden' if r.frequency != 'day_of_month' }} aria-label="يوم الاستحقاق">
-  </td>
-  <td>
-    <select name="destination" aria-label="الوجهة">
-      <option value="">يبقى في المجمّع</option>
-      {% for a in destinations %}<option value="{{ a.id }}" {{ 'selected' if r.destination == a.id|string }}>{{ a.name }}</option>{% endfor %}
-    </select>
-    {% if r.legacy_destination %}<small class="muted">كانت: {{ r.legacy_destination }}</small>{% endif %}
-  </td>
-  <td>
-    <select name="protected" aria-label="محمي">
-      <option value="0" {{ 'selected' if r.protected != '1' }}>لا</option>
-      <option value="1" {{ 'selected' if r.protected == '1' }}>🔒 نعم</option>
-    </select>
-  </td>
-  <td><button type="button" class="btn-icon js-remove" title="حذف البند" aria-label="حذف البند">✕</button></td>
-</tr>
+    {% if r.legacy_destination %}<small class="muted">كانت مكتوبة: {{ r.legacy_destination }}</small>{% endif %}
+  </div>
+</div>
 {% endmacro %}
 
 {% block entity_content %}
@@ -62,35 +87,29 @@
       <summary>وش معنى «الوجهة» و«محمي»؟</summary>
       <dl>
         <dt>الوجهة</dt>
-        <dd>وين يروح مبلغ البند. <strong>«يبقى في المجمّع»</strong> يعني المبلغ يبقى في الحساب المجمّع ويتحجز للبند.
-          أو اختر <strong>حساب فرعي</strong> (مثل حساب الضريبة) أو <strong>خارجي</strong> (مثل حساب المؤجر) عشان يتحوّل له.
-          الحسابات تنضاف من تبويب <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a>.
-          التحويل الفعلي يجي مع الربط البنكي؛ حاليًا يتسجّل وين المفروض يروح.</dd>
+        <dd>كل بند له <strong>آيبان خاص</strong> يروح له مبلغه:
+          <strong>فرعي</strong> = حساب افتراضي للبند تحت الحساب المجمّع (مثل حساب الضريبة)،
+          أو <strong>خارجي</strong> = حساب جهة ثانية (مثل المؤجر). اختر حساب مسجّل، أو «+ آيبان جديد» وينضاف تلقائيًا
+          لتبويب <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a>.
+          التحويل الفعلي يجي مع الربط البنكي؛ حاليًا يتسجّل وين المفروض يروح. والفائض يبقى في الحساب المجمّع.</dd>
         <dt>محمي 🔒</dt>
         <dd>بند حساس ما نبي أحد يغيّره بسهولة (مثل الضريبة أو الرواتب). بعد ما يتموّل في الفترة الحالية، أي تغيير على
           قيمته أو أولويته أو استحقاقه أو حذفه يحتاج <strong>تبرير مكتوب</strong> يشوفه المراجع وينحفظ في السجل.</dd>
       </dl>
     </details>
-    {% if not destinations %}
+    {% if not has_pool %}
     <div class="alert alert-warning">
-      ما في حسابات فرعية أو خارجية للشركة، فكل البنود «تبقى في المجمّع».
-      <a href="/entities/{{ entity.id }}/accounts">أضف الحسابات البنكية</a> عشان تحدد وين يروح كل بند.
+      ما في حساب مجمّع للشركة. <a href="/entities/{{ entity.id }}/accounts">أضفه من الحسابات البنكية</a>
+      عشان تتجمع فيه الإيرادات ويبقى فيه الفائض.
     </div>
     {% endif %}
 
     {% for e in errors %}<div class="alert alert-error">{{ e }}</div>{% endfor %}
 
-    <div class="table-scroll">
-      <table class="table table-form">
-        <thead>
-          <tr><th>الأولوية</th><th>البند</th><th>النوع</th><th>القيمة</th><th>الاستحقاق</th><th>الوجهة</th><th>محمي</th><th></th></tr>
-        </thead>
-        <tbody id="rows">
-          {% for r in rows %}{{ row(r) }}{% endfor %}
-        </tbody>
-      </table>
+    <div id="rows" class="bucket-list">
+      {% for r in rows %}{{ row(r) }}{% endfor %}
     </div>
-    <template id="row-template">{{ row({'bucket_id': '', 'name': '', 'priority': '', 'calc_type': 'percentage', 'value': '', 'frequency': 'immediate', 'settlement_day': '', 'destination': '', 'legacy_destination': '', 'protected': '0'}) }}</template>
+    <template id="row-template">{{ row({'bucket_id': '', 'name': '', 'priority': '', 'calc_type': 'percentage', 'value': '', 'frequency': 'immediate', 'settlement_day': '', 'destination': '', 'dest_iban': '', 'dest_kind': 'sub', 'legacy_destination': '', 'protected': '0'}) }}</template>
     <div><button type="button" class="btn" id="add-row">+ إضافة بند</button></div>
 
     <label>ملاحظات للمراجع

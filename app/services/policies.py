@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..domain.periods import local_date, period_key
 from ..domain.policy_rules import justification_error, protected_changes, validate_policy
 from ..domain.types import BucketSpec, CalcType, Frequency
-from .accounts import DESTINATION_KINDS
+from .accounts import DESTINATION_KINDS, AccountError, add_account, normalize_iban
 from ..models import (
     AuditLog,
     BankAccount,
@@ -44,7 +44,10 @@ class BucketInput:
     settlement_day: int | None
     destination: str
     protected: bool
-    destination_account_id: int | None = None  # فاضي = يبقى في الحساب المجمّع
+    destination_account_id: int | None = None
+    # «+ آيبان جديد» من صفحة السياسة: يتسجّل حساب جديد باسم البند
+    new_destination_iban: str = ""
+    new_destination_kind: str = "sub"
 
 
 def bucket_spec(pb: PolicyBucket) -> BucketSpec:
@@ -56,7 +59,7 @@ def bucket_spec(pb: PolicyBucket) -> BucketSpec:
         value=pb.value,
         frequency=pb.frequency,
         settlement_day=pb.settlement_day,
-        destination=pb.destination,
+        destination=str(pb.destination_account_id or pb.destination),
         protected=pb.protected,
     )
 
@@ -159,7 +162,9 @@ def save_draft(session: Session, policy: Policy, rows: list[BucketInput], notes:
         elif bucket_id not in owned:
             raise PolicyError("بند غير تابع لهذي الشركة")
         account = None
-        if row.destination_account_id is not None:
+        if row.new_destination_iban.strip():
+            account = _destination_from_iban(session, policy, user, row, destinations)
+        elif row.destination_account_id is not None:
             account = destinations.get(row.destination_account_id)
             if account is None:
                 raise PolicyError(f"وجهة البند «{row.name.strip()}» مو حساب فرعي أو خارجي نشط لهذي الشركة")
@@ -185,6 +190,35 @@ def save_draft(session: Session, policy: Policy, rows: list[BucketInput], notes:
     _audit(session, user, policy, "policy.saved", buckets=len(new_buckets))
 
 
+def _destination_from_iban(session: Session, policy: Policy, user: User, row: BucketInput, destinations: dict) -> BankAccount:
+    """آيبان جديد من صفحة السياسة: نستخدم الحساب لو مسجّل، وإلا نسجّله باسم البند."""
+    iban = normalize_iban(row.new_destination_iban)
+    existing = session.scalar(
+        select(BankAccount).where(BankAccount.entity_id == policy.entity_id, BankAccount.iban == iban)
+    )
+    if existing is not None:
+        if existing.kind not in DESTINATION_KINDS:
+            raise PolicyError(f"الآيبان {iban} مسجّل كحساب مصدر أو مجمّع، ما يصلح وجهة لبند")
+        if not existing.is_active:
+            raise PolicyError(f"الآيبان {iban} لحساب معطّل. فعّله من الحسابات البنكية")
+        return existing
+    kind = row.new_destination_kind if row.new_destination_kind in ("sub", "external") else "sub"
+    try:
+        account = add_account(
+            session, session.get(Entity, policy.entity_id), user,
+            name=row.name.strip() or "حساب بند", bank_name="", iban=iban, kind=kind,
+        )
+    except AccountError as exc:
+        raise PolicyError(f"البند «{row.name.strip()}»: {exc}") from exc
+    destinations[account.id] = account
+    return account
+
+
+def destination_errors(policy: Policy) -> list[str]:
+    """كل بند لازم له آيبان وجهة (حساب فرعي أو خارجي)."""
+    return [f"البند «{pb.name}» ما له آيبان وجهة" for pb in policy.buckets if pb.destination_account_id is None]
+
+
 def funded_in_current_period(session: Session, entity_id: int, buckets: list[BucketSpec], today: date) -> set[int]:
     by_id = {b.bucket_id: b for b in buckets}
     funded: set[int] = set()
@@ -207,7 +241,7 @@ def protected_changes_for(session: Session, policy: Policy, today: date | None =
 def submit(session: Session, policy: Policy, user: User, justification: str) -> None:
     if policy.status is not PolicyStatus.DRAFT:
         raise PolicyError("السياسة مو مسودة")
-    if errors := validate_policy(specs(policy)):
+    if errors := validate_policy(specs(policy)) + destination_errors(policy):
         raise PolicyError("؛ ".join(errors))
     changes = protected_changes_for(session, policy)
     if error := justification_error(changes, justification):

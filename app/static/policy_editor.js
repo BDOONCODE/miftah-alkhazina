@@ -12,6 +12,11 @@
       const isPct = tr.querySelector(".js-calc").value === "percentage";
       tr.querySelector(".js-unit").textContent = isPct ? "%" : "ر.س";
       tr.querySelector(".js-day").hidden = tr.querySelector(".js-freq").value !== "day_of_month";
+      // «+ آيبان جديد»: تظهر خانة الآيبان ونوعه
+      const isNew = tr.querySelector(".js-dest").value === "new";
+      const box = tr.querySelector(".js-new-dest");
+      box.hidden = !isNew;
+      box.querySelector('input[name="dest_iban"]').required = isNew;
       if (isPct) sum += toNumber(tr.querySelector(".js-value").value);
     });
     total.textContent = `${Math.round(sum * 100) / 100}%`;

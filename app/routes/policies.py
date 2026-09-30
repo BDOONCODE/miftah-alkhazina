@@ -42,15 +42,22 @@ def _row_view(pb) -> dict:
         # وجهة قديمة مكتوبة نص (قبل الحسابات البنكية): نعرضها تلميح عشان يختار حسابها
         "legacy_destination": "" if pb.destination_account_id else pb.destination,
         "protected": "1" if pb.protected else "0",
+        "dest_iban": "",
+        "dest_kind": "sub",
     }
 
 
 def _parse_rows(form) -> tuple[list[dict], list[svc.BucketInput], list[str]]:
     fields = ["bucket_id", "name", "priority", "calc_type", "value", "frequency", "settlement_day", "destination", "protected"]
+    optional = {"dest_iban": "", "dest_kind": "sub"}  # خانات «+ آيبان جديد»
     columns = {f: form.getlist(f) for f in fields}
     count = len(columns["name"])
     if any(len(v) != count for v in columns.values()):
         raise HTTPException(400, "نموذج غير مكتمل")
+    for f, default in optional.items():
+        values = form.getlist(f)
+        columns[f] = values if len(values) == count else [default] * count
+    fields += list(optional)
 
     views, inputs, errors = [], [], []
     for i in range(count):
@@ -77,6 +84,8 @@ def _parse_rows(form) -> tuple[list[dict], list[svc.BucketInput], list[str]]:
                 settlement_day=day,
                 destination="",
                 destination_account_id=int(row["destination"]) if row["destination"].isdigit() else None,
+                new_destination_iban=row["dest_iban"] if row["destination"] == "new" else "",
+                new_destination_kind=row["dest_kind"],
                 protected=row["protected"] == "1",
             )
         )
@@ -148,7 +157,9 @@ def edit_draft(request: Request, policy_id: int, user: User = Depends(editor), s
     if policy.status is not PolicyStatus.DRAFT:
         return redirect(f"/policies/{policy.id}")
     rows = [_row_view(pb) for pb in policy.buckets]
-    return _render_editor(request, user, policy, session, rows, validate_policy(svc.specs(policy)), policy.notes)
+    return _render_editor(
+        request, user, policy, session, rows, validate_policy(svc.specs(policy)) + svc.destination_errors(policy), policy.notes
+    )
 
 
 @router.post("/policies/{policy_id}/edit")
@@ -174,7 +185,7 @@ async def save_draft(request: Request, policy_id: int, user: User = Depends(edit
         except svc.PolicyError as exc:
             session.rollback()
             # أخطاء التحقق تظهر أصلًا فوق الجدول، فما نكررها في التنبيه
-            detail = "راجع الملاحظات تحت" if validate_policy(svc.specs(policy)) else str(exc)
+            detail = "راجع الملاحظات تحت" if validate_policy(svc.specs(policy)) or svc.destination_errors(policy) else str(exc)
             flash(request, f"انحفظت المسودة لكن ما {'اعتُمدت' if self_approval else 'انرسلت للمراجع'}: {detail}", "error")
             return redirect(f"/policies/{policy.id}/edit")
         session.commit()
@@ -184,7 +195,7 @@ async def save_draft(request: Request, policy_id: int, user: User = Depends(edit
             flash(request, "انرسلت السياسة للمراجع. بتصير نشطة أول ما يعتمدها")
         return redirect(f"/entities/{policy.entity_id}/policy")
 
-    if validate_policy(svc.specs(policy)):
+    if validate_policy(svc.specs(policy)) or svc.destination_errors(policy):
         flash(request, "انحفظت المسودة، لكن فيها ملاحظات لازم تنحل قبل الإرسال للاعتماد", "warning")
     else:
         flash(request, "انحفظت المسودة")

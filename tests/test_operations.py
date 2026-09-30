@@ -33,9 +33,9 @@ def setup(db, make_user):
         db,
         draft,
         [
-            pol.BucketInput(None, "الضريبة", 1, CalcType.PERCENTAGE, 1500, Frequency.IMMEDIATE, None, "", True),
-            pol.BucketInput(None, "الإيجار", 2, CalcType.FIXED_AMOUNT, 10_000 * SAR, Frequency.MONTHLY, None, "حساب الإيجار", False),
-            pol.BucketInput(None, "الأرباح", 3, CalcType.PERCENTAGE, 500, Frequency.MONTHLY, None, "", False),
+            pol.BucketInput(None, "الضريبة", 1, CalcType.PERCENTAGE, 1500, Frequency.IMMEDIATE, None, "", True, new_destination_iban="SA1100000000000000000001"),
+            pol.BucketInput(None, "الإيجار", 2, CalcType.FIXED_AMOUNT, 10_000 * SAR, Frequency.MONTHLY, None, "حساب الإيجار", False, new_destination_iban="SA1100000000000000000003"),
+            pol.BucketInput(None, "الأرباح", 3, CalcType.PERCENTAGE, 500, Frequency.MONTHLY, None, "", False, new_destination_iban="SA1100000000000000000002"),
         ],
         "",
         accountant,
