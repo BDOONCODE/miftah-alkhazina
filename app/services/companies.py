@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..models import AuditLog, Dashboard, Entity, Role, User
 from ..security import hash_password
+from .accounts import AccountError, add_account
 from .dashboards import apply_default_layout
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.@-]{3,64}$")
@@ -48,8 +49,6 @@ def _apply(entity: Entity, data: CompanyInput) -> None:
     entity.name = data.name.strip()
     entity.cr_number = data.cr_number.strip()
     entity.vat_number = data.vat_number.strip()
-    entity.bank_name = data.bank_name.strip()
-    entity.iban = data.iban.replace(" ", "").upper()
     entity.contact_name = data.contact_name.strip()
     entity.contact_phone = data.contact_phone.strip()
 
@@ -103,6 +102,15 @@ def register_company(
 
     if accountant.role is not Role.ADMIN:  # المدير يشوف كل الشركات أصلًا
         entity.users.append(accountant)
+    if company.iban.strip():
+        # آيبان التسجيل هو الحساب المجمّع اللي تتجمع فيه الإيرادات
+        try:
+            add_account(
+                session, entity, accountant,
+                name="الحساب المجمّع", bank_name=company.bank_name, iban=company.iban, kind="pool",
+            )
+        except AccountError as exc:
+            raise CompanyError(str(exc)) from exc
     reviewer_user = None
     if reviewer is not None:
         reviewer_user = create_user(

@@ -49,7 +49,8 @@ def company(client, db, make_user):
 
 
 def test_registration_creates_company_reviewer_and_dashboard(company, db):
-    assert company.iban == "SA0380000000608010167519"
+    pool = db.query(models.BankAccount).one()  # آيبان التسجيل صار الحساب المجمّع
+    assert (pool.iban, pool.kind, pool.entity_id) == ("SA0380000000608010167519", models.AccountKind.POOL, company.id)
     reviewer = db.query(models.User).filter_by(username="sara").one()
     assert reviewer.role is Role.APPROVER and reviewer.must_change_password
     assert {u.username for u in company.users} == {"acc", "sara"}

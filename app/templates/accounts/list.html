@@ -1,6 +1,12 @@
 {% extends "entity_base.html" %}
 {% block entity_content %}
 {% set can_edit = user.role.value in ("accountant", "admin") %}
+<ol class="steps">
+  <li class="done">بيانات الشركة</li>
+  <li class="current">الحسابات البنكية</li>
+  <li>سياسة التقسيم</li>
+  <li>الاعتماد</li>
+</ol>
 
 <section class="card">
   <h2>الحسابات البنكية</h2>
@@ -71,4 +77,9 @@
   </form>
 </section>
 {% endif %}
+
+<div class="next-step">
+  <span class="muted">حسابات البنود (الفرعية والخارجية) تقدر تضيفها هنا أو مباشرة من صفحة السياسة.</span>
+  <a class="btn btn-primary" href="/entities/{{ entity.id }}/policy">التالي: سياسة التقسيم ←</a>
+</div>
 {% endblock %}

@@ -1,9 +1,10 @@
 {% extends "base.html" %}
-{% from "companies/_fields.html" import company_fields, reviewer_fields %}
+{% from "companies/_fields.html" import company_fields, pool_fields, reviewer_fields %}
 {% block content %}
 <h1>تسجيل شركة جديدة</h1>
 <ol class="steps">
   <li class="current">بيانات الشركة</li>
+  <li>الحسابات البنكية</li>
   <li>سياسة التقسيم</li>
   <li>الاعتماد</li>
 </ol>
@@ -12,6 +13,11 @@
   <section class="card">
     <h2>بيانات الشركة</h2>
     {{ company_fields(form) }}
+  </section>
+  <section class="card">
+    <h2>الحساب المجمّع</h2>
+    <p class="muted">الحساب اللي تتجمع فيه كل إيرادات الشركة، ومنه تتقسّم على البنود. حسابات المصادر (نقاط البيع، مدى، التوصيل) تضيفها في الخطوة الجاية.</p>
+    {{ pool_fields(form) }}
   </section>
   <section class="card">
     <h2>مين يعتمد سياسة التقسيم؟</h2>

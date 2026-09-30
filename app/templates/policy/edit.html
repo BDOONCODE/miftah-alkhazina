@@ -3,16 +3,13 @@
 {% set dest = r.destination or ('new' if not destinations else '') %}
 <div class="bucket-card bucket-row">
   <input type="hidden" name="bucket_id" value="{{ r.bucket_id }}">
-  <div class="bucket-top">
+  <div class="bucket-main">
     <label class="f-prio">الأولوية
       <input name="priority" type="number" min="1" value="{{ r.priority }}" class="num" required>
     </label>
     <label class="f-name">اسم البند
       <input name="name" value="{{ r.name }}" placeholder="مثال: الضريبة" required>
     </label>
-    <button type="button" class="btn-icon js-remove" title="حذف البند" aria-label="حذف البند">✕</button>
-  </div>
-  <div class="bucket-fields">
     <label>النوع
       <select name="calc_type" class="js-calc">
         {% for k, label in CALC_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if r.calc_type == k }}>{{ label }}</option>{% endfor %}
@@ -33,12 +30,13 @@
                class="num js-day" {{ 'hidden' if r.frequency != 'day_of_month' }} aria-label="يوم الاستحقاق">
       </span>
     </label>
-    <label>محمي
+    <label class="f-prot">محمي
       <select name="protected">
         <option value="0" {{ 'selected' if r.protected != '1' }}>لا</option>
         <option value="1" {{ 'selected' if r.protected == '1' }}>🔒 نعم</option>
       </select>
     </label>
+    <button type="button" class="btn-icon js-remove" title="حذف البند" aria-label="حذف البند">✕</button>
   </div>
   <div class="bucket-dest">
     <label>الوجهة: آيبان البند
@@ -69,6 +67,7 @@
 {% block entity_content %}
 <ol class="steps">
   <li class="done">بيانات الشركة</li>
+  <li class="done">الحسابات البنكية</li>
   <li class="current">سياسة التقسيم</li>
   <li>الاعتماد</li>
 </ol>

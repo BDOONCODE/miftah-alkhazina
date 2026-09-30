@@ -50,9 +50,8 @@ async def register_company(request: Request, user: User = Depends(accountant), s
             request, "companies/new.html", {"user": user, "form": values, "error": str(exc)}, status_code=422
         )
     session.commit()
-    next_step = "حدد سياسة التقسيم واعتمدها" if entity.approval_mode == "self" else "حدد سياسة التقسيم وأرسلها للمراجع"
-    flash(request, f"تم تسجيل «{entity.name}». الخطوة الجاية: {next_step}")
-    return redirect(f"/entities/{entity.id}/policy")
+    flash(request, f"تم تسجيل «{entity.name}». الخطوة الجاية: أضف حسابات الشركة البنكية، وبعدها سياسة التقسيم")
+    return redirect(f"/entities/{entity.id}/accounts")
 
 
 @router.get("/entities/{entity_id}/settings", response_class=HTMLResponse)

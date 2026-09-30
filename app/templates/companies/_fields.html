@@ -9,17 +9,22 @@
   <label>الرقم الضريبي
     <input name="vat_number" value="{{ v.vat_number or '' }}" dir="ltr" {{ 'readonly' if readonly }}>
   </label>
-  <label>البنك
-    <input name="bank_name" value="{{ v.bank_name or '' }}" {{ 'readonly' if readonly }}>
-  </label>
-  <label>الآيبان
-    <input name="iban" value="{{ v.iban or '' }}" dir="ltr" placeholder="SA…" {{ 'readonly' if readonly }}>
-  </label>
   <label>مسؤول التواصل
     <input name="contact_name" value="{{ v.contact_name or '' }}" {{ 'readonly' if readonly }}>
   </label>
   <label>جوال التواصل
     <input name="contact_phone" value="{{ v.contact_phone or '' }}" dir="ltr" {{ 'readonly' if readonly }}>
+  </label>
+</div>
+{% endmacro %}
+
+{% macro pool_fields(v) %}
+<div class="form-grid">
+  <label>البنك
+    <input name="bank_name" value="{{ v.bank_name or '' }}" placeholder="مثال: الراجحي">
+  </label>
+  <label>آيبان الحساب المجمّع
+    <input name="iban" value="{{ v.iban or '' }}" dir="ltr" placeholder="SA…">
   </label>
 </div>
 {% endmacro %}

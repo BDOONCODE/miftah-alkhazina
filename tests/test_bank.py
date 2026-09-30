@@ -197,3 +197,16 @@ def test_source_iban_cannot_be_destination(client, db, company, accounts):
         f"/policies/{draft.id}/edit", data=_draft_form(destination=["new"], dest_iban=[POS], dest_kind=["sub"])
     )
     assert response.status_code == 422 and "مصدر أو مجمّع" in response.text
+
+
+def test_registration_goes_to_accounts_with_pool_from_iban(client, db, make_user):
+    make_user("acc2")
+    client.post("/login", data={"username": "acc2", "password": "password123"})
+    response = client.post(
+        "/companies/new",
+        data={"name": "شركة جديدة", "approval_mode": "self", "bank_name": "الراجحي", "iban": POOL},
+        follow_redirects=False,
+    )
+    entity = db.query(models.Entity).filter_by(name="شركة جديدة").one()
+    assert response.headers["location"] == f"/entities/{entity.id}/accounts"
+    assert acc.pool_account(db, entity.id).iban == POOL
