@@ -239,7 +239,7 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 .bucket-card label > input, .bucket-card label > select, .bucket-card label > span { color: var(--text); font-size: 1rem; }
 /* سطر واحد: الأولوية، الاسم، النوع، القيمة، الاستحقاق، محمي، حذف */
 .bucket-main { display: grid; gap: .6rem; align-items: end;
-  grid-template-columns: 4.5rem minmax(9rem, 1.6fr) minmax(7rem, 1fr) minmax(7rem, 1fr) minmax(9rem, 1.3fr) 5.5rem auto; }
+  grid-template-columns: 4.5rem minmax(9rem, 1.6fr) minmax(7rem, 1fr) minmax(7rem, 1fr) minmax(9rem, 1.3fr) 7.5rem auto; }
 .bucket-dest { display: flex; flex-direction: column; gap: .5rem; }
 .dest-new { display: grid; gap: .75rem; grid-template-columns: 2fr 1fr; }
 .input-unit input { flex: 1; min-width: 0; }
