@@ -8,18 +8,22 @@ from argon2.exceptions import InvalidHashError, VerifyMismatchError
 _hasher = PasswordHasher()
 
 MIN_PASSWORD_LENGTH = 8
-# كل شرط: (نمط، رسالة). نفس القائمة تنعرض للمستخدم وهو يكتب (password_rules.js)
+_ENGLISH_SYMBOL = re.compile(r"[!-/:-@\[-`{-~]")  # رموز لوحة المفاتيح الإنجليزية
+_ENGLISH_ONLY = re.compile(r"[!-~]*")  # كل حرف من لوحة المفاتيح الإنجليزية، بدون عربي أو مسافات
+
+# كل شرط: (فحص، رسالة). نفس الشروط تنعرض للمستخدم وهو يكتب (password.js)
 PASSWORD_RULES = [
-    (re.compile(rf".{{{MIN_PASSWORD_LENGTH},}}", re.S), f"{MIN_PASSWORD_LENGTH} أحرف على الأقل"),
-    (re.compile(r"[A-Z]"), "حرف إنجليزي كبير (A-Z)"),
-    (re.compile(r"[a-z]"), "حرف إنجليزي صغير (a-z)"),
-    (re.compile(r"\d"), "رقم (0-9)"),
-    (re.compile(r"[^A-Za-z0-9\s]"), "رمز خاص مثل ! @ # $"),
+    (lambda p: len(p) >= MIN_PASSWORD_LENGTH, f"{MIN_PASSWORD_LENGTH} أحرف على الأقل"),
+    (lambda p: re.search(r"[A-Z]", p) is not None, "حرف إنجليزي كبير (A-Z)"),
+    (lambda p: re.search(r"[a-z]", p) is not None, "حرف إنجليزي صغير (a-z)"),
+    (lambda p: re.search(r"[0-9]", p) is not None, "رقم (0-9)"),
+    (lambda p: _ENGLISH_SYMBOL.search(p) is not None, "رمز خاص مثل ! @ # $"),
+    (lambda p: _ENGLISH_ONLY.fullmatch(p) is not None, "حروف وأرقام ورموز إنجليزية فقط (بدون عربي أو مسافات)"),
 ]
 
 
 def password_problems(password: str) -> list[str]:
-    return [message for pattern, message in PASSWORD_RULES if not pattern.search(password)]
+    return [message for check, message in PASSWORD_RULES if not check(password)]
 
 
 def hash_password(password: str, *, enforce_rules: bool = True) -> str:

@@ -110,3 +110,9 @@ def test_self_signed_user_can_register_company_with_self_approval(client, db, ou
     response = client.post("/companies/new", data={"name": "شركة العميل", "approval_mode": "self"}, follow_redirects=False)
     assert response.status_code == 303
     assert db.query(models.Entity).filter_by(name="شركة العميل").one().approval_mode == "self"
+
+
+def test_arabic_letters_are_not_symbols():
+    assert "رمز خاص مثل ! @ # $" in password_problems("يبيسيصصصصضض")
+    assert password_problems("Strongpass1ع!") == ["حروف وأرقام ورموز إنجليزية فقط (بدون عربي أو مسافات)"]
+    assert password_problems("Strong pass1!") == ["حروف وأرقام ورموز إنجليزية فقط (بدون عربي أو مسافات)"]

@@ -121,6 +121,29 @@ class Entity(Base):
         return [u for u in self.users if u.role is Role.APPROVER]
 
 
+class AccountKind(StrEnum):
+    SOURCE = "source"  # مصدر إيراد: نقاط البيع، مدى/فيزا، التوصيل
+    POOL = "pool"  # الحساب المجمّع اللي تتجمع فيه الإيرادات
+    SUB = "sub"  # حساب فرعي (افتراضي) لبند
+    EXTERNAL = "external"  # حساب جهة ثانية: مؤجر، مورد
+
+
+class BankAccount(Base):
+    """حسابات الشركة البنكية. provider_ref = معرّف الحساب عند مزوّد الربط (نيوتك) لاحقًا."""
+
+    __tablename__ = "bank_accounts"
+    __table_args__ = (UniqueConstraint("entity_id", "iban"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    bank_name: Mapped[str] = mapped_column(String(64), default="")
+    iban: Mapped[str] = mapped_column(String(34), index=True)
+    kind: Mapped[AccountKind] = mapped_column(_enum(AccountKind))
+    provider_ref: Mapped[str | None] = mapped_column(String(128))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
 class UserEntity(Base):
     __tablename__ = "user_entities"
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
@@ -174,7 +197,9 @@ class PolicyBucket(Base):
     value: Mapped[int] = mapped_column(BigInteger)
     frequency: Mapped[Frequency] = mapped_column(_enum(Frequency))
     settlement_day: Mapped[int | None] = mapped_column(Integer)
-    destination: Mapped[str] = mapped_column(String(128), default="")
+    destination: Mapped[str] = mapped_column(String(128), default="")  # اسم الوجهة للعرض
+    # الوجهة الفعلية: حساب من حسابات الشركة. فاضي = يبقى في الحساب المجمّع
+    destination_account_id: Mapped[int | None] = mapped_column(ForeignKey("bank_accounts.id"))
     protected: Mapped[bool] = mapped_column(Boolean, default=False)
 
     policy: Mapped[Policy] = relationship(back_populates="buckets")
@@ -191,6 +216,8 @@ class Transaction(Base):
     surplus: Mapped[int] = mapped_column(BigInteger, default=0)
     occurred_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
     source: Mapped[TransactionSource] = mapped_column(_enum(TransactionSource), default=TransactionSource.MANUAL)
+    # الحساب اللي دخل منه المبلغ (نقاط البيع، مدى، التوصيل...)
+    source_account_id: Mapped[int | None] = mapped_column(ForeignKey("bank_accounts.id"))
     external_ref: Mapped[str | None] = mapped_column(String(128), unique=True)
     reversal_of: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), unique=True)
     policy_id: Mapped[int] = mapped_column(ForeignKey("policies.id"))
