@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Collection, Sequence
 
-from .types import BASIS_POINTS_FULL, BucketSpec, CalcType, Frequency
+from .types import ANCHORED_MONTHS, BASIS_POINTS_FULL, BucketSpec, CalcType, Frequency
 
 MIN_JUSTIFICATION_LENGTH = 20
 
@@ -26,8 +26,8 @@ def validate_policy(buckets: Sequence[BucketSpec]) -> list[str]:
             errors.append(f"{label}: القيمة لازم تكون أكبر من صفر")
         if b.calc_type is CalcType.PERCENTAGE and b.value > BASIS_POINTS_FULL:
             errors.append(f"{label}: النسبة ما تتجاوز 100%")
-        if b.calc_type is CalcType.FIXED_AMOUNT and b.frequency is Frequency.IMMEDIATE:
-            errors.append(f"{label}: المبلغ الثابت يحتاج فترة (يومي أو أسبوعي أو شهري…)، ما يصلح فوري")
+        if b.frequency in ANCHORED_MONTHS and b.due_date is None:
+            errors.append(f"{label}: حدد تاريخ الاستحقاق القادم")
         if b.frequency is Frequency.DAY_OF_MONTH and not (b.settlement_day and 1 <= b.settlement_day <= 31):
             errors.append(f"{label}: حدد يوم الاستحقاق بين 1 و31")
 
@@ -56,7 +56,7 @@ def protected_changes(
             changes.append(f"تغيير قيمة البند المحمي «{b.name}»")
         if n.priority != b.priority:
             changes.append(f"تغيير أولوية البند المحمي «{b.name}»")
-        if n.frequency != b.frequency or n.settlement_day != b.settlement_day:
+        if (n.frequency, n.settlement_day, n.due_date) != (b.frequency, b.settlement_day, b.due_date):
             changes.append(f"تغيير جدولة البند المحمي «{b.name}»")
         if n.destination != b.destination:
             changes.append(f"تغيير وجهة البند المحمي «{b.name}»")

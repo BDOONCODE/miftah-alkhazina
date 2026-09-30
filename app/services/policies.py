@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..domain.periods import local_date, period_key
 from ..domain.policy_rules import justification_error, protected_changes, validate_policy
-from ..domain.types import BucketSpec, CalcType, Frequency
+from ..domain.types import ANCHORED_MONTHS, BucketSpec, CalcType, Frequency
 from .accounts import DESTINATION_KINDS, AccountError, add_account, normalize_iban
 from ..models import (
     AuditLog,
@@ -48,6 +48,7 @@ class BucketInput:
     # «+ آيبان جديد» من صفحة السياسة: يتسجّل حساب جديد باسم البند
     new_destination_iban: str = ""
     new_destination_kind: str = "sub"
+    due_date: date | None = None  # تاريخ الاستحقاق القادم (ربع/نصف سنوي، سنوي)
 
 
 def bucket_spec(pb: PolicyBucket) -> BucketSpec:
@@ -61,6 +62,7 @@ def bucket_spec(pb: PolicyBucket) -> BucketSpec:
         settlement_day=pb.settlement_day,
         destination=str(pb.destination_account_id or pb.destination),
         protected=pb.protected,
+        due_date=pb.due_date,
     )
 
 
@@ -126,6 +128,7 @@ def start_draft(session: Session, entity: Entity, user: User) -> Policy:
                 settlement_day=pb.settlement_day,
                 destination=pb.destination,
                 destination_account_id=pb.destination_account_id,
+                due_date=pb.due_date,
                 protected=pb.protected,
             )
             for pb in current.buckets
@@ -167,7 +170,7 @@ def save_draft(session: Session, policy: Policy, rows: list[BucketInput], notes:
         elif row.destination_account_id is not None:
             account = destinations.get(row.destination_account_id)
             if account is None:
-                raise PolicyError(f"وجهة البند «{row.name.strip()}» مو حساب فرعي أو خارجي نشط لهذي الشركة")
+                raise PolicyError(f"وجهة البند «{row.name.strip()}» مو حساب نشط (مجمّع أو فرعي أو خارجي) لهذي الشركة")
         new_buckets.append(
             PolicyBucket(
                 bucket_id=bucket_id,
@@ -177,6 +180,7 @@ def save_draft(session: Session, policy: Policy, rows: list[BucketInput], notes:
                 value=row.value,
                 frequency=row.frequency,
                 settlement_day=row.settlement_day if row.frequency is Frequency.DAY_OF_MONTH else None,
+                due_date=row.due_date if row.frequency in ANCHORED_MONTHS else None,
                 destination=account.name if account else row.destination.strip(),
                 destination_account_id=account.id if account else None,
                 protected=row.protected,
@@ -198,7 +202,7 @@ def _destination_from_iban(session: Session, policy: Policy, user: User, row: Bu
     )
     if existing is not None:
         if existing.kind not in DESTINATION_KINDS:
-            raise PolicyError(f"الآيبان {iban} مسجّل كحساب مصدر أو مجمّع، ما يصلح وجهة لبند")
+            raise PolicyError(f"الآيبان {iban} مسجّل كحساب مصدر إيراد، ما يصلح وجهة لبند")
         if not existing.is_active:
             raise PolicyError(f"الآيبان {iban} لحساب معطّل. فعّله من الحسابات البنكية")
         return existing
@@ -215,7 +219,7 @@ def _destination_from_iban(session: Session, policy: Policy, user: User, row: Bu
 
 
 def destination_errors(policy: Policy) -> list[str]:
-    """كل بند لازم له آيبان وجهة (حساب فرعي أو خارجي)."""
+    """كل بند لازم له آيبان وجهة (المجمّع أو حساب فرعي أو خارجي)."""
     return [f"البند «{pb.name}» ما له آيبان وجهة" for pb in policy.buckets if pb.destination_account_id is None]
 
 
@@ -224,7 +228,9 @@ def funded_in_current_period(session: Session, entity_id: int, buckets: list[Buc
     funded: set[int] = set()
     for state in session.scalars(select(BucketPeriodState).where(BucketPeriodState.entity_id == entity_id)):
         spec = by_id.get(state.bucket_id)
-        if spec and state.funded > 0 and state.period_key == period_key(spec.frequency, today, spec.settlement_day):
+        if spec and state.funded > 0 and state.period_key == period_key(
+            spec.frequency, today, spec.settlement_day, spec.due_date
+        ):
             funded.add(state.bucket_id)
     return funded
 

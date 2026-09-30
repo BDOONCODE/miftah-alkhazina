@@ -5,13 +5,14 @@
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from enum import StrEnum
 
 from sqlalchemy import (
     JSON,
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
@@ -197,6 +198,7 @@ class PolicyBucket(Base):
     value: Mapped[int] = mapped_column(BigInteger)
     frequency: Mapped[Frequency] = mapped_column(_enum(Frequency))
     settlement_day: Mapped[int | None] = mapped_column(Integer)
+    due_date: Mapped[date | None] = mapped_column(Date)  # تاريخ الاستحقاق القادم (ربع/نصف سنوي، سنوي)
     destination: Mapped[str] = mapped_column(String(128), default="")  # اسم الوجهة للعرض
     # الوجهة الفعلية: حساب من حسابات الشركة. فاضي = يبقى في الحساب المجمّع
     destination_account_id: Mapped[int | None] = mapped_column(ForeignKey("bank_accounts.id"))

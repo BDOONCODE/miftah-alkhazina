@@ -29,32 +29,61 @@ def line(result, bucket_id):
     return next(l for l in result.lines if l.bucket_id == bucket_id)
 
 
-def test_fixed_bucket_absorbs_until_target_then_surplus_flows():
-    (r1, r2), states = run([(8_000 * SAR, date(2026, 9, 1)), (20_000 * SAR, date(2026, 9, 5))])
+DEBT = BucketSpec(4, "قسط متأخر", 2, CalcType.FIXED_AMOUNT, 10_000 * SAR, Frequency.IMMEDIATE)
 
-    # معاملة ١: ضريبة 1,200 ثم الإيجار ياخذ الباقي 6,800 جزئيًا، والأرباح ما تاخذ شي
-    assert line(r1, 1).allocated == 1_200 * SAR
-    assert (line(r1, 2).allocated, line(r1, 2).status) == (6_800 * SAR, FundingStatus.PARTIAL)
-    assert (line(r1, 3).allocated, line(r1, 3).status) == (0, FundingStatus.UNFUNDED)
-    assert line(r1, 3).state_after.carried_deficit == 400 * SAR
-    assert r1.surplus == 0
 
-    # معاملة ٢: ضريبة 3,000، الإيجار يكمل 3,200، الأرباح 1,000 + 400 مرحَّلة
-    assert line(r2, 1).allocated == 3_000 * SAR
-    assert (line(r2, 2).allocated, line(r2, 2).status) == (3_200 * SAR, FundingStatus.FULLY_FUNDED)
+def test_undated_fixed_takes_immediately_until_complete():
+    """بدون تاريخ استحقاق: البند ياخذ حاجته فورًا لين يكتمل، وبعدها ما ياخذ شي."""
+    (r1, r2, r3, r4), _ = run(
+        [(8_000 * SAR, date(2026, 9, 1)), (20_000 * SAR, date(2026, 9, 5)),
+         (1_000 * SAR, date(2026, 9, 6)), (1_000 * SAR, date(2026, 10, 1))],
+        [TAX, DEBT, PROFIT],
+    )
+    # ضريبة 1,200 ثم القسط ياخذ الباقي 6,800 جزئيًا، والأرباح عجزها 400 يترحّل
+    assert (line(r1, 4).allocated, line(r1, 4).status) == (6_800 * SAR, FundingStatus.PARTIAL)
+    assert line(r1, 3).state_after.carried_deficit == 400 * SAR and r1.surplus == 0
+    # القسط يكمل 3,200، والأرباح 1,000 + 400 المرحَّلة
+    assert (line(r2, 4).allocated, line(r2, 4).status) == (3_200 * SAR, FundingStatus.FULLY_FUNDED)
     assert line(r2, 3).allocated == 1_400 * SAR
     assert r2.surplus == (20_000 - 3_000 - 3_200 - 1_400) * SAR
-    assert states[2].deficit == 0
+    # مكتمل: ما ياخذ شي، ولا حتى بالشهر الجاي
+    assert line(r3, 4).status is FundingStatus.NOT_REQUIRED
+    assert line(r4, 4).status is FundingStatus.NOT_REQUIRED
 
 
-def test_completed_fixed_bucket_is_not_required():
-    (_, r2), _ = run([(20_000 * SAR, date(2026, 9, 1)), (1_000 * SAR, date(2026, 9, 2))])
-    assert line(r2, 2).status == FundingStatus.NOT_REQUIRED
-    assert r2.surplus == (1_000 - 150 - 50) * SAR
+def test_dated_fixed_accrues_by_day_not_all_at_once():
+    """إيجار شهري 10,000: يوم 10 من 30 يوم مستحق له الثلث بس، والباقي ينزل للبنود بعده."""
+    (r1, r2), states = run([(9_000 * SAR, date(2026, 9, 10)), (12_000 * SAR, date(2026, 9, 30))])
+    assert line(r1, 2).allocated == 333_334  # ceil(10,000 × 10/30) = 3,333.34
+    assert line(r1, 2).status is FundingStatus.FULLY_FUNDED  # أخذ كل المستحق لين اليوم
+    assert r1.surplus == 9_000 * SAR - 1_350 * SAR - 333_334 - 450 * SAR
+    # آخر يوم قبل الاستحقاق: يكمل الهدف بالضبط، ويعوّض الأيام اللي ما جا فيها دخل
+    assert line(r2, 2).allocated == 666_666
+    assert states[2].funded == 10_000 * SAR
+
+
+def test_semiannual_rent_paid_today_does_not_drain_tomorrows_income():
+    """إيجار ٦٠,٠٠٠ كل ٦ شهور يستحق ١ مارس: دخل يوم ١ سبتمبر ما يروح كله للإيجار."""
+    rent = BucketSpec(5, "الإيجار", 1, CalcType.FIXED_AMOUNT, 60_000 * SAR, Frequency.SEMIANNUAL,
+                      due_date=date(2027, 3, 1))
+    policy = [rent, PROFIT]
+    (r1, r2, r3), states = run(
+        [(50_000 * SAR, date(2026, 9, 1)), (100_000 * SAR, date(2027, 2, 28)), (1_000 * SAR, date(2027, 3, 1))],
+        policy,
+    )
+    # الدورة ١٨١ يوم: أول يوم مستحق ceil(60,000 / 181) = 331.50 بس
+    assert line(r1, 5).allocated == 33_150
+    assert r1.surplus == 50_000 * SAR - 33_150 - 2_500 * SAR
+    # آخر يوم قبل الاستحقاق: يكتمل ٦٠,٠٠٠
+    assert line(r2, 5).state_after.funded == 60_000 * SAR
+    # يوم الاستحقاق تبدأ دورة جديدة، والقديمة تنقفل بدون عجز
+    closure = next(c for c in r3.closures if c.bucket_id == 5)
+    assert (closure.period_key, closure.closed_deficit) == ("2026-09-01", 0)
+    assert line(r3, 5).state_after.period_key == "2027-03-01"
 
 
 def test_percentage_deficit_carries_until_paid():
-    greedy = BucketSpec(9, "قسط", 1, CalcType.FIXED_AMOUNT, 1_000 * SAR, Frequency.MONTHLY)
+    greedy = BucketSpec(9, "قسط", 1, CalcType.FIXED_AMOUNT, 1_000 * SAR, Frequency.IMMEDIATE)
     tax = BucketSpec(1, "الضريبة", 2, CalcType.PERCENTAGE, 1500, Frequency.IMMEDIATE)
     (r1, r2), _ = run(
         [(1_000 * SAR, date(2026, 9, 1)), (1_000 * SAR, date(2026, 9, 2))], [greedy, tax]
@@ -71,10 +100,11 @@ def test_new_month_closes_period_with_deficit_and_resets():
     (r1, r2), states = run([(5_000 * SAR, date(2026, 9, 10)), (5_000 * SAR, date(2026, 10, 1))])
     rent_closure = next(c for c in r2.closures if c.bucket_id == 2)
     assert rent_closure.period_key == "2026-09-01"
-    assert rent_closure.closed_deficit == (10_000 - 4_250) * SAR
-    # الإيجار يبدأ أكتوبر من الصفر
+    # ما جا دخل بعد يوم ١٠، فسبتمبر انقفل ناقص
+    assert rent_closure.closed_deficit == 10_000 * SAR - 333_334
+    # الإيجار يبدأ أكتوبر من الصفر: أول يوم من ٣١
     assert line(r2, 2).state_after.period_key == "2026-10-01"
-    assert line(r2, 2).allocated == 4_250 * SAR
+    assert line(r2, 2).allocated == 32_259
     # الضريبة فورية: فترة دائمة، ما تنقفل
     assert not any(c.bucket_id == 1 for c in r2.closures)
 
@@ -92,10 +122,10 @@ def test_backdated_within_open_period_is_accepted():
 
 
 def test_policy_change_mid_period_keeps_funded_and_uses_new_target():
-    (r1,), states = run([(5_000 * SAR, date(2026, 9, 1))])
-    raised_rent = BucketSpec(2, "الإيجار", 2, CalcType.FIXED_AMOUNT, 12_000 * SAR, Frequency.MONTHLY)
-    r2 = allocate([TAX, raised_rent, PROFIT], states, 10_000 * SAR, date(2026, 9, 2))
-    assert line(r2, 2).required == (12_000 - 4_250) * SAR
+    (r1,), states = run([(5_000 * SAR, date(2026, 9, 1))], [TAX, DEBT, PROFIT])
+    raised = BucketSpec(4, "قسط متأخر", 2, CalcType.FIXED_AMOUNT, 12_000 * SAR, Frequency.IMMEDIATE)
+    r2 = allocate([TAX, raised, PROFIT], states, 10_000 * SAR, date(2026, 9, 2))
+    assert line(r2, 4).required == (12_000 - 4_250) * SAR
 
 
 def test_rounding_goes_to_surplus():

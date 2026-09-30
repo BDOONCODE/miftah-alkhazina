@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from enum import StrEnum
 
 
@@ -14,11 +15,18 @@ class CalcType(StrEnum):
 
 
 class Frequency(StrEnum):
-    IMMEDIATE = "immediate"
+    IMMEDIATE = "immediate"  # بدون تاريخ استحقاق: البند ياخذ حاجته فورًا
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
     DAY_OF_MONTH = "day_of_month"
+    QUARTERLY = "quarterly"  # كل ٣ شهور، من تاريخ استحقاق محدد
+    SEMIANNUAL = "semiannual"  # كل ٦ شهور
+    ANNUAL = "annual"  # كل سنة
+
+
+# المواعيد اللي تحتاج «تاريخ الاستحقاق القادم» وعدد شهور دورتها
+ANCHORED_MONTHS = {Frequency.QUARTERLY: 3, Frequency.SEMIANNUAL: 6, Frequency.ANNUAL: 12}
 
 
 class FundingStatus(StrEnum):
@@ -44,6 +52,7 @@ class BucketSpec:
     settlement_day: int | None = None
     destination: str = ""
     protected: bool = False
+    due_date: date | None = None  # تاريخ الاستحقاق القادم (للربع سنوي والنصف سنوي والسنوي)
 
 
 @dataclass(frozen=True)

@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from ..domain import formula
 from ..domain.money import format_amount
-from ..domain.periods import RIYADH, local_date, period_key, period_start
+from ..domain.periods import RIYADH, accrued_target, local_date, period_key, period_start
 from ..domain.types import CalcType, Frequency
 from ..models import (
     AllocationEvent,
@@ -166,11 +166,15 @@ def snapshot(session: Session, entity_id: int, rng: DateRange, today: date | Non
     for pb in policy.buckets if policy else []:
         view = BucketView(pb.bucket_id, pb.name, pb.priority, pb.calc_type, pb.value, pb.frequency)
         state = states.get(pb.bucket_id)
-        current = state is not None and state.period_key == period_key(pb.frequency, today, pb.settlement_day)
+        current = state is not None and state.period_key == period_key(
+            pb.frequency, today, pb.settlement_day, pb.due_date
+        )
         if pb.calc_type is CalcType.FIXED_AMOUNT:
             view.target = pb.value
             view.funded = state.funded if current else 0
-            view.deficit = max(0, view.target - view.funded)
+            # العجز = المتأخر عن الجدول لين اليوم، مو باقي الهدف كامل (الباقي مو مستحق للحين)
+            due_by_today = accrued_target(pb.value, pb.frequency, today, pb.settlement_day, pb.due_date)
+            view.deficit = max(0, due_by_today - view.funded)
         else:
             view.funded = state.funded if current else 0
             view.deficit = state.carried_deficit if current else 0

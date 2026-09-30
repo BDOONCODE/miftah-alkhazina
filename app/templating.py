@@ -34,11 +34,14 @@ templates.env.globals.update(
     ROLE_LABELS={"admin": "مدير", "accountant": "محاسب", "approver": "معتمِد"},
     CALC_LABELS={"percentage": "نسبة", "fixed_amount": "مبلغ ثابت"},
     FREQ_LABELS={
-        "immediate": "فوري",
+        "immediate": "فوري (بدون موعد)",
         "daily": "يومي",
         "weekly": "أسبوعي",
         "monthly": "شهري",
         "day_of_month": "يوم محدد بالشهر",
+        "quarterly": "ربع سنوي",
+        "semiannual": "نصف سنوي",
+        "annual": "سنوي",
     },
     POLICY_STATUS_LABELS={
         "draft": "مسودة",

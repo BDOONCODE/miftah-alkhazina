@@ -257,3 +257,7 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
   .dest-new { grid-template-columns: 1fr; }
 }
 .next-step { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+
+/* الأرقام والآيبانات تُكتب يسار-يمين، لكن محاذاتها تحت عنوان العمود (يمين) */
+.table td.num, .table th.num { text-align: right; }
+.freq-pair .js-due { width: 9.5rem; margin: 0; }

@@ -34,7 +34,7 @@ def setup(db, make_user):
         draft,
         [
             pol.BucketInput(None, "الضريبة", 1, CalcType.PERCENTAGE, 1500, Frequency.IMMEDIATE, None, "", True, new_destination_iban="SA1100000000000000000001"),
-            pol.BucketInput(None, "الإيجار", 2, CalcType.FIXED_AMOUNT, 10_000 * SAR, Frequency.MONTHLY, None, "حساب الإيجار", False, new_destination_iban="SA1100000000000000000003"),
+            pol.BucketInput(None, "الإيجار", 2, CalcType.FIXED_AMOUNT, 10_000 * SAR, Frequency.IMMEDIATE, None, "حساب الإيجار", False, new_destination_iban="SA1100000000000000000003"),
             pol.BucketInput(None, "الأرباح", 3, CalcType.PERCENTAGE, 500, Frequency.MONTHLY, None, "", False, new_destination_iban="SA1100000000000000000002"),
         ],
         "",
@@ -65,7 +65,7 @@ def test_record_matches_engine_scenario(db, setup):
     assert alloc(t1) == {ids["الضريبة"]: 600 * SAR, ids["الإيجار"]: 3_400 * SAR, ids["الأرباح"]: 0}
     assert alloc(t2)[ids["الأرباح"]] == 650 * SAR  # 450 + 200 مرحَّلة
     assert (t1.surplus, t2.surplus) == (0, 400 * SAR)
-    assert states(db, entity)[ids["الإيجار"]] == ("2026-09-01", 10_000 * SAR, 0)
+    assert states(db, entity)[ids["الإيجار"]] == ("0000-00-00", 10_000 * SAR, 0)  # بدون موعد: فترة دائمة
 
 
 def test_occurred_at_round_trips_with_timezone(db, setup):
@@ -125,7 +125,7 @@ def test_reversal_voids_period_closures(db, setup):
     entity, user, _ = setup
     record(db, entity, user, 1_000, at(2026, 9, 5))
     t2 = record(db, entity, user, 1_000, at(2026, 10, 5))
-    assert db.query(models.PeriodClosure).filter_by(voided=False).count() == 2  # الإيجار والأرباح
+    assert db.query(models.PeriodClosure).filter_by(voided=False).count() == 1  # شهر الأرباح
     txs.reverse_transaction(db, t2, user, "تاريخ غلط")
     db.commit()
     assert db.query(models.PeriodClosure).filter_by(voided=False).count() == 0
@@ -139,12 +139,13 @@ def test_snapshot_and_variables(db, setup):
     record(db, entity, user, 9_000, at(2026, 9, 10))
 
     snap = metrics.snapshot(db, entity.id, metrics.resolve_range("this_month", date(2026, 9, 15)), today=date(2026, 9, 15))
-    assert (snap.incoming, snap.surplus, snap.count) == (13_000 * SAR, 400 * SAR, 2)
+    # إيداع أغسطس موّل الإيجار 425 (بدون موعد = فترة دائمة)، فسبتمبر يكمّل 9,575 بس والفائض أكبر
+    assert (snap.incoming, snap.surplus, snap.count) == (13_000 * SAR, 825 * SAR, 2)
     rent = next(b for b in snap.buckets if b.name == "الإيجار")
-    assert (rent.allocated, rent.funded, rent.deficit) == (10_000 * SAR, 10_000 * SAR, 0)
+    assert (rent.allocated, rent.funded, rent.deficit) == (9_575 * SAR, 10_000 * SAR, 0)
     values = metrics.variables(snap)
-    assert values["الفائض"] == 400 and values["مخصص_الضريبة"] == 1_950
-    assert formula.evaluate("الفائض / الوارد * 100", values) == pytest.approx(3.0769, rel=1e-3)
+    assert values["الفائض"] == 825 and values["مخصص_الضريبة"] == 1_950
+    assert formula.evaluate("الفائض / الوارد * 100", values) == pytest.approx(825 / 13_000 * 100)
 
 
 def test_formula_safety():

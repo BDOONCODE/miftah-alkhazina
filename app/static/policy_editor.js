@@ -11,7 +11,11 @@
     rows.querySelectorAll(".bucket-row").forEach((tr) => {
       const isPct = tr.querySelector(".js-calc").value === "percentage";
       tr.querySelector(".js-unit").textContent = isPct ? "%" : "ر.س";
-      tr.querySelector(".js-day").hidden = tr.querySelector(".js-freq").value !== "day_of_month";
+      const freq = tr.querySelector(".js-freq").value;
+      tr.querySelector(".js-day").hidden = freq !== "day_of_month";
+      const due = tr.querySelector(".js-due");
+      due.hidden = !["quarterly", "semiannual", "annual"].includes(freq);
+      due.required = !due.hidden;
       // «+ آيبان جديد»: تظهر خانة الآيبان ونوعه
       const isNew = tr.querySelector(".js-dest").value === "new";
       const box = tr.querySelector(".js-new-dest");

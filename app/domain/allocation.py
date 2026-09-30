@@ -2,7 +2,9 @@
 
 لكل بند حسب الأولوية:
     نسبة:  المطلوب = floor(النسبة × المبلغ) + العجز المرحَّل
-    ثابت:  المطلوب = هدف الفترة − المتجمّع له
+    ثابت:  المطلوب = المستحق لين اليوم − المتجمّع له
+           (بدون تاريخ استحقاق: المستحق = الهدف كامل؛
+            مع تاريخ استحقاق: يتجمّع بالتدريج بالأيام لين يكتمل قبل الاستحقاق)
     المخصص = الأصغر بين المطلوب والمتبقي
 الباقي بعد كل البنود = فائض.  الشرط الثابت: مجموع المخصص + الفائض = المبلغ.
 """
@@ -11,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from datetime import date
 
-from .periods import PERPETUAL_KEY, period_key
+from .periods import PERPETUAL_KEY, accrued_target, period_key
 from .types import (
     BASIS_POINTS_FULL,
     AllocationLine,
@@ -40,7 +42,7 @@ def _roll_state(
     bucket: BucketSpec, state: BucketState | None, on: date
 ) -> tuple[BucketState, PeriodClosure | None]:
     """يرجّع حالة البند في فترة التاريخ `on`، ويقفل الفترة السابقة لو انتهت."""
-    key = period_key(bucket.frequency, on, bucket.settlement_day)
+    key = period_key(bucket.frequency, on, bucket.settlement_day, bucket.due_date)
     target = bucket.value if bucket.calc_type is CalcType.FIXED_AMOUNT else 0
 
     if state is None:
@@ -90,7 +92,9 @@ def allocate(
         if bucket.calc_type is CalcType.PERCENTAGE:
             required = percentage_share(amount, bucket.value) + current.carried_deficit
         else:
-            required = max(0, current.target - current.funded)
+            # مع تاريخ استحقاق: ياخذ بس المستحق لين اليوم (تجميع تدريجي). بدون تاريخ: الهدف كامل فورًا
+            due_by_now = accrued_target(current.target, bucket.frequency, on, bucket.settlement_day, bucket.due_date)
+            required = max(0, due_by_now - current.funded)
 
         allocated = min(required, remaining)
         remaining -= allocated

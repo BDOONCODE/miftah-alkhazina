@@ -28,6 +28,9 @@
         </select>
         <input name="settlement_day" type="number" min="1" max="31" value="{{ r.settlement_day }}" placeholder="اليوم"
                class="num js-day" {{ 'hidden' if r.frequency != 'day_of_month' }} aria-label="يوم الاستحقاق">
+        <input name="due_date" type="date" value="{{ r.due_date or '' }}" class="js-due"
+               {{ 'hidden' if r.frequency not in ('quarterly', 'semiannual', 'annual') }}
+               aria-label="تاريخ الاستحقاق القادم" title="تاريخ الاستحقاق القادم">
       </span>
     </label>
     <label class="f-prot">محمي
@@ -108,7 +111,7 @@
     <div id="rows" class="bucket-list">
       {% for r in rows %}{{ row(r) }}{% endfor %}
     </div>
-    <template id="row-template">{{ row({'bucket_id': '', 'name': '', 'priority': '', 'calc_type': 'percentage', 'value': '', 'frequency': 'immediate', 'settlement_day': '', 'destination': '', 'dest_iban': '', 'dest_kind': 'sub', 'legacy_destination': '', 'protected': '0'}) }}</template>
+    <template id="row-template">{{ row({'bucket_id': '', 'name': '', 'priority': '', 'calc_type': 'percentage', 'value': '', 'frequency': 'immediate', 'settlement_day': '', 'due_date': '', 'destination': '', 'dest_iban': '', 'dest_kind': 'sub', 'legacy_destination': '', 'protected': '0'}) }}</template>
     <div><button type="button" class="btn" id="add-row">+ إضافة بند</button></div>
 
     <label>ملاحظات للمراجع

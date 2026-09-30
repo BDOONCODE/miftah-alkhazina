@@ -21,7 +21,7 @@ KIND_HINTS = {
     AccountKind.EXTERNAL.value: "حساب جهة تتحوّل لها فلوس: المؤجر، مورد",
 }
 # الأنواع اللي تصلح وجهة لبند في السياسة
-DESTINATION_KINDS = (AccountKind.SUB, AccountKind.EXTERNAL)
+DESTINATION_KINDS = (AccountKind.POOL, AccountKind.SUB, AccountKind.EXTERNAL)
 IBAN_RE = re.compile(r"^SA\d{22}$")
 
 

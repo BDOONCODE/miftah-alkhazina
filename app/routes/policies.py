@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
@@ -44,12 +46,13 @@ def _row_view(pb) -> dict:
         "protected": "1" if pb.protected else "0",
         "dest_iban": "",
         "dest_kind": "sub",
+        "due_date": pb.due_date.isoformat() if pb.due_date else "",
     }
 
 
 def _parse_rows(form) -> tuple[list[dict], list[svc.BucketInput], list[str]]:
     fields = ["bucket_id", "name", "priority", "calc_type", "value", "frequency", "settlement_day", "destination", "protected"]
-    optional = {"dest_iban": "", "dest_kind": "sub"}  # خانات «+ آيبان جديد»
+    optional = {"dest_iban": "", "dest_kind": "sub", "due_date": ""}  # خانات «+ آيبان جديد» وتاريخ الاستحقاق
     columns = {f: form.getlist(f) for f in fields}
     count = len(columns["name"])
     if any(len(v) != count for v in columns.values()):
@@ -70,6 +73,7 @@ def _parse_rows(form) -> tuple[list[dict], list[svc.BucketInput], list[str]]:
             value = parse_percent(row["value"]) if calc is CalcType.PERCENTAGE else parse_amount(row["value"])
             priority = int(row["priority"])
             day = int(row["settlement_day"]) if row["settlement_day"].strip() else None
+            due = date.fromisoformat(row["due_date"]) if row["due_date"].strip() else None
         except ValueError as exc:
             errors.append(f"{label}: {exc}" if str(exc) else f"{label}: قيمة غير صالحة")
             continue
@@ -86,6 +90,7 @@ def _parse_rows(form) -> tuple[list[dict], list[svc.BucketInput], list[str]]:
                 destination_account_id=int(row["destination"]) if row["destination"].isdigit() else None,
                 new_destination_iban=row["dest_iban"] if row["destination"] == "new" else "",
                 new_destination_kind=row["dest_kind"],
+                due_date=due,
                 protected=row["protected"] == "1",
             )
         )

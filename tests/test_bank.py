@@ -47,7 +47,7 @@ def activate_policy(client, db, company, accounts):
         "priority": ["1", "2"],
         "calc_type": ["percentage", "fixed_amount"],
         "value": ["15", "10000"],
-        "frequency": ["immediate", "monthly"],
+        "frequency": ["immediate", "immediate"],  # بدون موعد: النتيجة ما تعتمد على تاريخ اليوم
         "settlement_day": ["", ""],
         "destination": [str(accounts["حساب الضريبة"].id), str(accounts["المؤجر"].id)],
         "protected": ["1", "0"],
@@ -196,7 +196,7 @@ def test_source_iban_cannot_be_destination(client, db, company, accounts):
     response = client.post(
         f"/policies/{draft.id}/edit", data=_draft_form(destination=["new"], dest_iban=[POS], dest_kind=["sub"])
     )
-    assert response.status_code == 422 and "مصدر أو مجمّع" in response.text
+    assert response.status_code == 422 and "مصدر إيراد" in response.text
 
 
 def test_registration_goes_to_accounts_with_pool_from_iban(client, db, make_user):
@@ -210,3 +210,21 @@ def test_registration_goes_to_accounts_with_pool_from_iban(client, db, make_user
     entity = db.query(models.Entity).filter_by(name="شركة جديدة").one()
     assert response.headers["location"] == f"/entities/{entity.id}/accounts"
     assert acc.pool_account(db, entity.id).iban == POOL
+
+
+def test_semiannual_item_needs_and_saves_due_date(client, db, company):
+    client.post(f"/entities/{company.id}/policy/draft")
+    draft = pol.open_policy(db, company.id)
+    form = _draft_form(
+        name=["الإيجار"], calc_type=["fixed_amount"], value=["60000"], frequency=["semiannual"],
+        destination=["new"], dest_iban=[LANDLORD], dest_kind=["external"],
+    )
+    client.post(f"/policies/{draft.id}/edit", data=form | {"due_date": [""]})
+    db.refresh(draft)
+    assert draft.status is models.PolicyStatus.DRAFT  # بدون تاريخ استحقاق ما تنعتمد
+    assert "تاريخ الاستحقاق القادم" in client.get(f"/policies/{draft.id}/edit").text
+
+    client.post(f"/policies/{draft.id}/edit", data=form | {"due_date": ["2027-03-01"]})
+    db.refresh(draft)
+    assert draft.status is models.PolicyStatus.ACTIVE
+    assert str(draft.buckets[0].due_date) == "2027-03-01"
