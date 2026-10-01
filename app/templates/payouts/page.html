@@ -1,0 +1,82 @@
+{% extends "entity_base.html" %}
+{% block entity_content %}
+<section class="card">
+  <div class="card-head">
+    <h2>أرصدة البنود</h2>
+    <span class="muted">المحجوز الآن: <strong class="num">{{ held_total | sar }}</strong> ر.س</span>
+  </div>
+  <p class="muted">
+    نصيب كل بند من الدخل يتحجز له، ويتحوّل للمستفيد حسب موعد استحقاقه: البنود الفورية تتحوّل أول ما يتقسّم الدخل،
+    والبنود اللي لها موعد تتجمّع وتتحوّل كاملة يوم الاستحقاق.
+  </p>
+  {% if simulated %}
+  <div class="alert alert-warning">
+    <strong>وضع المحاكاة:</strong> التحويلات تجريبية لين يكتمل الربط مع البنك. ما يتحرك أي ريال حقيقي.
+  </div>
+  {% endif %}
+
+  {% if items %}
+  <div class="table-scroll">
+  <table class="table">
+    <thead><tr><th>البند</th><th>المحجوز</th><th>يتحوّل إلى</th><th>متى</th></tr></thead>
+    <tbody>
+    {% for v in items %}
+      <tr class="{{ 'row-muted' if not v.in_policy }}">
+        <td>{{ v.name }}{% if not v.in_policy %}<div class="small muted">انحذف من السياسة</div>{% endif %}</td>
+        <td class="num"><strong>{{ v.balance | sar }}</strong></td>
+        <td>
+          {% if v.beneficiary %}{{ v.beneficiary.name }} <span class="small muted num">••{{ v.beneficiary.iban[-4:] }}</span>
+          {% else %}<span class="muted">ما له مستفيد</span>{% endif %}
+        </td>
+        <td>
+          {% if not v.in_policy %}<span class="muted">—</span>
+          {% elif v.next_due %}
+            يوم <span class="num">{{ v.next_due }}</span>
+            {% if v.target %}
+            {% set ratio = [v.funded / v.target, 1] | min %}
+            <div class="bar" title="{{ v.funded | sar }} من {{ v.target | sar }}"><span style="width: {{ (ratio * 100) | round(1) }}%" class="{{ 'full' if ratio >= 1 }}"></span></div>
+            <div class="small muted">جاهز {{ (ratio * 100) | round | int }}٪ من {{ v.target | sar }}</div>
+            {% endif %}
+          {% else %}<span class="pill when-now">فور التقسيم</span>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">ما في بنود بعد. تظهر هنا لما تنعتمد <a href="/entities/{{ entity.id }}/policy">سياسة التقسيم</a>.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>التحويلات للمستفيدين</h2>
+  {% if payouts %}
+  <div class="table-scroll">
+  <table class="table">
+    <thead><tr><th>الوقت</th><th>من</th><th>المبلغ</th><th>إلى</th><th>السبب</th><th>الحالة</th></tr></thead>
+    <tbody>
+    {% for p in payouts %}
+      <tr>
+        <td>{{ p.created_at | riyadh }}</td>
+        <td>{{ names.get(p.bucket_id, 'بند ' ~ p.bucket_id) if p.bucket_id else 'الفائض' }}</td>
+        <td class="num">{{ p.amount | sar }}</td>
+        <td>{{ p.beneficiary_name }} <span class="small muted num">••{{ p.beneficiary_iban[-4:] }}</span></td>
+        <td>
+          {{ PAYOUT_REASONS[p.reason] }}
+          {% if p.transaction_id %}<a class="small" href="/transactions/{{ p.transaction_id }}">معاملة #{{ p.transaction_id }}</a>{% endif %}
+        </td>
+        <td>
+          {% if p.status.value == 'sent' %}<span class="pill pill-active">تم</span>
+          {% else %}<span class="pill pill-rejected" title="{{ p.error }}">فشل</span>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">ما تحوّل شي للحين.</p>
+  {% endif %}
+</section>
+{% endblock %}

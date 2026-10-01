@@ -1,7 +1,7 @@
 {% macro buckets_table(policy) %}
 <table class="table">
   <thead>
-    <tr><th>الأولوية</th><th>البند</th><th>النوع</th><th>القيمة</th><th>الاستحقاق</th><th>الوجهة</th><th></th></tr>
+    <tr><th>الأولوية</th><th>البند</th><th>النوع</th><th>القيمة</th><th>الاستحقاق (متى يتحوّل)</th><th>المستفيد</th><th></th></tr>
   </thead>
   <tbody>
   {% for b in policy.buckets %}
@@ -11,7 +11,7 @@
       <td>{{ CALC_LABELS[b.calc_type.value] }}</td>
       <td class="num">{{ b.value | pct if b.calc_type.value == 'percentage' else (b.value | sar) ~ ' ر.س' }}</td>
       <td>{{ FREQ_LABELS[b.frequency.value] }}{% if b.settlement_day %} ({{ b.settlement_day }}){% endif %}{% if b.due_date %} · يستحق <span class="num">{{ b.due_date }}</span>{% endif %}</td>
-      <td>{{ b.destination or 'يبقى في المجمّع' }}</td>
+      <td>{{ b.destination or '—' }}</td>
       <td>{% if b.protected %}<span class="pill pill-protected" title="أي تعديل عليه بعد التمويل يحتاج تبرير">🔒 محمي</span>{% endif %}</td>
     </tr>
   {% endfor %}

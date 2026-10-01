@@ -6,6 +6,7 @@ from .config import BASE_DIR
 from .domain.money import format_amount, format_percent
 from .domain.periods import RIYADH
 from .services.accounts import KIND_LABELS
+from .services.payouts import REASON_LABELS
 from .services.policies import APPROVAL_MODES
 from .web import pop_flashes
 
@@ -28,6 +29,7 @@ def _asset_version() -> str:
 templates.env.globals["ASSET_VERSION"] = _asset_version()
 templates.env.globals["APPROVAL_MODES"] = APPROVAL_MODES
 templates.env.globals["KIND_LABELS"] = KIND_LABELS
+templates.env.globals.update(PAYOUT_REASONS=REASON_LABELS)
 
 templates.env.globals.update(
     CHANNEL_LABELS={"manual": "يدوي", "open_banking": "تلقائي من البنك"},

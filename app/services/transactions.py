@@ -20,7 +20,9 @@ from ..models import (
     Transaction,
     TransactionSource,
     User,
+    utcnow,
 )
+from . import payouts
 from .policies import active_policy, specs
 
 
@@ -69,6 +71,9 @@ def record_transaction(
     policy = active_policy(session, entity.id)
     if policy is None:
         raise TransactionError("ما في سياسة نشطة لهذي الشركة. لازم يعتمد المراجع السياسة قبل تقسيم أي مبلغ")
+
+    # لو فيه بنود وصل موعد صرفها، تتحوّل قبل ما يتقسّم الجديد
+    payouts.run_due(session, entity.id, local_date(utcnow()))
 
     rows = _load_states(session, entity.id)
     try:
@@ -136,6 +141,9 @@ def record_transaction(
             )
         )
 
+    session.flush()
+    payouts.pay_on_allocation(session, entity.id, policy, txn, result.lines, result.surplus)
+
     session.add(
         AuditLog(
             user_id=user.id if user else None,
@@ -181,6 +189,8 @@ def reverse_transaction(session: Session, txn: Transaction, user: User, reason: 
     policy = active_policy(session, txn.entity_id)
     if policy is None or policy.id != txn.policy_id:
         raise TransactionError("تغيّرت السياسة بعد هذي المعاملة، فما يمكن عكسها تلقائيًا")
+    if blocker := payouts.reversal_blocker(session, txn):
+        raise TransactionError(blocker)
 
     reversal = Transaction(
         entity_id=txn.entity_id,

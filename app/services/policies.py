@@ -47,7 +47,7 @@ class BucketInput:
     destination_account_id: int | None = None
     # «+ آيبان جديد» من صفحة السياسة: يتسجّل حساب جديد باسم البند
     new_destination_iban: str = ""
-    new_destination_kind: str = "sub"
+    new_destination_kind: str = "external"
     due_date: date | None = None  # تاريخ الاستحقاق القادم (ربع/نصف سنوي، سنوي)
 
 
@@ -117,6 +117,7 @@ def start_draft(session: Session, entity: Entity, user: User) -> Policy:
     draft = Policy(entity_id=entity.id, version=last_version + 1, created_by=user.id)
     if current := _draft_base(session, entity.id):
         draft.notes = current.notes if current.status is PolicyStatus.REJECTED else ""
+        draft.surplus_account_id = current.surplus_account_id
         draft.buckets = [
             PolicyBucket(
                 bucket_id=pb.bucket_id,
@@ -139,7 +140,10 @@ def start_draft(session: Session, entity: Entity, user: User) -> Policy:
     return draft
 
 
-def save_draft(session: Session, policy: Policy, rows: list[BucketInput], notes: str, user: User) -> None:
+def save_draft(
+    session: Session, policy: Policy, rows: list[BucketInput], notes: str, user: User,
+    surplus_account_id: int | None = None,
+) -> None:
     if policy.status is not PolicyStatus.DRAFT:
         raise PolicyError("ما يمكن تعديل سياسة بعد إرسالها للاعتماد")
 
@@ -170,7 +174,7 @@ def save_draft(session: Session, policy: Policy, rows: list[BucketInput], notes:
         elif row.destination_account_id is not None:
             account = destinations.get(row.destination_account_id)
             if account is None:
-                raise PolicyError(f"وجهة البند «{row.name.strip()}» مو حساب نشط (مجمّع أو فرعي أو خارجي) لهذي الشركة")
+                raise PolicyError(f"مستفيد البند «{row.name.strip()}» مو حساب نشط (مجمّع أو فرعي أو خارجي) لهذي الشركة")
         new_buckets.append(
             PolicyBucket(
                 bucket_id=bucket_id,
@@ -191,6 +195,9 @@ def save_draft(session: Session, policy: Policy, rows: list[BucketInput], notes:
     session.flush()
     policy.buckets.extend(new_buckets)
     policy.notes = notes.strip()
+    if surplus_account_id is not None and surplus_account_id not in destinations:
+        raise PolicyError("حساب الفائض لازم يكون حساب نشط للشركة (المجمّع أو حساب آخر أو جهة خارجية)")
+    policy.surplus_account_id = surplus_account_id
     _audit(session, user, policy, "policy.saved", buckets=len(new_buckets))
 
 
@@ -206,7 +213,7 @@ def _destination_from_iban(session: Session, policy: Policy, user: User, row: Bu
         if not existing.is_active:
             raise PolicyError(f"الآيبان {iban} لحساب معطّل. فعّله من الحسابات البنكية")
         return existing
-    kind = row.new_destination_kind if row.new_destination_kind in ("sub", "external") else "sub"
+    kind = row.new_destination_kind if row.new_destination_kind in ("sub", "external") else "external"
     try:
         account = add_account(
             session, session.get(Entity, policy.entity_id), user,
@@ -219,8 +226,9 @@ def _destination_from_iban(session: Session, policy: Policy, user: User, row: Bu
 
 
 def destination_errors(policy: Policy) -> list[str]:
-    """كل بند لازم له آيبان وجهة (المجمّع أو حساب فرعي أو خارجي)."""
-    return [f"البند «{pb.name}» ما له آيبان وجهة" for pb in policy.buckets if pb.destination_account_id is None]
+    """كل بند له مستفيد يتحوّل له مبلغه. (الفائض: بدون حساب محدد يبقى في المجمّع.)"""
+    return [f"البند «{pb.name}» ما له مستفيد: اختر الآيبان اللي يتحوّل له" for pb in policy.buckets
+            if pb.destination_account_id is None]
 
 
 def funded_in_current_period(session: Session, entity_id: int, buckets: list[BucketSpec], today: date) -> set[int]:
@@ -307,6 +315,9 @@ def approve(session: Session, policy: Policy, user: User, note: str = "") -> Non
     _audit(
         session, user, policy, "policy.approved", removed_buckets=removed, self_approved=policy.created_by == user.id
     )
+    from .payouts import ensure_virtual_accounts
+
+    ensure_virtual_accounts(session, policy.entity_id, [pb.bucket_id for pb in policy.buckets])
 
 
 def set_approval_mode(session: Session, entity: Entity, user: User, mode: str) -> None:

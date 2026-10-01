@@ -71,6 +71,11 @@ class PolicyStatus(StrEnum):
     REJECTED = "rejected"
 
 
+class PayoutStatus(StrEnum):
+    SENT = "sent"
+    FAILED = "failed"
+
+
 class TransactionSource(StrEnum):
     MANUAL = "manual"
     OPEN_BANKING = "open_banking"
@@ -125,7 +130,7 @@ class Entity(Base):
 class AccountKind(StrEnum):
     SOURCE = "source"  # مصدر إيراد: نقاط البيع، مدى/فيزا، التوصيل
     POOL = "pool"  # الحساب المجمّع اللي تتجمع فيه الإيرادات
-    SUB = "sub"  # حساب فرعي (افتراضي) لبند
+    SUB = "sub"  # حساب ثاني تملكه الشركة (الحسابات الافتراضية للبنود تنفتح تلقائيًا عند المزوّد)
     EXTERNAL = "external"  # حساب جهة ثانية: مؤجر، مورد
 
 
@@ -160,6 +165,9 @@ class Bucket(Base):
     __tablename__ = "buckets"
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
+    # الحساب الافتراضي للبند عند مزوّد الربط (نيوتك): ينفتح أول ما تنعتمد سياسة فيها البند
+    virtual_iban: Mapped[str | None] = mapped_column(String(34))
+    virtual_ref: Mapped[str | None] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
 
@@ -178,6 +186,8 @@ class Policy(Base):
     decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     decision_note: Mapped[str] = mapped_column(Text, default="")
+    # وين يروح الفائض (المتبقي بعد كل البنود). فاضي أو الحساب المجمّع = يبقى في المجمّع
+    surplus_account_id: Mapped[int | None] = mapped_column(ForeignKey("bank_accounts.id"))
 
     buckets: Mapped[list[PolicyBucket]] = relationship(
         back_populates="policy", cascade="all, delete-orphan", order_by="PolicyBucket.priority"
@@ -199,8 +209,9 @@ class PolicyBucket(Base):
     frequency: Mapped[Frequency] = mapped_column(_enum(Frequency))
     settlement_day: Mapped[int | None] = mapped_column(Integer)
     due_date: Mapped[date | None] = mapped_column(Date)  # تاريخ الاستحقاق القادم (ربع/نصف سنوي، سنوي)
-    destination: Mapped[str] = mapped_column(String(128), default="")  # اسم الوجهة للعرض
-    # الوجهة الفعلية: حساب من حسابات الشركة. فاضي = يبقى في الحساب المجمّع
+    destination: Mapped[str] = mapped_column(String(128), default="")  # اسم المستفيد للعرض
+    # المستفيد: الحساب اللي يتحوّل له مبلغ البند من حسابه الافتراضي.
+    # بدون موعد استحقاق يتحوّل أول ما يتقسّم، ومع موعد يتجمّع ويتحوّل كامل يوم الاستحقاق
     destination_account_id: Mapped[int | None] = mapped_column(ForeignKey("bank_accounts.id"))
     protected: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -279,6 +290,28 @@ class PeriodClosure(Base):
     closed_by_policy_id: Mapped[int | None] = mapped_column(ForeignKey("policies.id"))
     voided: Mapped[bool] = mapped_column(Boolean, default=False)  # ألغاها قيد عكسي
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
+class Payout(Base):
+    """تحويل من الحساب الافتراضي لبند (أو الفائض من المجمّع) إلى المستفيد. يُضاف فقط، ما يتعدّل."""
+
+    __tablename__ = "payouts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
+    bucket_id: Mapped[int | None] = mapped_column(ForeignKey("buckets.id"), index=True)  # فاضي = الفائض
+    amount: Mapped[int] = mapped_column(BigInteger)
+    reason: Mapped[str] = mapped_column(String(16))  # immediate | due | surplus
+    # الفترة اللي انصرف رصيدها (للصرف في تاريخ الاستحقاق)، عشان ما تنصرف مرتين
+    period_key: Mapped[str | None] = mapped_column(String(10))
+    transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), index=True)
+    beneficiary_account_id: Mapped[int] = mapped_column(ForeignKey("bank_accounts.id"))
+    beneficiary_name: Mapped[str] = mapped_column(String(128))  # لقطة وقت التحويل
+    beneficiary_iban: Mapped[str] = mapped_column(String(34))
+    status: Mapped[PayoutStatus] = mapped_column(_enum(PayoutStatus), default=PayoutStatus.SENT)
+    reference: Mapped[str] = mapped_column(String(64), unique=True)
+    provider_ref: Mapped[str | None] = mapped_column(String(128))
+    error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
 
 
 # ---------------------------------------------------------------- اللوحة

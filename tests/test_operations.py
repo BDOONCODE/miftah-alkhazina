@@ -98,7 +98,14 @@ def test_external_ref_is_idempotent(db, setup):
     assert db.query(models.Transaction).count() == 1
 
 
-def test_reversal_restores_state_and_only_latest(db, setup):
+@pytest.fixture
+def no_transfers(monkeypatch):
+    """القيد العكسي ممكن بس قبل ما يطلع المبلغ للمستفيد، فهنا نختبر منطق العكس بدون تحويلات."""
+    monkeypatch.setattr(txs.payouts, "pay_on_allocation", lambda *a, **k: [])
+    monkeypatch.setattr(txs.payouts, "run_due", lambda *a, **k: [])
+
+
+def test_reversal_restores_state_and_only_latest(db, setup, no_transfers):
     entity, user, ids = setup
     record(db, entity, user, 4_000, at(2026, 9, 2))
     before = states(db, entity)
@@ -121,7 +128,7 @@ def test_reversal_restores_state_and_only_latest(db, setup):
     assert states(db, entity) == {}
 
 
-def test_reversal_voids_period_closures(db, setup):
+def test_reversal_voids_period_closures(db, setup, no_transfers):
     entity, user, _ = setup
     record(db, entity, user, 1_000, at(2026, 9, 5))
     t2 = record(db, entity, user, 1_000, at(2026, 10, 5))

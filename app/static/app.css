@@ -263,3 +263,7 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 /* الأرقام والآيبانات تُكتب يسار-يمين، لكن محاذاتها تحت عنوان العمود (يمين) */
 .table td.num, .table th.num { text-align: right; }
 .freq-pair .js-due { width: 9.5rem; margin: 0; }
+
+/* أرصدة البنود */
+.when-now { background: #e8f0fb; color: #2b5ea7; }
+.surplus-field { max-width: 32rem; }

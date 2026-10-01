@@ -45,14 +45,15 @@ def _row_view(pb) -> dict:
         "legacy_destination": "" if pb.destination_account_id else pb.destination,
         "protected": "1" if pb.protected else "0",
         "dest_iban": "",
-        "dest_kind": "sub",
+        "dest_kind": "external",
         "due_date": pb.due_date.isoformat() if pb.due_date else "",
     }
 
 
 def _parse_rows(form) -> tuple[list[dict], list[svc.BucketInput], list[str]]:
     fields = ["bucket_id", "name", "priority", "calc_type", "value", "frequency", "settlement_day", "destination", "protected"]
-    optional = {"dest_iban": "", "dest_kind": "sub", "due_date": ""}  # خانات «+ آيبان جديد» وتاريخ الاستحقاق
+    # خانات «+ آيبان جديد» وتاريخ الاستحقاق وطريقة الصرف
+    optional = {"dest_iban": "", "dest_kind": "external", "due_date": ""}
     columns = {f: form.getlist(f) for f in fields}
     count = len(columns["name"])
     if any(len(v) != count for v in columns.values()):
@@ -143,6 +144,7 @@ def _render_editor(request, user, policy, session, rows, errors, notes, status_c
             "rows": rows,
             "errors": errors,
             "notes": notes,
+            "surplus_account": str(policy.surplus_account_id or ""),
             "protected_changes": svc.protected_changes_for(session, policy),
             "self_approval": svc.is_self_approval(session, policy),
             "destinations": [
@@ -173,10 +175,12 @@ async def save_draft(request: Request, policy_id: int, user: User = Depends(edit
     form = await request.form()
     views, inputs, errors = _parse_rows(form)
     notes = str(form.get("notes", ""))
+    surplus = str(form.get("surplus_account", ""))
+    surplus_id = int(surplus) if surplus.isdigit() else None
     if errors:
         return _render_editor(request, user, policy, session, views, errors, notes, status_code=422)
     try:
-        svc.save_draft(session, policy, inputs, notes, user)
+        svc.save_draft(session, policy, inputs, notes, user, surplus_account_id=surplus_id)
     except svc.PolicyError as exc:
         return _render_editor(request, user, policy, session, views, [str(exc)], notes, status_code=422)
     session.commit()

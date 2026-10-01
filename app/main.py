@@ -14,8 +14,8 @@ from . import mailer, throttle
 from .auth import LoginRequired, PasswordChangeRequired, accessible_entities, current_user
 from .config import BASE_DIR, HTTPS_ONLY_COOKIES, SECRET_KEY
 from .db import get_session
-from .models import AuditLog, User
-from .routes import account, accounts, bank, companies, dashboard, policies, reports, signup, transactions
+from .models import AuditLog, User, utcnow
+from .routes import account, accounts, bank, companies, dashboard, payouts, policies, reports, signup, transactions
 from .security import verify_password
 from .services.policies import active_policy, open_policy
 from .services.signup import find_by_login
@@ -34,6 +34,7 @@ app.include_router(accounts.router)
 app.include_router(bank.router)
 app.include_router(policies.router)
 app.include_router(transactions.router)
+app.include_router(payouts.router)
 app.include_router(dashboard.router)
 app.include_router(reports.router)
 
@@ -60,6 +61,12 @@ def keepalive(session: Session = Depends(get_session)):
     """تزوره خدمة مراقبة خارجية كل ٥ دقائق: تمنع الاستضافة المجانية من النوم،
     واستعلام بسيط يمنع Supabase من إيقاف القاعدة بعد أسبوع بدون نشاط."""
     session.execute(text("SELECT 1"))
+    # فرصة يومية لصرف البنود اللي وصل موعدها (ما في مجدول مهام في الاستضافة المجانية)
+    from .domain.periods import local_date
+    from .services.payouts import run_due_all
+
+    if run_due_all(session, local_date(utcnow())):
+        session.commit()
     return PlainTextResponse("ok")
 
 

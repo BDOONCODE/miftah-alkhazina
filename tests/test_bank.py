@@ -85,7 +85,7 @@ def test_destination_must_be_sub_or_external(db, company, accounts):
     draft = pol.start_draft(db, company, user)
     bad = pol.BucketInput(None, "الضريبة", 1, models.CalcType.PERCENTAGE, 1500, models.Frequency.IMMEDIATE, None, "", False,
                           destination_account_id=accounts["نقاط البيع"].id)
-    with pytest.raises(pol.PolicyError, match="وجهة"):
+    with pytest.raises(pol.PolicyError, match="مستفيد"):
         pol.save_draft(db, draft, [bad], "", user)
 
 
@@ -167,13 +167,13 @@ def _draft_form(**overrides):
     } | overrides
 
 
-def test_policy_needs_destination_iban(client, db, company):
+def test_every_item_needs_beneficiary(client, db, company):
     client.post(f"/entities/{company.id}/policy/draft")
     draft = pol.open_policy(db, company.id)
     client.post(f"/policies/{draft.id}/edit", data=_draft_form(destination=[""]))
     db.refresh(draft)
     assert draft.status is models.PolicyStatus.DRAFT
-    assert "ما له آيبان وجهة" in client.get(f"/policies/{draft.id}/edit").text
+    assert "ما له مستفيد" in client.get(f"/policies/{draft.id}/edit").text
 
 
 def test_new_iban_from_policy_creates_account(client, db, company):

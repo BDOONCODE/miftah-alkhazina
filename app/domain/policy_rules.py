@@ -59,7 +59,7 @@ def protected_changes(
         if (n.frequency, n.settlement_day, n.due_date) != (b.frequency, b.settlement_day, b.due_date):
             changes.append(f"تغيير جدولة البند المحمي «{b.name}»")
         if n.destination != b.destination:
-            changes.append(f"تغيير وجهة البند المحمي «{b.name}»")
+            changes.append(f"تغيير مستفيد البند المحمي «{b.name}»")
         if not n.protected:
             changes.append(f"إلغاء حماية البند «{b.name}»")
     return changes

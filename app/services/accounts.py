@@ -11,14 +11,14 @@ from ..models import AccountKind, AuditLog, BankAccount, Entity, User
 KIND_LABELS = {
     AccountKind.SOURCE.value: "مصدر إيراد",
     AccountKind.POOL.value: "مجمّع",
-    AccountKind.SUB.value: "فرعي (لبند)",
+    AccountKind.SUB.value: "حساب آخر للشركة",
     AccountKind.EXTERNAL.value: "خارجي (جهة ثانية)",
 }
 KIND_HINTS = {
     AccountKind.SOURCE.value: "تدخل فيه إيرادات الشركة: نقاط البيع، مدى/فيزا، تطبيقات التوصيل",
     AccountKind.POOL.value: "تتجمع فيه كل الإيرادات، ومنه يتقسّم المبلغ. حساب واحد لكل شركة",
-    AccountKind.SUB.value: "حساب مخصص لبند مثل الضريبة أو الرواتب",
-    AccountKind.EXTERNAL.value: "حساب جهة تتحوّل لها فلوس: المؤجر، مورد",
+    AccountKind.SUB.value: "حساب ثاني تملكه الشركة، مثل حساب أرباح المالك أو حساب الرواتب",
+    AccountKind.EXTERNAL.value: "حساب جهة تتحوّل لها فلوس: مانح الامتياز، المؤجر، مورد",
 }
 # الأنواع اللي تصلح وجهة لبند في السياسة
 DESTINATION_KINDS = (AccountKind.POOL, AccountKind.SUB, AccountKind.EXTERNAL)

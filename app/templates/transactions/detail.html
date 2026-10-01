@@ -30,6 +30,23 @@
     </tbody>
   </table>
 
+  {% if payouts %}
+  <h3>تحوّل فورًا للمستفيدين</h3>
+  <table class="table">
+    <thead><tr><th>من بند</th><th>المبلغ</th><th>إلى</th><th>الحالة</th></tr></thead>
+    <tbody>
+    {% for p in payouts %}
+      <tr>
+        <td>{{ names.get(p.bucket_id, '؟') if p.bucket_id else 'الفائض' }}</td>
+        <td class="num">{{ p.amount | sar }}</td>
+        <td>{{ p.beneficiary_name }} <span class="small muted num">••{{ p.beneficiary_iban[-4:] }}</span></td>
+        <td>{% if p.status.value == 'sent' %}<span class="pill pill-active">تم</span>{% else %}<span class="pill pill-rejected" title="{{ p.error }}">فشل</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
   <dl class="meta">
     <div><dt>تاريخ الإيداع</dt><dd>{{ txn.occurred_at | riyadh }}</dd></div>
     <div><dt>سجّلها</dt><dd>{{ txn.creator.full_name if txn.creator else 'البنك (تلقائي)' }} · {{ txn.created_at | riyadh }}</dd></div>

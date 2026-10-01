@@ -1,6 +1,6 @@
 {% extends "entity_base.html" %}
 {% macro row(r) %}
-{% set dest = r.destination or ('new' if not destinations else '') %}
+{% set dest = r.destination %}
 <div class="bucket-card bucket-row">
   <input type="hidden" name="bucket_id" value="{{ r.bucket_id }}">
   <div class="bucket-main">
@@ -42,8 +42,8 @@
     <button type="button" class="btn-icon js-remove" title="حذف البند" aria-label="حذف البند">✕</button>
   </div>
   <div class="bucket-dest">
-    <label>الوجهة: آيبان البند
-      <select name="destination" class="js-dest">
+    <label>المستفيد: الآيبان اللي يتحوّل له مبلغ البند
+      <select name="destination" class="js-dest" required>
         <option value="" {{ 'selected' if not dest }}>اختر الحساب…</option>
         {% for a in destinations %}
         <option value="{{ a.id }}" {{ 'selected' if dest == a.id|string }}>{{ a.name }} · {{ KIND_LABELS[a.kind.value] }} · ••{{ a.iban[-4:] }}</option>
@@ -57,8 +57,8 @@
       </label>
       <label>نوع الحساب
         <select name="dest_kind">
-          <option value="sub" {{ 'selected' if r.dest_kind != 'external' }}>فرعي تحت المجمّع (للبند)</option>
-          <option value="external" {{ 'selected' if r.dest_kind == 'external' }}>خارجي (جهة ثانية مثل المؤجر)</option>
+          <option value="external" {{ 'selected' if r.dest_kind != 'sub' }}>جهة خارجية (مانح الامتياز، المؤجر)</option>
+          <option value="sub" {{ 'selected' if r.dest_kind == 'sub' }}>حساب آخر للشركة</option>
         </select>
       </label>
     </div>
@@ -86,14 +86,15 @@
       وهكذا. اللي يتبقى بعد كل البنود يظهر كـ<strong>فائض</strong>.
     </p>
     <details class="help">
-      <summary>وش معنى «الوجهة» و«محمي»؟</summary>
+      <summary>وش معنى «المستفيد» و«الاستحقاق» و«محمي»؟</summary>
       <dl>
-        <dt>الوجهة</dt>
-        <dd>كل بند له <strong>آيبان خاص</strong> يروح له مبلغه:
-          <strong>فرعي</strong> = حساب افتراضي للبند تحت الحساب المجمّع (مثل حساب الضريبة)،
-          أو <strong>خارجي</strong> = حساب جهة ثانية (مثل المؤجر). اختر حساب مسجّل، أو «+ آيبان جديد» وينضاف تلقائيًا
-          لتبويب <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a>.
-          التحويل الفعلي يجي مع الربط البنكي؛ حاليًا يتسجّل وين المفروض يروح. والفائض يبقى في الحساب المجمّع.</dd>
+        <dt>المستفيد</dt>
+        <dd>الآيبان اللي يتحوّل له مبلغ البند: جهة خارجية (مانح الامتياز، المؤجر) أو حساب آخر للشركة (الاحتياطي، الأرباح).
+          اختر حساب مسجّل، أو «+ آيبان جديد» وينضاف تلقائيًا لتبويب <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a>.</dd>
+        <dt>متى يتحوّل</dt>
+        <dd>حسب <strong>الاستحقاق</strong>: «فوري (بدون موعد)» يتحوّل أول ما يتقسّم الدخل.
+          وأي موعد ثاني (يومي، شهري، نصف سنوي…) يتجمّع المبلغ محجوز ويتحوّل كامل <strong>يوم الاستحقاق</strong>.
+          تتابع المحجوز في <a href="/entities/{{ entity.id }}/balances">أرصدة البنود</a>.</dd>
         <dt>محمي 🔒</dt>
         <dd>بند حساس ما نبي أحد يغيّره بسهولة (مثل الضريبة أو الرواتب). بعد ما يتموّل في الفترة الحالية، أي تغيير على
           قيمته أو أولويته أو استحقاقه أو حذفه يحتاج <strong>تبرير مكتوب</strong> يشوفه المراجع وينحفظ في السجل.</dd>
@@ -111,8 +112,17 @@
     <div id="rows" class="bucket-list">
       {% for r in rows %}{{ row(r) }}{% endfor %}
     </div>
-    <template id="row-template">{{ row({'bucket_id': '', 'name': '', 'priority': '', 'calc_type': 'percentage', 'value': '', 'frequency': 'immediate', 'settlement_day': '', 'due_date': '', 'destination': '', 'dest_iban': '', 'dest_kind': 'sub', 'legacy_destination': '', 'protected': '0'}) }}</template>
+    <template id="row-template">{{ row({'bucket_id': '', 'name': '', 'priority': '', 'calc_type': 'percentage', 'value': '', 'frequency': 'immediate', 'settlement_day': '', 'due_date': '', 'destination': '', 'dest_iban': '', 'dest_kind': 'external', 'legacy_destination': '', 'protected': '0'}) }}</template>
     <div><button type="button" class="btn" id="add-row">+ إضافة بند</button></div>
+
+    <label class="surplus-field">الفائض (المتبقي بعد كل البنود) يروح إلى
+      <select name="surplus_account">
+        <option value="">يبقى في الحساب المجمّع</option>
+        {% for a in destinations if a.kind.value != 'pool' %}
+        <option value="{{ a.id }}" {{ 'selected' if surplus_account == a.id|string }}>{{ a.name }} · {{ KIND_LABELS[a.kind.value] }} · ••{{ a.iban[-4:] }}</option>
+        {% endfor %}
+      </select>
+    </label>
 
     <label>ملاحظات للمراجع
       <textarea name="notes" rows="2">{{ notes }}</textarea>
