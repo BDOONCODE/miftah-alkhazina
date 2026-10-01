@@ -26,7 +26,7 @@
       </span>
     </label>
     {% endfor %}
-    {% if can_edit %}<div><button class="btn" type="submit">حفظ</button></div>{% endif %}
+    {% if can_edit %}<div><button class="btn btn-primary" type="submit">حفظ</button></div>{% endif %}
   </form>
 </section>
 
@@ -54,7 +54,7 @@
     <summary>+ إضافة مراجع</summary>
     <form method="post" action="/entities/{{ entity.id }}/reviewers" class="stack">
       {{ reviewer_fields({}) }}
-      <div><button class="btn" type="submit">إضافة</button></div>
+      <div><button class="btn btn-primary" type="submit">إضافة</button></div>
     </form>
   </details>
   {% endif %}
