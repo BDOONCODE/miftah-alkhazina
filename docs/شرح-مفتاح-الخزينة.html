@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مفتاح الخزينة بالرسم</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Readex+Pro:wght@500;700&display=swap">
+<style>
+/* تخطيط: صفحة رسومات متتالية، كل رسم بعرض كامل وتحته سطر واحد يقول وش يوضح */
+:root {
+  --bg: #f4f6f5;
+  --paper: #ffffff;
+  --ink: #17221f;
+  --muted: #5d6c68;
+  --line: #d6dfdc;
+  --brain: #0f6b57;        /* مفتاح الخزينة */
+  --brain-soft: #e2f1ec;
+  --bank: #3b5b8c;         /* البنك عبر نيوتك */
+  --bank-soft: #e8eef8;
+  --money: #a86b12;        /* المستفيدون */
+  --money-soft: #fbf0dc;
+  --warn: #b3412e;
+  --display: "Readex Pro", "IBM Plex Sans Arabic", Tahoma, sans-serif;
+  --body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1514; --paper: #161f1d; --ink: #e4eeeb; --muted: #9fb2ad; --line: #2b3a37;
+    --brain: #4fc3a5; --brain-soft: #173029; --bank: #8fb0e3; --bank-soft: #1a2536;
+    --money: #e0aa55; --money-soft: #2e2414; --warn: #ef8a78; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1514; --paper: #161f1d; --ink: #e4eeeb; --muted: #9fb2ad; --line: #2b3a37;
+  --brain: #4fc3a5; --brain-soft: #173029; --bank: #8fb0e3; --bank-soft: #1a2536;
+  --money: #e0aa55; --money-soft: #2e2414; --warn: #ef8a78; color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.7; }
+.wrap { direction: rtl; max-width: 1080px; margin: 0 auto; padding-inline: 18px; padding-block: 36px 64px; display: grid; gap: 40px; }
+h1, h2 { font-family: var(--display); margin: 0; line-height: 1.35; text-wrap: balance; }
+h1 { font-size: clamp(1.8rem, 4.5vw, 2.6rem); font-weight: 700; }
+h2 { font-size: 1.3rem; font-weight: 700; }
+p { margin: 0; }
+.lede { color: var(--muted); font-size: 1.1rem; max-width: 60ch; }
+section { display: grid; gap: 14px; }
+.tag { font-size: .8rem; font-weight: 600; color: var(--brain); letter-spacing: .02em; }
+figure { margin: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 12px; }
+figcaption { color: var(--muted); font-size: .95rem; }
+.scroll { overflow-x: auto; }
+svg { display: block; width: 100%; height: auto; }
+.svg-wide { min-width: 760px; }
+
+/* مفتاح الألوان */
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: .9rem; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+
+/* تقسيم دفعة */
+.bar { display: flex; height: 64px; border-radius: 10px; overflow: hidden; direction: rtl; }
+.seg { display: grid; place-items: center; color: #fff; font-weight: 600; font-size: .85rem; min-width: 0; text-align: center; line-height: 1.2; padding-inline: 2px; }
+.split { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.item { border-top: 4px solid var(--c); padding-top: 8px; display: grid; gap: 2px; align-content: start; }
+.item b { font-family: var(--display); font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.item .name { font-weight: 600; }
+.item .when { font-size: .85rem; color: var(--muted); }
+.chip { justify-self: start; font-size: .75rem; font-weight: 600; padding: 1px 8px; border-radius: 99px; background: var(--c-soft); color: var(--c); }
+
+/* خطوات */
+.steps { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+.step { flex: 1 1 130px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.step .n { font-family: var(--display); font-weight: 700; color: var(--brain); font-size: 1.4rem; line-height: 1; }
+.step strong { font-size: 1rem; }
+.step span { color: var(--muted); font-size: .85rem; }
+.step.auto { background: var(--brain); border-color: var(--brain); color: var(--paper); }
+.step.auto .n, .step.auto span { color: var(--paper); opacity: .9; }
+.arrow { align-self: center; color: var(--muted); font-size: 1.3rem; }
+
+/* الحالة */
+.status { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.col { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 10px; align-content: start; }
+.col h3 { margin: 0; font-family: var(--display); font-size: 1.05rem; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { padding: 4px 12px; border-radius: 99px; font-size: .9rem; font-weight: 500; }
+.done .pill { background: var(--brain-soft); color: var(--brain); }
+.wait .pill { background: var(--bank-soft); color: var(--bank); }
+
+@media (max-width: 720px) {
+  .split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .status { grid-template-columns: minmax(0, 1fr); }
+  .arrow { display: none; }
+  .seg small { display: none; }
+}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+
+<main class="wrap">
+
+<header style="display:grid;gap:10px">
+  <div class="tag">مفتاح الخزينة · أكتوبر ٢٠٢٦</div>
+  <h1>كل ريال يدخل، له مكان قبل ما ينصرف</h1>
+  <p class="lede">مفتاح الخزينة يقسّم دخل الشركة أول ما يوصل حسب سياسة معتمدة، والبنك (عبر نيوتك) يحوّل كل جزء لصاحبه في موعده.</p>
+</header>
+
+<!-- ١. المسار الكامل -->
+<section>
+  <h2>المسار الكامل للفلوس</h2>
+  <div class="legend">
+    <span><i style="background:var(--bank)"></i>البنك عبر نيوتك: الفلوس تتحرك هنا</span>
+    <span><i style="background:var(--brain)"></i>مفتاح الخزينة: يقرر كم ومتى ولمين</span>
+    <span><i style="background:var(--money)"></i>المستفيدون</span>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg class="svg-wide" viewBox="0 0 1000 560" role="img" aria-label="الدخل يدخل الحساب المجمّع في البنك، نيوتك يبلغ مفتاح الخزينة، مفتاح الخزينة يقسّم المبلغ على بنود محجوزة ويأمر بتحويل كل بند لمستفيده في موعده">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--brain)"/></marker>
+        <marker id="ahm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--money)"/></marker>
+      </defs>
+      <g style="color:var(--ink)" font-family="IBM Plex Sans Arabic, Tahoma, sans-serif" text-anchor="middle" direction="rtl">
+
+        <!-- منطقة البنك -->
+        <rect x="250" y="16" width="580" height="330" rx="14" style="fill:var(--bank-soft);stroke:var(--bank)" stroke-dasharray="6 5"/>
+        <text x="540" y="40" font-size="13" font-weight="600" style="fill:var(--bank)">في البنك · عبر نيوتك</text>
+
+        <!-- المصادر -->
+        <text x="920" y="58" font-size="13" font-weight="600" fill="currentColor">مصادر الدخل</text>
+        <g font-size="13">
+          <rect x="862" y="76" width="118" height="38" rx="8" style="fill:var(--paper);stroke:var(--line)"/><text x="921" y="100" fill="currentColor">نقاط البيع</text>
+          <rect x="862" y="126" width="118" height="38" rx="8" style="fill:var(--paper);stroke:var(--line)"/><text x="921" y="150" fill="currentColor">مدى وفيزا</text>
+          <rect x="862" y="176" width="118" height="38" rx="8" style="fill:var(--paper);stroke:var(--line)"/><text x="921" y="200" fill="currentColor">تطبيقات التوصيل</text>
+        </g>
+        <g stroke="currentColor" stroke-width="1.5" fill="none" marker-end="url(#ah)" opacity=".6">
+          <line x1="862" y1="95" x2="806" y2="140"/>
+          <line x1="862" y1="145" x2="806" y2="150"/>
+          <line x1="862" y1="195" x2="806" y2="160"/>
+        </g>
+
+        <!-- المجمّع -->
+        <rect x="660" y="118" width="144" height="64" rx="10" style="fill:var(--paper);stroke:var(--bank)" stroke-width="2"/>
+        <text x="732" y="146" font-size="14" font-weight="600" fill="currentColor">الحساب المجمّع</text>
+        <text x="732" y="166" font-size="12" style="fill:var(--muted)">كل الدخل ينزل هنا</text>
+
+        <!-- البنود المحجوزة -->
+        <text x="490" y="64" font-size="13" font-weight="600" fill="currentColor">نصيب كل بند محجوز له</text>
+        <g font-size="13">
+          <rect x="420" y="78"  width="140" height="34" rx="8" style="fill:var(--paper);stroke:var(--line)"/><text x="490" y="100" fill="currentColor">الضريبة</text>
+          <rect x="420" y="120" width="140" height="34" rx="8" style="fill:var(--paper);stroke:var(--line)"/><text x="490" y="142" fill="currentColor">إتاوة الامتياز</text>
+          <rect x="420" y="162" width="140" height="34" rx="8" style="fill:var(--paper);stroke:var(--line)"/><text x="490" y="184" fill="currentColor">الإيجار</text>
+          <rect x="420" y="204" width="140" height="34" rx="8" style="fill:var(--paper);stroke:var(--line)"/><text x="490" y="226" fill="currentColor">الرواتب</text>
+          <rect x="420" y="246" width="140" height="34" rx="8" style="fill:var(--paper);stroke:var(--line)"/><text x="490" y="268" fill="currentColor">الاحتياطي</text>
+          <rect x="420" y="288" width="140" height="34" rx="8" style="fill:var(--paper);stroke:var(--line)" stroke-dasharray="4 3"/><text x="490" y="310" fill="currentColor">الفائض</text>
+        </g>
+        <g stroke="currentColor" stroke-width="1.3" fill="none" marker-end="url(#ah)" opacity=".5">
+          <path d="M660 150 C 610 150, 610 95, 562 95"/>
+          <path d="M660 150 C 610 150, 610 137, 562 137"/>
+          <path d="M660 150 C 610 150, 610 179, 562 179"/>
+          <path d="M660 150 C 610 150, 610 221, 562 221"/>
+          <path d="M660 150 C 610 150, 610 263, 562 263"/>
+          <path d="M660 150 C 610 150, 610 305, 562 305"/>
+        </g>
+
+        <!-- المستفيدون -->
+        <text x="120" y="64" font-size="13" font-weight="600" style="fill:var(--money)">المستفيدون</text>
+        <g font-size="13">
+          <rect x="20" y="78"  width="200" height="34" rx="8" style="fill:var(--money-soft);stroke:var(--money)"/><text x="120" y="100" fill="currentColor">حساب الضريبة</text>
+          <rect x="20" y="120" width="200" height="34" rx="8" style="fill:var(--money-soft);stroke:var(--money)"/><text x="120" y="142" fill="currentColor">مانح الامتياز</text>
+          <rect x="20" y="162" width="200" height="34" rx="8" style="fill:var(--money-soft);stroke:var(--money)"/><text x="120" y="184" fill="currentColor">المؤجر</text>
+          <rect x="20" y="204" width="200" height="34" rx="8" style="fill:var(--money-soft);stroke:var(--money)"/><text x="120" y="226" fill="currentColor">الموظفين (مدد)</text>
+          <rect x="20" y="246" width="200" height="34" rx="8" style="fill:var(--money-soft);stroke:var(--money)"/><text x="120" y="268" fill="currentColor">حساب الاحتياطي</text>
+          <rect x="20" y="288" width="200" height="34" rx="8" style="fill:var(--money-soft);stroke:var(--money)"/><text x="120" y="310" fill="currentColor">حساب المالك</text>
+        </g>
+        <g stroke-width="1.8" fill="none" marker-end="url(#ahm)" style="stroke:var(--money)">
+          <line x1="420" y1="95"  x2="224" y2="95"/>
+          <line x1="420" y1="137" x2="224" y2="137"/>
+          <line x1="420" y1="179" x2="224" y2="179"/>
+          <line x1="420" y1="221" x2="224" y2="221"/>
+          <line x1="420" y1="263" x2="224" y2="263"/>
+          <line x1="420" y1="305" x2="224" y2="305"/>
+        </g>
+        <g font-size="12" font-weight="600">
+          <rect x="268" y="84" width="104" height="20" rx="10" style="fill:var(--paper)"/><text x="320" y="99" style="fill:var(--money)">نهاية الربع</text>
+          <rect x="268" y="126" width="104" height="20" rx="10" style="fill:var(--paper)"/><text x="320" y="141" style="fill:var(--money)">فورًا</text>
+          <rect x="268" y="168" width="104" height="20" rx="10" style="fill:var(--paper)"/><text x="320" y="183" style="fill:var(--money)">يوم الاستحقاق</text>
+          <rect x="268" y="210" width="104" height="20" rx="10" style="fill:var(--paper)"/><text x="320" y="225" style="fill:var(--money)">يوم الراتب</text>
+          <rect x="268" y="252" width="104" height="20" rx="10" style="fill:var(--paper)"/><text x="320" y="267" style="fill:var(--money)">نهاية الشهر</text>
+          <rect x="268" y="294" width="104" height="20" rx="10" style="fill:var(--paper)"/><text x="320" y="309" style="fill:var(--money)">فورًا</text>
+        </g>
+
+        <!-- مفتاح الخزينة -->
+        <rect x="300" y="400" width="520" height="132" rx="14" style="fill:var(--brain-soft);stroke:var(--brain)" stroke-width="2"/>
+        <text x="560" y="432" font-size="17" font-weight="700" style="fill:var(--brain)">مفتاح الخزينة</text>
+        <g font-size="12.5">
+          <rect x="652" y="452" width="148" height="30" rx="15" style="fill:var(--paper)"/><text x="726" y="472" fill="currentColor">السياسة المعتمدة</text>
+          <rect x="488" y="452" width="148" height="30" rx="15" style="fill:var(--paper)"/><text x="562" y="472" fill="currentColor">الأولوية والنسب</text>
+          <rect x="324" y="452" width="148" height="30" rx="15" style="fill:var(--paper)"/><text x="398" y="472" fill="currentColor">مواعيد الاستحقاق</text>
+        </g>
+        <text x="560" y="510" font-size="12" style="fill:var(--muted)">يقرر · ما يمسك الفلوس بنفسه</text>
+
+        <!-- الإشارات بين البنك ومفتاح الخزينة -->
+        <g stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#ahb)" style="stroke:var(--brain)">
+          <line x1="732" y1="184" x2="732" y2="396"/>
+          <line x1="490" y1="398" x2="490" y2="326"/>
+          <line x1="330" y1="398" x2="330" y2="318"/>
+        </g>
+        <g font-size="12.5" font-weight="600">
+          <circle cx="706" cy="290" r="13" style="fill:var(--brain)"/><text x="706" y="295" style="fill:var(--paper)">١</text>
+          <text x="652" y="295" style="fill:var(--brain)">وصل مبلغ</text>
+          <circle cx="518" cy="362" r="13" style="fill:var(--brain)"/><text x="518" y="367" style="fill:var(--paper)">٢</text>
+          <text x="566" y="367" style="fill:var(--brain)">قسّمه</text>
+          <circle cx="358" cy="362" r="13" style="fill:var(--brain)"/><text x="358" y="367" style="fill:var(--paper)">٣</text>
+          <text x="410" y="382" style="fill:var(--brain)">حوّل في موعده</text>
+        </g>
+
+        <!-- المحاسب والمراجع -->
+        <rect x="20" y="420" width="220" height="92" rx="12" style="fill:var(--paper);stroke:var(--line)"/>
+        <text x="130" y="452" font-size="14" font-weight="600" fill="currentColor">المحاسب يحدد التقسيم</text>
+        <text x="130" y="478" font-size="14" font-weight="600" fill="currentColor">المراجع يعتمده</text>
+        <text x="130" y="500" font-size="12" style="fill:var(--muted)">مرة وحدة، وبعدها تلقائي</text>
+        <line x1="240" y1="466" x2="296" y2="466" stroke-width="2" marker-end="url(#ahb)" style="stroke:var(--brain)"/>
+      </g>
+    </svg>
+    </div>
+    <figcaption>الفلوس ما تطلع من البنك. مفتاح الخزينة يشتغل كالعقل: يعرف إن المبلغ وصل، يقسّمه، ويأمر بتحويل كل جزء في موعده. نيوتك هو اليد اللي تنفّذ داخل البنك.</figcaption>
+  </figure>
+</section>
+
+<!-- ٢. تقسيم دفعة وحدة -->
+<section>
+  <h2>مثال: دخل ٢٠,٠٠٠ ريال يوم ١٠ بالشهر</h2>
+  <figure>
+    <div class="bar" role="img" aria-label="تقسيم ٢٠ ألف ريال: ضريبة ٣ آلاف، إتاوة ١٢٠٠، إيجار ٣ آلاف، رواتب ٥ آلاف، احتياطي ألفين، فائض ٥٨٠٠">
+      <div class="seg" style="flex:3000;background:#3b5b8c">3,000</div>
+      <div class="seg" style="flex:1200;background:#6d5aa8">1,200</div>
+      <div class="seg" style="flex:3000;background:#a86b12">3,000</div>
+      <div class="seg" style="flex:5000;background:#0f6b57">5,000</div>
+      <div class="seg" style="flex:2000;background:#7a8a33">2,000</div>
+      <div class="seg" style="flex:5800;background:#8b949a">5,800</div>
+    </div>
+    <div class="split">
+      <div class="item" style="--c:#3b5b8c;--c-soft:var(--bank-soft)"><span class="name">١ · الضريبة</span><b>3,000</b><span class="when">١٥٪ من الدخل</span><span class="chip">محجوز لين نهاية الربع</span></div>
+      <div class="item" style="--c:#6d5aa8;--c-soft:var(--bank-soft)"><span class="name">٢ · إتاوة الامتياز</span><b>1,200</b><span class="when">٦٪ من الدخل</span><span class="chip">يتحوّل فورًا</span></div>
+      <div class="item" style="--c:#a86b12;--c-soft:var(--money-soft)"><span class="name">٣ · الإيجار</span><b>3,000</b><span class="when">١٠ أيام من ٩,٠٠٠</span><span class="chip">يوم الاستحقاق</span></div>
+      <div class="item" style="--c:#0f6b57;--c-soft:var(--brain-soft)"><span class="name">٤ · الرواتب</span><b>5,000</b><span class="when">١٠ أيام من ١٥,٠٠٠</span><span class="chip">يوم الراتب</span></div>
+      <div class="item" style="--c:#7a8a33;--c-soft:var(--brain-soft)"><span class="name">٥ · الاحتياطي</span><b>2,000</b><span class="when">١٠٪ من الدخل</span><span class="chip">نهاية الشهر</span></div>
+      <div class="item" style="--c:#6b767b;--c-soft:var(--bg)"><span class="name">الفائض</span><b>5,800</b><span class="when">اللي تبقى</span><span class="chip">للمالك فورًا</span></div>
+    </div>
+    <figcaption>البنود تاخذ نصيبها بالترتيب حسب الأولوية. لو الدخل ما كفّى، البنود الأخيرة تنقص وتعوّض من الدخل اللي بعده.</figcaption>
+  </figure>
+</section>
+
+<!-- ٣. الإيجار يتجمّع -->
+<section>
+  <h2>الإيجار ما يسحب الدخل كله: يتجمّع يوم بيوم</h2>
+  <figure>
+    <div class="scroll">
+    <svg class="svg-wide" viewBox="0 0 760 290" role="img" aria-label="إيجار ٦٠ ألف كل ستة أشهر: يتجمّع حوالي ٣٣١ ريال يوميًا من سبتمبر لين مارس ويتحوّل كامل للمؤجر يوم الاستحقاق، بدل ما يسحب كل الدخل من أول يوم">
+      <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--money)"/></marker></defs>
+      <g font-family="IBM Plex Sans Arabic, Tahoma, sans-serif" font-size="12" style="color:var(--ink)">
+        <!-- شبكة -->
+        <g style="stroke:var(--line)" stroke-width="1">
+          <line x1="80" y1="230" x2="640" y2="230"/>
+          <line x1="80" y1="173" x2="640" y2="173"/>
+          <line x1="80" y1="117" x2="640" y2="117"/>
+          <line x1="80" y1="60"  x2="640" y2="60"/>
+        </g>
+        <g text-anchor="end" style="fill:var(--muted)" font-variant-numeric="tabular-nums">
+          <text x="72" y="234">0</text><text x="72" y="177">20,000</text><text x="72" y="121">40,000</text><text x="72" y="64">60,000</text>
+        </g>
+        <g text-anchor="middle" style="fill:var(--muted)">
+          <text x="80" y="252">١ سبتمبر</text><text x="172.8" y="252">أكتوبر</text><text x="268.7" y="252">نوفمبر</text>
+          <text x="361.5" y="252">ديسمبر</text><text x="457.5" y="252">يناير</text><text x="553.4" y="252">فبراير</text>
+          <text x="640" y="252" font-weight="600" style="fill:var(--money)">١ مارس</text>
+        </g>
+        <!-- الطريقة الغلط -->
+        <polyline points="80,230 80,60 640,60" fill="none" stroke-width="2" stroke-dasharray="5 4" style="stroke:var(--warn)"/>
+        <text x="96" y="50" font-weight="600" style="fill:var(--warn)">لو سحب المبلغ كامل من أول دخل</text>
+        <!-- التجميع -->
+        <polygon points="80,230 640,60 640,230" style="fill:var(--brain-soft)"/>
+        <line x1="80" y1="230" x2="640" y2="60" stroke-width="3" style="stroke:var(--brain)"/>
+        <circle cx="80" cy="230" r="5" style="fill:var(--brain)"/>
+        <circle cx="640" cy="60" r="6" style="fill:var(--brain)"/>
+        <text x="300" y="150" font-weight="600" style="fill:var(--brain)" transform="rotate(-17 300 150)">≈ ٣٣١ ريال يوميًا</text>
+        <!-- التحويل -->
+        <line x1="648" y1="60" x2="700" y2="60" stroke-width="2" marker-end="url(#ah2)" style="stroke:var(--money)"/>
+        <text x="700" y="88" text-anchor="middle" font-weight="600" style="fill:var(--money)">٦٠,٠٠٠</text>
+        <text x="700" y="104" text-anchor="middle" style="fill:var(--money)">للمؤجر</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption>إيجار ٦٠,٠٠٠ كل ٦ شهور: ينحجز له نصيب كل يوم، ويكتمل قبل موعده، ويتحوّل للمؤجر يوم الاستحقاق. الدخل الباقي يروح للبنود الثانية بدل ما ينحبس للإيجار.</figcaption>
+  </figure>
+</section>
+
+<!-- ٤. الإعداد -->
+<section>
+  <h2>إعداد الشركة: مرة وحدة</h2>
+  <div class="steps">
+    <div class="step"><span class="n">١</span><strong>تسجيل الشركة</strong><span>البيانات والسجل والآيبان</span></div>
+    <span class="arrow" aria-hidden="true">←</span>
+    <div class="step"><span class="n">٢</span><strong>الحسابات البنكية</strong><span>المصادر والمجمّع والمستفيدين</span></div>
+    <span class="arrow" aria-hidden="true">←</span>
+    <div class="step"><span class="n">٣</span><strong>سياسة التقسيم</strong><span>البنود والنسب والمواعيد</span></div>
+    <span class="arrow" aria-hidden="true">←</span>
+    <div class="step"><span class="n">٤</span><strong>الاعتماد</strong><span>المحاسب نفسه أو مراجع مستقل</span></div>
+    <span class="arrow" aria-hidden="true">←</span>
+    <div class="step auto"><span class="n">∞</span><strong>يشتغل تلقائيًا</strong><span>كل دخل يتقسّم ويتحوّل</span></div>
+  </div>
+</section>
+
+<!-- ٥. الحالة -->
+<section>
+  <h2>وين وصلنا</h2>
+  <div class="status">
+    <div class="col done">
+      <h3>جاهز ويشتغل على الموقع</h3>
+      <div class="pills">
+        <span class="pill">التقسيم بالأولوية</span><span class="pill">النسب والمبالغ الثابتة</span>
+        <span class="pill">مواعيد الاستحقاق</span><span class="pill">اعتماد المراجع</span>
+        <span class="pill">البنود المحمية</span><span class="pill">سجل التدقيق</span>
+        <span class="pill">لوحة قابلة للتخصيص</span><span class="pill">تقارير Excel</span>
+        <span class="pill">أرصدة البنود والتحويلات</span><span class="pill">محاكي البنك</span>
+      </div>
+    </div>
+    <div class="col wait">
+      <h3>ينتظر وثائق نيوتك</h3>
+      <div class="pills">
+        <span class="pill">إشعار الإيداع الحقيقي</span><span class="pill">الحسابات المحجوزة في البنك</span>
+        <span class="pill">التحويل الفعلي للمستفيدين</span>
+      </div>
+      <p style="color:var(--muted);font-size:.9rem">الجزء الخاص بنيوتك معزول في طبقة وحدة. لما توصل الوثائق نستبدل المحاكاة بالربط الحقيقي، وباقي النظام ما يتغيّر.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+</body>
+</html>
