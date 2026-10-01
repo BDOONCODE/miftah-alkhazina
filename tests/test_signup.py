@@ -114,8 +114,8 @@ def test_self_signed_user_can_register_company_with_self_approval(client, db, ou
 
 def test_arabic_letters_are_not_symbols():
     assert "رمز خاص مثل ! @ # $" in password_problems("يبيسيصصصصضض")
-    assert password_problems("Strongpass1ع!") == ["حروف وأرقام ورموز إنجليزية فقط (بدون عربي أو مسافات)"]
-    assert password_problems("Strong pass1!") == ["حروف وأرقام ورموز إنجليزية فقط (بدون عربي أو مسافات)"]
+    assert password_problems("Strongpass1ع!") == ["إنجليزي فقط (بدون عربي أو مسافات)"]
+    assert password_problems("Strong pass1!") == ["إنجليزي فقط (بدون عربي أو مسافات)"]
 
 
 def test_admin_can_verify_email_manually(client, db, make_user):

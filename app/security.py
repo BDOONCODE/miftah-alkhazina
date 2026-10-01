@@ -18,7 +18,7 @@ PASSWORD_RULES = [
     (lambda p: re.search(r"[a-z]", p) is not None, "حرف إنجليزي صغير (a-z)"),
     (lambda p: re.search(r"[0-9]", p) is not None, "رقم (0-9)"),
     (lambda p: _ENGLISH_SYMBOL.search(p) is not None, "رمز خاص مثل ! @ # $"),
-    (lambda p: _ENGLISH_ONLY.fullmatch(p) is not None, "حروف وأرقام ورموز إنجليزية فقط (بدون عربي أو مسافات)"),
+    (lambda p: _ENGLISH_ONLY.fullmatch(p) is not None, "إنجليزي فقط (بدون عربي أو مسافات)"),
 ]
 
 

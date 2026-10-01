@@ -104,7 +104,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); o
 .unit { color: var(--muted); font-size: .85rem; white-space: nowrap; }
 .js-day { margin-top: .3rem; }
 
-.form-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); align-items: end; }
+/* الخانات تبدأ من نفس الخط، وأي ملاحظة تحت الخانة (مثل شروط كلمة المرور) تنزل تحتها بدون ما تزحزح الباقي */
+.form-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); align-items: start; }
+.form-grid > .form-actions { padding-top: calc(1lh + .35rem); }
 .form-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
 small { font-weight: 400; }
 
@@ -203,7 +205,7 @@ dialog::backdrop { background: rgba(20, 26, 36, .35); }
 .inline-form .pw-wrap input { width: 11rem; }
 .pw-eye { position: absolute; right: .45rem; top: 50%; transform: translateY(-50%); display: flex; background: none; border: none; cursor: pointer; padding: .25rem; color: var(--muted); border-radius: 6px; }
 .pw-eye:hover, .pw-eye:focus-visible { color: var(--text); }
-.pw-rules { list-style: none; padding: 0; margin: .35rem 0 0; display: flex; flex-wrap: wrap; gap: .25rem .75rem; font-size: .8rem; font-weight: 400; color: var(--muted); }
+.pw-rules { list-style: none; padding: 0; margin: .1rem 0 0; display: flex; flex-wrap: wrap; gap: .1rem .75rem; font-size: .72rem; line-height: 1.5; font-weight: 400; color: var(--muted); }
 .pw-rules li::before { content: "○ "; }
 .pw-rules li.ok { color: var(--positive); }
 .pw-rules li.ok::before { content: "✓ "; }
