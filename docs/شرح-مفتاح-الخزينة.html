@@ -94,7 +94,23 @@ svg { display: block; width: 100%; height: auto; }
   .seg small { display: none; }
 }
 </style>
-<style>body{margin:0}</style>
+<style>body{margin:0}
+@page { size: A4 landscape; margin: 12mm; }
+@media print {
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .wrap { padding-block: 0; gap: 14px; max-width: none; }
+  section { gap: 8px; }
+  section, figure, .status, .steps { break-inside: avoid; }
+  .scroll { overflow: visible; }
+  .svg-wide { min-width: 0; }
+  h1 { font-size: 1.8rem; }
+  .lede { font-size: 1rem; }
+  header { gap: 4px !important; }
+  figure { padding: 10px 14px; gap: 8px; }
+  .flow-svg { max-height: 96mm; width: auto; margin-inline: auto; }
+  .rent-svg { max-height: 72mm; width: auto; margin-inline: auto; }
+  .page-break { break-before: page; }
+}</style>
 </head>
 <body>
 
@@ -117,7 +133,7 @@ svg { display: block; width: 100%; height: auto; }
   </div>
   <figure>
     <div class="scroll">
-    <svg class="svg-wide" viewBox="0 0 1000 560" role="img" aria-label="الدخل يدخل الحساب المجمّع في البنك، نيوتك يبلغ مفتاح الخزينة، مفتاح الخزينة يقسّم المبلغ على بنود محجوزة ويأمر بتحويل كل بند لمستفيده في موعده">
+    <svg class="svg-wide flow-svg" viewBox="0 0 1000 560" role="img" aria-label="الدخل يدخل الحساب المجمّع في البنك، نيوتك يبلغ مفتاح الخزينة، مفتاح الخزينة يقسّم المبلغ على بنود محجوزة ويأمر بتحويل كل بند لمستفيده في موعده">
       <defs>
         <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
         <marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--brain)"/></marker>
@@ -232,7 +248,7 @@ svg { display: block; width: 100%; height: auto; }
 </section>
 
 <!-- ٢. تقسيم دفعة وحدة -->
-<section>
+<section class="page-break">
   <h2>مثال: دخل ٢٠,٠٠٠ ريال يوم ١٠ بالشهر</h2>
   <figure>
     <div class="bar" role="img" aria-label="تقسيم ٢٠ ألف ريال: ضريبة ٣ آلاف، إتاوة ١٢٠٠، إيجار ٣ آلاف، رواتب ٥ آلاف، احتياطي ألفين، فائض ٥٨٠٠">
@@ -260,9 +276,9 @@ svg { display: block; width: 100%; height: auto; }
   <h2>الإيجار ما يسحب الدخل كله: يتجمّع يوم بيوم</h2>
   <figure>
     <div class="scroll">
-    <svg class="svg-wide" viewBox="0 0 760 290" role="img" aria-label="إيجار ٦٠ ألف كل ستة أشهر: يتجمّع حوالي ٣٣١ ريال يوميًا من سبتمبر لين مارس ويتحوّل كامل للمؤجر يوم الاستحقاق، بدل ما يسحب كل الدخل من أول يوم">
+    <svg class="svg-wide rent-svg" viewBox="0 0 760 290" role="img" aria-label="إيجار ٦٠ ألف كل ستة أشهر: يتجمّع حوالي ٣٣١ ريال يوميًا من سبتمبر لين مارس ويتحوّل كامل للمؤجر يوم الاستحقاق، بدل ما يسحب كل الدخل من أول يوم">
       <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--money)"/></marker></defs>
-      <g font-family="IBM Plex Sans Arabic, Tahoma, sans-serif" font-size="12" style="color:var(--ink)">
+      <g font-family="IBM Plex Sans Arabic, Tahoma, sans-serif" font-size="12" style="color:var(--ink)" direction="ltr">
         <!-- شبكة -->
         <g style="stroke:var(--line)" stroke-width="1">
           <line x1="80" y1="230" x2="640" y2="230"/>
@@ -280,13 +296,13 @@ svg { display: block; width: 100%; height: auto; }
         </g>
         <!-- الطريقة الغلط -->
         <polyline points="80,230 80,60 640,60" fill="none" stroke-width="2" stroke-dasharray="5 4" style="stroke:var(--warn)"/>
-        <text x="96" y="50" font-weight="600" style="fill:var(--warn)">لو سحب المبلغ كامل من أول دخل</text>
+        <text x="360" y="48" text-anchor="middle" font-weight="600" style="fill:var(--warn)">لو سحب المبلغ كامل من أول دخل</text>
         <!-- التجميع -->
         <polygon points="80,230 640,60 640,230" style="fill:var(--brain-soft)"/>
         <line x1="80" y1="230" x2="640" y2="60" stroke-width="3" style="stroke:var(--brain)"/>
         <circle cx="80" cy="230" r="5" style="fill:var(--brain)"/>
         <circle cx="640" cy="60" r="6" style="fill:var(--brain)"/>
-        <text x="300" y="150" font-weight="600" style="fill:var(--brain)" transform="rotate(-17 300 150)">≈ ٣٣١ ريال يوميًا</text>
+        <text x="300" y="150" font-weight="600" direction="rtl" text-anchor="middle" style="fill:var(--brain)" transform="rotate(-17 300 150)">≈ ٣٣١ ريال يوميًا</text>
         <!-- التحويل -->
         <line x1="648" y1="60" x2="700" y2="60" stroke-width="2" marker-end="url(#ah2)" style="stroke:var(--money)"/>
         <text x="700" y="88" text-anchor="middle" font-weight="600" style="fill:var(--money)">٦٠,٠٠٠</text>
@@ -299,7 +315,7 @@ svg { display: block; width: 100%; height: auto; }
 </section>
 
 <!-- ٤. الإعداد -->
-<section>
+<section class="page-break">
   <h2>إعداد الشركة: مرة وحدة</h2>
   <div class="steps">
     <div class="step"><span class="n">١</span><strong>تسجيل الشركة</strong><span>البيانات والسجل والآيبان</span></div>
