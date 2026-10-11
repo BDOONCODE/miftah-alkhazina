@@ -34,7 +34,7 @@ templates.env.globals.update(PAYOUT_REASONS=REASON_LABELS)
 templates.env.globals.update(
     CHANNEL_LABELS={"manual": "يدوي", "open_banking": "تلقائي من البنك"},
     ROLE_LABELS={"admin": "مدير", "accountant": "محاسب", "approver": "معتمِد"},
-    CALC_LABELS={"percentage": "نسبة", "fixed_amount": "مبلغ ثابت", "vat_inclusive": "ضريبة قيمة مضافة (شامل)"},
+    CALC_LABELS={"percentage": "نسبة", "fixed_amount": "مبلغ ثابت", "vat_inclusive": "ضريبة القيمة المضافة"},
     FREQ_LABELS={
         "immediate": "فوري (بدون موعد)",
         "daily": "يومي",

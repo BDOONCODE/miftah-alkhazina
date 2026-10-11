@@ -13,7 +13,7 @@ from ..auth import current_user, get_entity_for, require_role
 from ..db import get_session
 from ..domain.money import parse_amount
 from ..domain.periods import RIYADH
-from ..models import AccountKind, BankAccount, Bucket, Payout, PolicyBucket, Role, Transaction, User, utcnow
+from ..models import AccountKind, BankAccount, Payout, PolicyBucket, Role, Transaction, User, utcnow
 from ..services import transactions as svc
 from ..services.accounts import accounts_for
 from ..services.policies import active_policy
@@ -33,9 +33,6 @@ def _bucket_names(session: Session, txns: list[Transaction]) -> dict[int, str]:
     if policy_ids:
         for pb in session.scalars(select(PolicyBucket).where(PolicyBucket.policy_id.in_(policy_ids))):
             names.setdefault(pb.bucket_id, pb.name)
-    entity_ids = {t.entity_id for t in txns}
-    for bucket in session.scalars(select(Bucket).where(Bucket.entity_id.in_(entity_ids), Bucket.system_name.is_not(None))):
-        names[bucket.id] = bucket.system_name  # ضريبة القيمة المضافة
     return names
 
 

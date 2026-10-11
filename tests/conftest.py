@@ -49,16 +49,3 @@ def _clear_login_throttle():
     from app import throttle
 
     throttle._failures.clear()
-
-
-VAT_IBAN = "SA9990000000000000000099"
-
-
-def give_vat_account(db, entity, user):
-    """ضريبة القيمة المضافة إلزامية وتحتاج حساب تتحوّل له قبل اعتماد أي سياسة."""
-    from app.services import accounts
-
-    account = accounts.add_account(db, entity, user, name="حساب الضريبة", bank_name="", iban=VAT_IBAN, kind="sub")
-    entity.vat_account_id = account.id
-    db.commit()
-    return account

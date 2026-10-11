@@ -6,8 +6,6 @@ from collections.abc import Collection, Sequence
 from .types import ANCHORED_MONTHS, BASIS_POINTS_FULL, BucketSpec, CalcType, Frequency
 
 MIN_JUSTIFICATION_LENGTH = 20
-# ضريبة القيمة المضافة ١٥٪ شامل يحجزها النظام قبل البنود: ١٥ ÷ ١١٥ = ١٣٫٠٤٪ من كل مبلغ وارد
-VAT_SHARE = 1500 * BASIS_POINTS_FULL // (BASIS_POINTS_FULL + 1500)
 
 
 def effective_rate(b: BucketSpec) -> int:
@@ -29,10 +27,6 @@ def validate_policy(buckets: Sequence[BucketSpec]) -> list[str]:
 
     for b in buckets:
         label = f"البند «{b.name or '؟'}»"
-        if b.calc_type is CalcType.VAT_INCLUSIVE:
-            errors.append(f"{label}: ضريبة القيمة المضافة يحسبها النظام تلقائيًا، احذف هذا البند")
-        if b.priority < 1:
-            errors.append(f"{label}: الأولوية تبدأ من 1")
         if not b.name.strip():
             errors.append("كل بند لازم يكون له اسم")
         if b.value <= 0:
@@ -45,10 +39,8 @@ def validate_policy(buckets: Sequence[BucketSpec]) -> list[str]:
             errors.append(f"{label}: حدد يوم الاستحقاق بين 1 و31")
 
     pct_total = sum(effective_rate(b) for b in buckets if b.calc_type.is_rate)
-    if pct_total + VAT_SHARE > BASIS_POINTS_FULL:
-        errors.append(
-            f"مجموع النسب {pct_total / 100:.2f}% مع ضريبة القيمة المضافة ({VAT_SHARE / 100:.2f}%) يتجاوز 100%"
-        )
+    if pct_total > BASIS_POINTS_FULL:
+        errors.append(f"مجموع النسب {pct_total / 100:.2f}% يتجاوز 100%")
     return errors
 
 

@@ -9,7 +9,6 @@ from app.services import accounts as acc
 from app.services import payouts as po
 from app.services import policies as pol
 from app.services import transactions as tx
-from tests.conftest import give_vat_account
 
 SAR = 100
 ROYALTY_IBAN = "SA5550000000000000000005"
@@ -34,7 +33,6 @@ def setup(db, make_user, monkeypatch):
         "reserve": add("حساب الاحتياطي", RESERVE_IBAN, "sub"),
         "owner": add("حساب المالك", OWNER_IBAN, "sub"),
     }
-    give_vat_account(db, entity, user)
     draft = pol.start_draft(db, entity, user)
     pol.save_draft(db, draft, [
         pol.BucketInput(None, "الإتاوة", 1, CalcType.PERCENTAGE, 600, Frequency.IMMEDIATE, None, "", False,

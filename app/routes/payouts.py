@@ -11,7 +11,6 @@ from ..models import User, utcnow
 from ..services import payouts as svc
 from ..services.banking import is_simulated
 from ..services.policies import active_policy
-from ..services.vat import vat_item
 from ..templating import templates
 
 router = APIRouter()
@@ -25,11 +24,8 @@ def balances_page(
     entity = get_entity_for(user, entity_id, session)
     today = local_date(utcnow())
     if policy := active_policy(session, entity_id):
-        # سياسات اعتُمدت قبل الربط: تنفتح حسابات بنودها (ومعها الضريبة) في الخلفية
-        bucket_ids = [pb.bucket_id for pb in policy.buckets]
-        if vat := vat_item(session, entity_id, create=False):
-            bucket_ids.append(vat.bucket_id)
-        svc.ensure_virtual_accounts(session, entity_id, bucket_ids)
+        # سياسات اعتُمدت قبل الربط: تنفتح حسابات بنودها في الخلفية
+        svc.ensure_virtual_accounts(session, entity_id, [pb.bucket_id for pb in policy.buckets])
     svc.run_due(session, entity_id, today)  # لو الخادم كان نايم يوم الاستحقاق
     session.commit()
     views = svc.held_balances(session, entity_id, today)

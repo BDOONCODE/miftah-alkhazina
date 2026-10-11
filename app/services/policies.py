@@ -5,14 +5,13 @@ from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, object_session
+from sqlalchemy.orm import Session
 
 from ..domain.periods import local_date, period_key
 from ..domain.policy_rules import justification_error, protected_changes, validate_policy
 from ..domain.types import ANCHORED_MONTHS, BucketSpec, CalcType, Frequency
 from .accounts import DESTINATION_KINDS, AccountError, add_account, normalize_iban
 from ..models import (
-    AccountKind,
     AuditLog,
     BankAccount,
     Bucket,
@@ -143,7 +142,7 @@ def start_draft(session: Session, entity: Entity, user: User) -> Policy:
 
 def save_draft(
     session: Session, policy: Policy, rows: list[BucketInput], notes: str, user: User,
-    surplus_account_id: int | None = None, vat_account_id: int | None = None,
+    surplus_account_id: int | None = None,
 ) -> None:
     if policy.status is not PolicyStatus.DRAFT:
         raise PolicyError("ما يمكن تعديل سياسة بعد إرسالها للاعتماد")
@@ -199,8 +198,6 @@ def save_draft(
     if surplus_account_id is not None and surplus_account_id not in destinations:
         raise PolicyError("حساب الفائض لازم يكون حساب نشط للشركة (المجمّع أو حساب آخر أو جهة خارجية)")
     policy.surplus_account_id = surplus_account_id
-    if vat_account_id is not None:
-        set_vat_account(session, session.get(Entity, policy.entity_id), user, vat_account_id, destinations)
     _audit(session, user, policy, "policy.saved", buckets=len(new_buckets))
 
 
@@ -228,24 +225,10 @@ def _destination_from_iban(session: Session, policy: Policy, user: User, row: Bu
     return account
 
 
-def set_vat_account(session: Session, entity: Entity, user: User, account_id: int, destinations: dict) -> None:
-    """حساب الضريبة على مستوى الشركة (مو نسخة السياسة): تتحوّل له الضريبة بعد كل ربع."""
-    if account_id not in destinations or destinations[account_id].kind is AccountKind.POOL:
-        raise PolicyError("حساب الضريبة لازم يكون حساب نشط غير المجمّع (حساب الضريبة للشركة أو حساب الهيئة)")
-    if entity.vat_account_id != account_id:
-        entity.vat_account_id = account_id
-        session.add(AuditLog(user_id=user.id, entity_id=entity.id, action="company.vat_account_changed",
-                             details={"account": destinations[account_id].name}))
-
-
 def destination_errors(policy: Policy) -> list[str]:
-    """كل بند له مستفيد يتحوّل له مبلغه، والضريبة لها حساب. (الفائض: بدون حساب يبقى في المجمّع.)"""
-    errors = [f"البند «{pb.name}» ما له مستفيد: اختر الآيبان اللي يتحوّل له" for pb in policy.buckets
-              if pb.destination_account_id is None]
-    session = object_session(policy)
-    if session is not None and session.get(Entity, policy.entity_id).vat_account_id is None:
-        errors.insert(0, "اختر حساب الضريبة اللي تتحوّل له ضريبة القيمة المضافة بعد كل ربع")
-    return errors
+    """كل بند له مستفيد يتحوّل له مبلغه. (الفائض: بدون حساب محدد يبقى في المجمّع.)"""
+    return [f"البند «{pb.name}» ما له مستفيد: اختر الآيبان اللي يتحوّل له" for pb in policy.buckets
+            if pb.destination_account_id is None]
 
 
 def funded_in_current_period(session: Session, entity_id: int, buckets: list[BucketSpec], today: date) -> set[int]:

@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 from ..auth import current_user, get_entity_for, require_role
 from ..db import get_session
 from ..domain.money import format_amount, parse_amount, parse_percent
-from ..domain.policy_rules import VAT_SHARE, effective_rate, validate_policy
+from ..domain.policy_rules import effective_rate, validate_policy
 from ..domain.types import BASIS_POINTS_FULL, CalcType, Frequency
-from ..models import Entity, Policy, PolicyStatus, Role, User
+from ..models import Policy, PolicyStatus, Role, User
 from ..services import policies as svc
 from ..services.accounts import DESTINATION_KINDS, accounts_for, pool_account
 from ..templating import templates
@@ -145,15 +145,13 @@ def _render_editor(request, user, policy, session, rows, errors, notes, status_c
             "errors": errors,
             "notes": notes,
             "surplus_account": str(policy.surplus_account_id or ""),
-            "vat_account": str(session.get(Entity, policy.entity_id).vat_account_id or ""),
-            "vat_share": VAT_SHARE / 100,
             "protected_changes": svc.protected_changes_for(session, policy),
             "self_approval": svc.is_self_approval(session, policy),
             "destinations": [
                 a for a in accounts_for(session, policy.entity_id, active_only=True) if a.kind in DESTINATION_KINDS
             ],
             "has_pool": pool_account(session, policy.entity_id) is not None,
-            "pct_total": (sum(effective_rate(b) for b in svc.specs(policy) if b.calc_type.is_rate) + VAT_SHARE)
+            "pct_total": sum(effective_rate(b) for b in svc.specs(policy) if b.calc_type.is_rate)
             / (BASIS_POINTS_FULL / 100),
         },
         status_code=status_code,
@@ -179,12 +177,10 @@ async def save_draft(request: Request, policy_id: int, user: User = Depends(edit
     notes = str(form.get("notes", ""))
     surplus = str(form.get("surplus_account", ""))
     surplus_id = int(surplus) if surplus.isdigit() else None
-    vat_account = str(form.get("vat_account", ""))
-    vat_account_id = int(vat_account) if vat_account.isdigit() else None
     if errors:
         return _render_editor(request, user, policy, session, views, errors, notes, status_code=422)
     try:
-        svc.save_draft(session, policy, inputs, notes, user, surplus_account_id=surplus_id, vat_account_id=vat_account_id)
+        svc.save_draft(session, policy, inputs, notes, user, surplus_account_id=surplus_id)
     except svc.PolicyError as exc:
         return _render_editor(request, user, policy, session, views, [str(exc)], notes, status_code=422)
     session.commit()

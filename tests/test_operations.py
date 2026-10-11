@@ -3,9 +3,6 @@ from datetime import date, datetime
 from io import BytesIO
 
 import pytest
-
-from app.services.vat import vat_item
-from tests.conftest import give_vat_account
 from openpyxl import load_workbook
 
 from app import models
@@ -31,13 +28,12 @@ def setup(db, make_user):
     )
     reviewer = db.query(models.User).filter_by(username="sara").one()
     reviewer.must_change_password = False
-    give_vat_account(db, entity, accountant)
     draft = pol.start_draft(db, entity, accountant)
     pol.save_draft(
         db,
         draft,
         [
-            pol.BucketInput(None, "الاحتياطي", 1, CalcType.PERCENTAGE, 1500, Frequency.IMMEDIATE, None, "", True, new_destination_iban="SA1100000000000000000001"),
+            pol.BucketInput(None, "الضريبة", 1, CalcType.PERCENTAGE, 1500, Frequency.IMMEDIATE, None, "", True, new_destination_iban="SA1100000000000000000001"),
             pol.BucketInput(None, "الإيجار", 2, CalcType.FIXED_AMOUNT, 10_000 * SAR, Frequency.IMMEDIATE, None, "حساب الإيجار", False, new_destination_iban="SA1100000000000000000003"),
             pol.BucketInput(None, "الأرباح", 3, CalcType.PERCENTAGE, 500, Frequency.MONTHLY, None, "", False, new_destination_iban="SA1100000000000000000002"),
         ],
@@ -48,8 +44,6 @@ def setup(db, make_user):
     pol.approve(db, draft, reviewer)
     db.commit()
     ids = {pb.name: pb.bucket_id for pb in draft.buckets}
-    ids["الضريبة"] = entity.vat_bucket_id or vat_item(db, entity.id).bucket_id
-    db.commit()
     return entity, accountant, ids
 
 
@@ -65,14 +59,12 @@ def states(db, entity):
 
 def test_record_matches_engine_scenario(db, setup):
     entity, user, ids = setup
-    # ٤,٦٠٠ شاملة الضريبة فيها ٦٠٠ ضريبة قيمة مضافة، تنحجز قبل كل البنود
-    t1 = record(db, entity, user, 4_600, at(2026, 9, 2))
-    t2 = record(db, entity, user, 11_500, at(2026, 9, 10))
+    t1 = record(db, entity, user, 4_000, at(2026, 9, 2))
+    t2 = record(db, entity, user, 9_000, at(2026, 9, 10))
     alloc = lambda t: {e.bucket_id: e.allocated for e in t.events}  # noqa: E731
-    assert alloc(t1) == {ids["الضريبة"]: 600 * SAR, ids["الاحتياطي"]: 690 * SAR, ids["الإيجار"]: 3_310 * SAR, ids["الأرباح"]: 0}
-    assert alloc(t2)[ids["الضريبة"]] == 1_500 * SAR
-    assert alloc(t2)[ids["الأرباح"]] == 805 * SAR  # 575 + 230 مرحَّلة
-    assert (t1.surplus, t2.surplus) == (0, 780 * SAR)
+    assert alloc(t1) == {ids["الضريبة"]: 600 * SAR, ids["الإيجار"]: 3_400 * SAR, ids["الأرباح"]: 0}
+    assert alloc(t2)[ids["الأرباح"]] == 650 * SAR  # 450 + 200 مرحَّلة
+    assert (t1.surplus, t2.surplus) == (0, 400 * SAR)
     assert states(db, entity)[ids["الإيجار"]] == ("0000-00-00", 10_000 * SAR, 0)  # بدون موعد: فترة دائمة
 
 
@@ -140,29 +132,27 @@ def test_reversal_voids_period_closures(db, setup, no_transfers):
     entity, user, _ = setup
     record(db, entity, user, 1_000, at(2026, 9, 5))
     t2 = record(db, entity, user, 1_000, at(2026, 10, 5))
-    assert db.query(models.PeriodClosure).filter_by(voided=False).count() == 2  # شهر الأرباح وربع الضريبة
+    assert db.query(models.PeriodClosure).filter_by(voided=False).count() == 1  # شهر الأرباح
     txs.reverse_transaction(db, t2, user, "تاريخ غلط")
     db.commit()
     assert db.query(models.PeriodClosure).filter_by(voided=False).count() == 0
-    assert {s[0] for s in states(db, entity).values()} == {"0000-00-00", "2026-09-01", "2026-07-01"}
+    assert {s[0] for s in states(db, entity).values()} == {"0000-00-00", "2026-09-01"}
 
 
 def test_snapshot_and_variables(db, setup):
     entity, user, ids = setup
-    record(db, entity, user, 575, at(2026, 8, 20))  # خارج الشهر
-    record(db, entity, user, 4_600, at(2026, 9, 2))
-    record(db, entity, user, 11_500, at(2026, 9, 10))
+    record(db, entity, user, 500, at(2026, 8, 20))  # خارج الشهر
+    record(db, entity, user, 4_000, at(2026, 9, 2))
+    record(db, entity, user, 9_000, at(2026, 9, 10))
 
     snap = metrics.snapshot(db, entity.id, metrics.resolve_range("this_month", date(2026, 9, 15)), today=date(2026, 9, 15))
-    # إيداع أغسطس موّل الإيجار 413.75 (بدون موعد = فترة دائمة)، فسبتمبر يكمّل 9,586.25 بس
-    assert (snap.incoming, snap.surplus, snap.count) == (16_100 * SAR, 119_375, 2)
+    # إيداع أغسطس موّل الإيجار 425 (بدون موعد = فترة دائمة)، فسبتمبر يكمّل 9,575 بس والفائض أكبر
+    assert (snap.incoming, snap.surplus, snap.count) == (13_000 * SAR, 825 * SAR, 2)
     rent = next(b for b in snap.buckets if b.name == "الإيجار")
-    assert (rent.allocated, rent.funded, rent.deficit) == (958_625, 10_000 * SAR, 0)
-    assert snap.buckets[0].name == "ضريبة القيمة المضافة"  # الإلزامية أول شي
+    assert (rent.allocated, rent.funded, rent.deficit) == (9_575 * SAR, 10_000 * SAR, 0)
     values = metrics.variables(snap)
-    assert values["الفائض"] == 1_193.75 and values["مخصص_الاحتياطي"] == 2_415
-    assert values["مخصص_ضريبة_القيمة_المضافة"] == 2_100
-    assert formula.evaluate("الفائض / الوارد * 100", values) == pytest.approx(1_193.75 / 16_100 * 100)
+    assert values["الفائض"] == 825 and values["مخصص_الضريبة"] == 1_950
+    assert formula.evaluate("الفائض / الوارد * 100", values) == pytest.approx(825 / 13_000 * 100)
 
 
 def test_formula_safety():
@@ -217,12 +207,12 @@ def test_dashboard_default_widgets_and_customization(client, db, setup):
     assert len(dash.widgets) == len(dashboards.DEFAULT_LAYOUT)
 
     # مؤشر مخصص ثم بطاقة تعرضه
-    client.post(f"/entities/{entity.id}/metrics", data={"name": "نسبة التخصيص", "formula": "(مخصص_ضريبة_القيمة_المضافة + مخصص_الاحتياطي + مخصص_الإيجار) / الوارد * 100", "fmt": "percent"})
+    client.post(f"/entities/{entity.id}/metrics", data={"name": "نسبة التخصيص", "formula": "(مخصص_الضريبة + مخصص_الإيجار) / الوارد * 100", "fmt": "percent"})
     metric = db.query(models.CustomMetric).one()
     client.post(f"/entities/{entity.id}/dashboard/widgets", data={"kind": "kpi", "title": "نسبة التخصيص", "metric": f"custom:{metric.id}", "period": "this_month"})
     db.expire_all()
     assert len(dash.widgets) == len(dashboards.DEFAULT_LAYOUT) + 1
-    assert "100.0%" in client.get(f"/entities/{entity.id}/dashboard").text  # كل الـ٤,٠٠٠ تخصصت
+    assert "100.0%" in client.get(f"/entities/{entity.id}/dashboard").text  # (600 + 3,400) / 4,000
 
     # معادلة غير آمنة ما تنحفظ
     client.post(f"/entities/{entity.id}/metrics", data={"name": "خطر", "formula": "__import__('os')", "fmt": "number"})
@@ -250,11 +240,11 @@ def test_reviewer_cannot_edit_dashboard(client, db, setup):
 
 def test_reports_page_and_excel(client, db, setup):
     entity, user, _ = setup
-    record(db, entity, user, 4_600, at(2026, 9, 2))
-    record(db, entity, user, 11_500, at(2026, 9, 10))
+    record(db, entity, user, 4_000, at(2026, 9, 2))
+    record(db, entity, user, 9_000, at(2026, 9, 10))
     login(client, "acc")
     page = client.get(f"/entities/{entity.id}/reports?kind=month&anchor=2026-09-15").text
-    assert "16,100.00" in page and "780.00" in page
+    assert "13,000.00" in page and "400.00" in page
 
     response = client.get(f"/entities/{entity.id}/reports.xlsx?kind=month&anchor=2026-09-15")
     assert response.status_code == 200
@@ -262,10 +252,10 @@ def test_reports_page_and_excel(client, db, setup):
     assert wb.sheetnames == ["الملخص", "المعاملات", "إقفال الفترات"]
     txn_sheet = wb["المعاملات"]
     assert txn_sheet.sheet_view.rightToLeft
-    assert [txn_sheet.cell(row=r, column=4).value for r in (2, 3)] == [4600, 11500]
+    assert [txn_sheet.cell(row=r, column=4).value for r in (2, 3)] == [4000, 9000]
 
     week = client.get(f"/entities/{entity.id}/reports?kind=week&anchor=2026-09-02").text
-    assert "4,600.00" in week and "11,500.00" not in week
+    assert "4,000.00" in week and "9,000.00" not in week
 
     assert "تنزيل تقرير" in client.get(f"/entities/{entity.id}/audit").text
 

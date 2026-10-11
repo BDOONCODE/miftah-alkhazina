@@ -24,7 +24,6 @@ from ..models import (
 )
 from . import payouts
 from .policies import active_policy, specs
-from .vat import vat_item
 
 
 class TransactionError(ValueError):
@@ -77,10 +76,8 @@ def record_transaction(
     payouts.run_due(session, entity.id, local_date(utcnow()))
 
     rows = _load_states(session, entity.id)
-    # ضريبة القيمة المضافة إلزامية: تنحجز من كل مبلغ قبل بنود السياسة
-    buckets = [vat_item(session, entity.id).spec(), *specs(policy)]
     try:
-        result = allocate(buckets, {k: _as_domain(v) for k, v in rows.items()}, amount, local_date(occurred_at))
+        result = allocate(specs(policy), {k: _as_domain(v) for k, v in rows.items()}, amount, local_date(occurred_at))
     except ClosedPeriodError as exc:
         raise TransactionError(str(exc)) from exc
     except ValueError as exc:

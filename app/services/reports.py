@@ -15,7 +15,7 @@ from ..domain.periods import RIYADH
 from ..models import AllocationEvent, Entity, PeriodClosure, utcnow
 from . import metrics as m
 
-CALC = {"percentage": "نسبة", "fixed_amount": "مبلغ ثابت", "vat_inclusive": "ضريبة قيمة مضافة (شامل)"}
+CALC = {"percentage": "نسبة", "fixed_amount": "مبلغ ثابت", "vat_inclusive": "ضريبة القيمة المضافة"}
 
 
 @dataclass
