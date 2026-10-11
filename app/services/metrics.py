@@ -28,6 +28,7 @@ from ..models import (
     utcnow,
 )
 from .policies import active_policy
+from .vat import vat_item
 
 PERIOD_LABELS = {
     "this_week": "هذا الأسبوع",
@@ -163,7 +164,10 @@ def snapshot(session: Session, entity_id: int, rng: DateRange, today: date | Non
     states = {
         s.bucket_id: s for s in session.scalars(select(BucketPeriodState).where(BucketPeriodState.entity_id == entity_id))
     }
-    for pb in policy.buckets if policy else []:
+    items = list(policy.buckets) if policy else []
+    if vat := vat_item(session, entity_id, create=False):
+        items.insert(0, vat)  # ضريبة القيمة المضافة الإلزامية أول شي
+    for pb in items:
         view = BucketView(pb.bucket_id, pb.name, pb.priority, pb.calc_type, pb.value, pb.frequency)
         state = states.get(pb.bucket_id)
         current = state is not None and state.period_key == period_key(

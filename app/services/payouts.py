@@ -35,6 +35,7 @@ from ..models import (
 )
 from .accounts import DESTINATION_KINDS
 from .banking import BankingError, provider
+from .vat import vat_item
 
 REASON_LABELS = {"immediate": "فور التقسيم", "due": "يوم الاستحقاق", "surplus": "الفائض"}
 
@@ -195,6 +196,8 @@ def run_due(session: Session, entity_id: int, today: date) -> list[Payout]:
 
     policy = active_policy(session, entity_id)
     scheduled = [pb for pb in policy.buckets if pb.frequency is not Frequency.IMMEDIATE] if policy else []
+    if vat := vat_item(session, entity_id, create=False):
+        scheduled.insert(0, vat)  # ضريبة القيمة المضافة: بعد نهاية كل ربع
     if not scheduled:
         return []
     _lock_entity(session, entity_id)
@@ -265,7 +268,10 @@ def held_balances(session: Session, entity_id: int, today: date) -> list[HeldVie
     }
     views: list[HeldView] = []
     seen: set[int] = set()
-    for pb in policy.buckets if policy else []:
+    items = list(policy.buckets) if policy else []
+    if vat := vat_item(session, entity_id, create=False):
+        items.insert(0, vat)
+    for pb in items:
         seen.add(pb.bucket_id)
         _, end = period_bounds(pb.frequency, today, pb.settlement_day, pb.due_date)
         state = states.get(pb.bucket_id)
@@ -287,8 +293,10 @@ def held_balances(session: Session, entity_id: int, today: date) -> list[HeldVie
         last = session.scalar(
             select(PolicyBucket).where(PolicyBucket.bucket_id == bucket_id).order_by(PolicyBucket.id.desc()).limit(1)
         )
+        bucket = session.get(Bucket, bucket_id)
+        name = last.name if last else (bucket.system_name or f"بند {bucket_id}")
         views.append(
-            HeldView(bucket_id=bucket_id, name=last.name if last else f"بند {bucket_id}", balance=balance,
+            HeldView(bucket_id=bucket_id, name=name, balance=balance,
                      beneficiary=None, next_due=None, target=0, funded=0, in_policy=False)
         )
     return views

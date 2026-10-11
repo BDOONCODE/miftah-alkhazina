@@ -56,9 +56,11 @@ def test_validate_policy_errors():
     assert any("تاريخ الاستحقاق" in e for e in validate_policy([b(1, 1, CalcType.FIXED_AMOUNT, 500, F.SEMIANNUAL)]))
     assert any("يوم" in e for e in validate_policy([b(1, 1, freq=F.DAY_OF_MONTH)]))
     assert validate_policy([])
-    # الضريبة الشاملة ١٥٪ تاخذ ١٣٫٠٤٪ من الوارد، فمع ٨٦٪ نسبة يبقى المجموع تحت ١٠٠٪
-    assert validate_policy([b(1, 1, CalcType.VAT_INCLUSIVE, 1500), b(2, 2, value=8600)]) == []
-    assert any("100%" in e for e in validate_policy([b(1, 1, CalcType.VAT_INCLUSIVE, 1500), b(2, 2, value=8800)]))
+    # ضريبة القيمة المضافة الإلزامية تاخذ ١٣٫٠٤٪ من الوارد، فالبنود تقدر توصل ٨٦٫٩٦٪ بالكثير
+    assert validate_policy([b(1, 1, value=8600)]) == []
+    assert any("100%" in e for e in validate_policy([b(1, 1, value=8800)]))
+    # الضريبة يحسبها النظام: ما تنضاف كبند
+    assert any("يحسبها النظام" in e for e in validate_policy([b(1, 1, CalcType.VAT_INCLUSIVE, 1500)]))
 
 
 def test_protected_changes_need_justification():

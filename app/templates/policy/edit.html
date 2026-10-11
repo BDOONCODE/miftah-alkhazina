@@ -12,7 +12,7 @@
     </label>
     <label>النوع
       <select name="calc_type" class="js-calc">
-        {% for k, label in CALC_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if r.calc_type == k }}>{{ label }}</option>{% endfor %}
+        {% for k, label in CALC_LABELS.items() if k != 'vat_inclusive' %}<option value="{{ k }}" {{ 'selected' if r.calc_type == k }}>{{ label }}</option>{% endfor %}
       </select>
     </label>
     <label>القيمة
@@ -79,7 +79,7 @@
   <section class="card">
     <div class="card-head">
       <h2>مسودة نسخة {{ policy.version }}</h2>
-      <span class="muted">مجموع النسب: <strong class="num js-pct-total">{{ '%g' % pct_total }}%</strong></span>
+      <span class="muted">مجموع النسب مع الضريبة: <strong class="num js-pct-total">{{ '%g' % pct_total }}%</strong></span>
     </div>
     <p class="muted">
       كل مبلغ يدخل الحساب يمر على البنود <strong>بالترتيب حسب الأولوية</strong>: الأولوية 1 تاخذ نصيبها أول، وبعدها 2،
@@ -88,10 +88,6 @@
     <details class="help">
       <summary>وش معنى «المستفيد» و«الاستحقاق» و«محمي»؟</summary>
       <dl>
-        <dt>ضريبة القيمة المضافة</dt>
-        <dd>المبيعات في الغالب <strong>شاملة الضريبة</strong>، فالضريبة جزء من المبلغ نفسه. اختر النوع
-          «ضريبة قيمة مضافة (شامل)» واكتب ١٥: من كل ١١٥ ريال ينحجز ١٥ (يعني ١٣٫٠٤٪ من الوارد، مو ١٥٪).
-          النوع «نسبة» يحسب من فوق المبلغ، فلو استخدمته للضريبة يحجز أكثر من المستحق.</dd>
         <dt>المستفيد</dt>
         <dd>الآيبان اللي يتحوّل له مبلغ البند: جهة خارجية (مانح الامتياز، المؤجر) أو حساب آخر للشركة (الاحتياطي، الأرباح).
           اختر حساب مسجّل، أو «+ آيبان جديد» وينضاف تلقائيًا لتبويب <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a>.</dd>
@@ -112,6 +108,22 @@
     {% endif %}
 
     {% for e in errors %}<div class="alert alert-error">{{ e }}</div>{% endfor %}
+
+    <div class="bucket-card vat-card">
+      <div>
+        <strong>🔒 ضريبة القيمة المضافة · ١٥٪ شامل</strong>
+        <div class="small muted">إلزامية ويحسبها النظام بنفسه: من كل مبلغ وارد تنحجز الضريبة اللي داخله (١٥ من كل ١١٥ = {{ '%g' % vat_share }}٪) قبل أي بند،
+          وتتحوّل بعد نهاية كل ربع سنة.</div>
+      </div>
+      <label>حساب الضريبة اللي تتحوّل له
+        <select name="vat_account" required>
+          <option value="">اختر الحساب…</option>
+          {% for a in destinations if a.kind.value != 'pool' %}
+          <option value="{{ a.id }}" {{ 'selected' if vat_account == a.id|string }}>{{ a.name }} · {{ KIND_LABELS[a.kind.value] }} · ••{{ a.iban[-4:] }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
 
     <div id="rows" class="bucket-list">
       {% for r in rows %}{{ row(r) }}{% endfor %}

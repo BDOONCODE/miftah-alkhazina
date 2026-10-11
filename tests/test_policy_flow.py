@@ -4,6 +4,7 @@ import pytest
 from app import models
 from app.models import PolicyStatus, Role
 from app.services import policies as svc
+from tests.conftest import give_vat_account
 
 
 def login(client, username, password="password123"):
@@ -45,11 +46,13 @@ def company(client, db, make_user):
     login(client, "acc")
     response = register(client)
     assert response.status_code == 303
-    return db.query(models.Entity).one()
+    entity = db.query(models.Entity).one()
+    give_vat_account(db, entity, db.query(models.User).filter_by(username="acc").one())
+    return entity
 
 
 def test_registration_creates_company_reviewer_and_dashboard(company, db):
-    pool = db.query(models.BankAccount).one()  # آيبان التسجيل صار الحساب المجمّع
+    pool = db.query(models.BankAccount).filter_by(kind=models.AccountKind.POOL).one()  # آيبان التسجيل صار الحساب المجمّع
     assert (pool.iban, pool.kind, pool.entity_id) == ("SA0380000000608010167519", models.AccountKind.POOL, company.id)
     reviewer = db.query(models.User).filter_by(username="sara").one()
     assert reviewer.role is Role.APPROVER and reviewer.must_change_password
@@ -230,6 +233,7 @@ def test_self_approval_company_without_reviewer(client, db, make_user):
     assert response.status_code == 303
     entity = db.query(models.Entity).filter_by(name="مجموعة العرفج").one()
     assert entity.approval_mode == "self" and entity.reviewers == []
+    give_vat_account(db, entity, db.query(models.User).filter_by(username="solo").one())
 
     client.post(f"/entities/{entity.id}/policy/draft")
     draft = svc.open_policy(db, entity.id)

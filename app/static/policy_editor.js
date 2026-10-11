@@ -26,6 +26,7 @@
       const rate = toNumber(tr.querySelector(".js-value").value);
       if (isPct) sum += calc === "vat_inclusive" ? (rate * 100) / (100 + rate) : rate;
     });
+    sum += 15 * 100 / 115; // ضريبة القيمة المضافة الإلزامية (١٣٫٠٤٪ من الوارد)
     total.textContent = `${Math.round(sum * 100) / 100}%`;
     total.classList.toggle("negative", sum > 100);
   }

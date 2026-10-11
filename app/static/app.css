@@ -267,3 +267,7 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 /* أرصدة البنود */
 .when-now { background: #e8f0fb; color: #2b5ea7; }
 .surplus-field { max-width: 32rem; }
+/* ضريبة القيمة المضافة الإلزامية في محرر السياسة */
+.vat-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(14rem, 22rem); gap: .75rem 1rem; align-items: end; background: var(--bg); margin-bottom: .75rem; }
+@media (max-width: 720px) { .vat-card { grid-template-columns: minmax(0, 1fr); } }
+.row-system td { background: var(--bg); }

@@ -4,6 +4,15 @@
     <tr><th>الأولوية</th><th>البند</th><th>النوع</th><th>القيمة</th><th>الاستحقاق (متى يتحوّل)</th><th>المستفيد</th><th></th></tr>
   </thead>
   <tbody>
+    <tr class="row-system">
+      <td class="num">—</td>
+      <td>ضريبة القيمة المضافة</td>
+      <td>إلزامية</td>
+      <td class="num">١٥٪ شامل</td>
+      <td>بعد نهاية كل ربع</td>
+      <td>حساب الضريبة</td>
+      <td><span class="pill pill-protected">🔒 النظام</span></td>
+    </tr>
   {% for b in policy.buckets %}
     <tr>
       <td class="num">{{ b.priority }}</td>

@@ -117,6 +117,13 @@ class Entity(Base):
     contact_phone: Mapped[str] = mapped_column(String(32), default="")
     # من يعتمد السياسات: "self" = منشئ السياسة يعتمدها بنفسه، "reviewer" = مراجع مستقل
     approval_mode: Mapped[str] = mapped_column(String(16), default="reviewer", server_default="reviewer")
+    # ضريبة القيمة المضافة إلزامية: رصيدها المستقل، والحساب اللي تتحوّل له بعد كل ربع
+    vat_bucket_id: Mapped[int | None] = mapped_column(
+        ForeignKey("buckets.id", use_alter=True, name="fk_entities_vat_bucket_id")
+    )
+    vat_account_id: Mapped[int | None] = mapped_column(
+        ForeignKey("bank_accounts.id", use_alter=True, name="fk_entities_vat_account_id")
+    )
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
@@ -165,6 +172,7 @@ class Bucket(Base):
     __tablename__ = "buckets"
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
+    system_name: Mapped[str | None] = mapped_column(String(64))  # بند يديره النظام (ضريبة القيمة المضافة)
     # الحساب الافتراضي للبند عند مزوّد الربط (نيوتك): ينفتح أول ما تنعتمد سياسة فيها البند
     virtual_iban: Mapped[str | None] = mapped_column(String(34))
     virtual_ref: Mapped[str | None] = mapped_column(String(128))

@@ -130,7 +130,7 @@ def _seed_demo_company(session, password: str | None = None) -> None:
 
     from .domain.periods import RIYADH
     from .domain.types import CalcType, Frequency
-    from .services import companies, policies, transactions
+    from .services import accounts, companies, policies, transactions
 
     accountant = session.scalar(select(User).where(User.username == "demo-acc"))
     username, full_name, default_password = DEMO_REVIEWER
@@ -141,18 +141,19 @@ def _seed_demo_company(session, password: str | None = None) -> None:
     )
     reviewer = session.scalar(select(User).where(User.username == username))
     reviewer.must_change_password = False
+    tax_account = accounts.add_account(session, entity, accountant, name="حساب الضريبة", bank_name="بنك تجريبي",
+                                       iban="SA1100000000000000000001", kind="sub")
     draft = policies.start_draft(session, entity, accountant)
+    # ضريبة القيمة المضافة يحسبها النظام بنفسه وتتحوّل لحساب الضريبة بعد كل ربع.
+    # الإيجار والرواتب والأرباح تتجمّع وتتحوّل يوم استحقاقها
     policies.save_draft(session, draft, [
-        # الضريبة تتحوّل فورًا لحسابها، والإيجار والرواتب والأرباح تتجمّع وتتحوّل يوم استحقاقها
-        policies.BucketInput(None, "الضريبة", 1, CalcType.VAT_INCLUSIVE, 1500, Frequency.IMMEDIATE, None, "", True,
-                             new_destination_iban="SA1100000000000000000001", new_destination_kind="sub"),
-        policies.BucketInput(None, "الإيجار", 2, CalcType.FIXED_AMOUNT, 1_000_000, Frequency.DAY_OF_MONTH, 25, "", False,
+        policies.BucketInput(None, "الإيجار", 1, CalcType.FIXED_AMOUNT, 1_000_000, Frequency.DAY_OF_MONTH, 25, "", False,
                              new_destination_iban="SA1100000000000000000003", new_destination_kind="external"),
-        policies.BucketInput(None, "الرواتب", 3, CalcType.FIXED_AMOUNT, 1_500_000, Frequency.MONTHLY, None, "", True,
+        policies.BucketInput(None, "الرواتب", 2, CalcType.FIXED_AMOUNT, 1_500_000, Frequency.MONTHLY, None, "", True,
                              new_destination_iban="SA1100000000000000000004", new_destination_kind="sub"),
-        policies.BucketInput(None, "الأرباح", 4, CalcType.PERCENTAGE, 500, Frequency.MONTHLY, None, "", False,
+        policies.BucketInput(None, "الأرباح", 3, CalcType.PERCENTAGE, 500, Frequency.MONTHLY, None, "", False,
                              new_destination_iban="SA1100000000000000000002", new_destination_kind="sub"),
-    ], "سياسة تجريبية", accountant)
+    ], "سياسة تجريبية", accountant, vat_account_id=tax_account.id)
     policies.submit(session, draft, accountant, "")
     policies.approve(session, draft, reviewer)
     session.flush()

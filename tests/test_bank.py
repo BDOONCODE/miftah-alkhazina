@@ -9,6 +9,7 @@ from app.routes.bank import sign
 from app.services import accounts as acc
 from app.services import companies
 from app.services import policies as pol
+from tests.conftest import give_vat_account
 
 POOL = "SA0380000000608010167519"
 POS = "SA4420000001234567891234"
@@ -22,7 +23,9 @@ def company(client, db, make_user):
     make_user("acc")
     client.post("/login", data={"username": "acc", "password": "password123"})
     client.post("/companies/new", data={"name": "مطعم الريم", "approval_mode": "self"})
-    return db.query(models.Entity).one()
+    entity = db.query(models.Entity).one()
+    give_vat_account(db, entity, db.query(models.User).filter_by(username="acc").one())
+    return entity
 
 
 def add(client, entity, name, iban, kind):
@@ -62,11 +65,11 @@ def activate_policy(client, db, company, accounts):
 
 def test_accounts_validation(client, db, company):
     assert add(client, company, "المجمّع", "SA 0380 0000 0060 8010 1675 19", "pool").status_code == 303
-    assert db.query(models.BankAccount).one().iban == POOL  # المسافات تنشال
+    assert db.query(models.BankAccount).filter_by(kind=AccountKind.POOL).one().iban == POOL  # المسافات تنشال
     add(client, company, "مجمّع ثاني", POS, "pool")  # مجمّع واحد بس
     add(client, company, "مكرر", POOL, "source")  # نفس الآيبان
     add(client, company, "غلط", "12345", "source")
-    assert db.query(models.BankAccount).count() == 1
+    assert db.query(models.BankAccount).count() == 2  # المجمّع + حساب الضريبة
     assert "مجمّع" in client.get(f"/entities/{company.id}/accounts").text
 
 
@@ -110,7 +113,8 @@ def test_simulator_allocates_like_the_bank(client, db, company, accounts):
     txn = db.get(models.Transaction, response.json()["transaction_id"])
     assert txn.source is TransactionSource.OPEN_BANKING and txn.created_by is None
     assert txn.external_ref.startswith("SIM-")
-    assert {e.allocated for e in txn.events} == {300_00, 1_700_00}  # ١٥٪ ضريبة، والباقي للإيجار
+    # ضريبة القيمة المضافة داخل الـ٢,٠٠٠ (٢٦٠٫٨٦) أول شي، وبعدها بند ١٥٪، والباقي للإيجار
+    assert {e.allocated for e in txn.events} == {26_086, 300_00, 143_914}
     page = client.get(f"/transactions/{txn.id}").text
     assert "البنك (تلقائي)" in page and "نقاط البيع" in page
 
@@ -185,7 +189,7 @@ def test_new_iban_from_policy_creates_account(client, db, company):
     )
     db.refresh(draft)
     assert draft.status is models.PolicyStatus.ACTIVE  # اعتماد ذاتي
-    account = db.query(models.BankAccount).one()
+    account = db.query(models.BankAccount).filter_by(iban=TAX).one()
     assert (account.iban, account.kind, account.name) == (TAX, AccountKind.SUB, "الضريبة")
     assert draft.buckets[0].destination_account_id == account.id
 
