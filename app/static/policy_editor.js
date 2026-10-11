@@ -9,7 +9,8 @@
   function refresh() {
     let sum = 0;
     rows.querySelectorAll(".bucket-row").forEach((tr) => {
-      const isPct = tr.querySelector(".js-calc").value === "percentage";
+      const calc = tr.querySelector(".js-calc").value;
+      const isPct = calc !== "fixed_amount";
       tr.querySelector(".js-unit").textContent = isPct ? "%" : "ر.س";
       const freq = tr.querySelector(".js-freq").value;
       tr.querySelector(".js-day").hidden = freq !== "day_of_month";
@@ -21,7 +22,9 @@
       const box = tr.querySelector(".js-new-dest");
       box.hidden = !isNew;
       box.querySelector('input[name="dest_iban"]').required = isNew;
-      if (isPct) sum += toNumber(tr.querySelector(".js-value").value);
+      // الضريبة الشاملة ١٥٪ تاخذ ١٣٫٠٤٪ من الوارد (١٥ ÷ ١١٥)
+      const rate = toNumber(tr.querySelector(".js-value").value);
+      if (isPct) sum += calc === "vat_inclusive" ? (rate * 100) / (100 + rate) : rate;
     });
     total.textContent = `${Math.round(sum * 100) / 100}%`;
     total.classList.toggle("negative", sum > 100);

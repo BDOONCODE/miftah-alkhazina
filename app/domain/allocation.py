@@ -2,6 +2,7 @@
 
 لكل بند حسب الأولوية:
     نسبة:  المطلوب = floor(النسبة × المبلغ) + العجز المرحَّل
+    ضريبة شاملة: المطلوب = floor(المبلغ × النسبة ÷ (١ + النسبة)) + العجز المرحَّل
     ثابت:  المطلوب = المستحق لين اليوم − المتجمّع له
            (بدون تاريخ استحقاق: المستحق = الهدف كامل؛
             مع تاريخ استحقاق: يتجمّع بالتدريج بالأيام لين يكتمل قبل الاستحقاق)
@@ -32,6 +33,17 @@ class ClosedPeriodError(ValueError):
 
 def percentage_share(amount: int, basis_points: int) -> int:
     return amount * basis_points // BASIS_POINTS_FULL
+
+
+def inclusive_tax_share(amount: int, basis_points: int) -> int:
+    """الضريبة اللي داخل مبلغ شامل الضريبة: ١١٥ بنسبة ١٥٪ فيها ١٥."""
+    return amount * basis_points // (BASIS_POINTS_FULL + basis_points)
+
+
+def rate_share(calc_type: CalcType, amount: int, basis_points: int) -> int:
+    if calc_type is CalcType.VAT_INCLUSIVE:
+        return inclusive_tax_share(amount, basis_points)
+    return percentage_share(amount, basis_points)
 
 
 def _period_start_date(key: str) -> date | None:
@@ -89,8 +101,8 @@ def allocate(
     for bucket in sorted(buckets, key=lambda b: b.priority):
         current, _ = rolled[bucket.bucket_id]
 
-        if bucket.calc_type is CalcType.PERCENTAGE:
-            required = percentage_share(amount, bucket.value) + current.carried_deficit
+        if bucket.calc_type.is_rate:
+            required = rate_share(bucket.calc_type, amount, bucket.value) + current.carried_deficit
         else:
             # مع تاريخ استحقاق: ياخذ بس المستحق لين اليوم (تجميع تدريجي). بدون تاريخ: الهدف كامل فورًا
             due_by_now = accrued_target(current.target, bucket.frequency, on, bucket.settlement_day, bucket.due_date)
@@ -108,7 +120,7 @@ def allocate(
         else:
             status = FundingStatus.UNFUNDED
 
-        carried = required - allocated if bucket.calc_type is CalcType.PERCENTAGE else 0
+        carried = required - allocated if bucket.calc_type.is_rate else 0
         after = BucketState(
             bucket.bucket_id, current.period_key, current.target, current.funded + allocated, carried
         )

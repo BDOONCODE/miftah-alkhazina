@@ -10,8 +10,16 @@ from enum import StrEnum
 
 
 class CalcType(StrEnum):
-    PERCENTAGE = "percentage"
+    PERCENTAGE = "percentage"  # نسبة من المبلغ الوارد
     FIXED_AMOUNT = "fixed_amount"
+    # ضريبة القيمة المضافة والمبيعات شاملة الضريبة: الضريبة جزء من المبلغ نفسه،
+    # فنصيبها = المبلغ × النسبة ÷ (١ + النسبة). مثال ١٥٪: ١١٥ ريال فيها ١٥ ضريبة
+    VAT_INCLUSIVE = "vat_inclusive"
+
+    @property
+    def is_rate(self) -> bool:
+        """نوع يحسب نصيبه من كل مبلغ وارد (ويترحّل عجزه)، مو هدف ثابت."""
+        return self is not CalcType.FIXED_AMOUNT
 
 
 class Frequency(StrEnum):

@@ -18,7 +18,7 @@
     <label>القيمة
       <span class="input-unit">
         <input name="value" value="{{ r.value }}" inputmode="decimal" class="num js-value" required>
-        <span class="unit js-unit">{{ '%' if r.calc_type == 'percentage' else 'ر.س' }}</span>
+        <span class="unit js-unit">{{ 'ر.س' if r.calc_type == 'fixed_amount' else '%' }}</span>
       </span>
     </label>
     <label>الاستحقاق
@@ -88,6 +88,10 @@
     <details class="help">
       <summary>وش معنى «المستفيد» و«الاستحقاق» و«محمي»؟</summary>
       <dl>
+        <dt>ضريبة القيمة المضافة</dt>
+        <dd>المبيعات في الغالب <strong>شاملة الضريبة</strong>، فالضريبة جزء من المبلغ نفسه. اختر النوع
+          «ضريبة قيمة مضافة (شامل)» واكتب ١٥: من كل ١١٥ ريال ينحجز ١٥ (يعني ١٣٫٠٤٪ من الوارد، مو ١٥٪).
+          النوع «نسبة» يحسب من فوق المبلغ، فلو استخدمته للضريبة يحجز أكثر من المستحق.</dd>
         <dt>المستفيد</dt>
         <dd>الآيبان اللي يتحوّل له مبلغ البند: جهة خارجية (مانح الامتياز، المؤجر) أو حساب آخر للشركة (الاحتياطي، الأرباح).
           اختر حساب مسجّل، أو «+ آيبان جديد» وينضاف تلقائيًا لتبويب <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a>.</dd>

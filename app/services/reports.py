@@ -15,7 +15,7 @@ from ..domain.periods import RIYADH
 from ..models import AllocationEvent, Entity, PeriodClosure, utcnow
 from . import metrics as m
 
-CALC = {"percentage": "نسبة", "fixed_amount": "مبلغ ثابت"}
+CALC = {"percentage": "نسبة", "fixed_amount": "مبلغ ثابت", "vat_inclusive": "ضريبة قيمة مضافة (شامل)"}
 
 
 @dataclass
@@ -131,7 +131,7 @@ def to_excel(report: Report) -> bytes:
     table = start + len(totals) + 3
     _header(ws, table, ["الأولوية", "البند", "النوع", "القيمة", "المخصص خلال الفترة", "الهدف", "المتجمّع حاليًا", "العجز الحالي"])
     for r, b in enumerate(snap.buckets, table + 1):
-        value = f"{b.value / 100:g}%" if b.calc_type and b.calc_type.value == "percentage" else b.value / 100
+        value = f"{b.value / 100:g}%" if b.calc_type and b.calc_type.is_rate else b.value / 100
         cells = [b.priority, b.name, CALC.get(b.calc_type.value if b.calc_type else "", ""), value, b.allocated / 100, b.target / 100, b.funded / 100, b.deficit / 100]
         for c, v in enumerate(cells, 1):
             cell = ws.cell(row=r, column=c, value=v)

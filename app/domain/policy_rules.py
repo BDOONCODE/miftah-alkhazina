@@ -8,6 +8,13 @@ from .types import ANCHORED_MONTHS, BASIS_POINTS_FULL, BucketSpec, CalcType, Fre
 MIN_JUSTIFICATION_LENGTH = 20
 
 
+def effective_rate(b: BucketSpec) -> int:
+    """نصيب البند من المبلغ الوارد بنقاط الأساس (الضريبة الشاملة ١٥٪ = ١٣٫٠٤٪ من الوارد)."""
+    if b.calc_type is CalcType.VAT_INCLUSIVE:
+        return b.value * BASIS_POINTS_FULL // (BASIS_POINTS_FULL + b.value)
+    return b.value
+
+
 def validate_policy(buckets: Sequence[BucketSpec]) -> list[str]:
     """يرجّع قائمة أخطاء بالعربي؛ القائمة الفاضية تعني السياسة سليمة."""
     errors: list[str] = []
@@ -24,14 +31,14 @@ def validate_policy(buckets: Sequence[BucketSpec]) -> list[str]:
             errors.append("كل بند لازم يكون له اسم")
         if b.value <= 0:
             errors.append(f"{label}: القيمة لازم تكون أكبر من صفر")
-        if b.calc_type is CalcType.PERCENTAGE and b.value > BASIS_POINTS_FULL:
+        if b.calc_type.is_rate and b.value > BASIS_POINTS_FULL:
             errors.append(f"{label}: النسبة ما تتجاوز 100%")
         if b.frequency in ANCHORED_MONTHS and b.due_date is None:
             errors.append(f"{label}: حدد تاريخ الاستحقاق القادم")
         if b.frequency is Frequency.DAY_OF_MONTH and not (b.settlement_day and 1 <= b.settlement_day <= 31):
             errors.append(f"{label}: حدد يوم الاستحقاق بين 1 و31")
 
-    pct_total = sum(b.value for b in buckets if b.calc_type is CalcType.PERCENTAGE)
+    pct_total = sum(effective_rate(b) for b in buckets if b.calc_type.is_rate)
     if pct_total > BASIS_POINTS_FULL:
         errors.append(f"مجموع النسب {pct_total / 100:.2f}% يتجاوز 100%")
     return errors

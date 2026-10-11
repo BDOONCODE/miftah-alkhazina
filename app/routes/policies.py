@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from ..auth import current_user, get_entity_for, require_role
 from ..db import get_session
 from ..domain.money import format_amount, parse_amount, parse_percent
-from ..domain.policy_rules import validate_policy
+from ..domain.policy_rules import effective_rate, validate_policy
 from ..domain.types import BASIS_POINTS_FULL, CalcType, Frequency
 from ..models import Policy, PolicyStatus, Role, User
 from ..services import policies as svc
@@ -31,7 +31,7 @@ def _policy_for(user: User, policy_id: int, session: Session) -> Policy:
 
 def _row_view(pb) -> dict:
     """البند كنصوص للنموذج."""
-    value = str(pb.value / 100).rstrip("0").rstrip(".") if pb.calc_type is CalcType.PERCENTAGE else format_amount(pb.value)
+    value = str(pb.value / 100).rstrip("0").rstrip(".") if pb.calc_type.is_rate else format_amount(pb.value)
     return {
         "bucket_id": str(pb.bucket_id),
         "name": pb.name,
@@ -71,7 +71,7 @@ def _parse_rows(form) -> tuple[list[dict], list[svc.BucketInput], list[str]]:
         try:
             calc = CalcType(row["calc_type"])
             freq = Frequency(row["frequency"])
-            value = parse_percent(row["value"]) if calc is CalcType.PERCENTAGE else parse_amount(row["value"])
+            value = parse_percent(row["value"]) if calc.is_rate else parse_amount(row["value"])
             priority = int(row["priority"])
             day = int(row["settlement_day"]) if row["settlement_day"].strip() else None
             due = date.fromisoformat(row["due_date"]) if row["due_date"].strip() else None
@@ -151,7 +151,7 @@ def _render_editor(request, user, policy, session, rows, errors, notes, status_c
                 a for a in accounts_for(session, policy.entity_id, active_only=True) if a.kind in DESTINATION_KINDS
             ],
             "has_pool": pool_account(session, policy.entity_id) is not None,
-            "pct_total": sum(pb.value for pb in policy.buckets if pb.calc_type is CalcType.PERCENTAGE)
+            "pct_total": sum(effective_rate(b) for b in svc.specs(policy) if b.calc_type.is_rate)
             / (BASIS_POINTS_FULL / 100),
         },
         status_code=status_code,

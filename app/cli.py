@@ -144,7 +144,7 @@ def _seed_demo_company(session, password: str | None = None) -> None:
     draft = policies.start_draft(session, entity, accountant)
     policies.save_draft(session, draft, [
         # الضريبة تتحوّل فورًا لحسابها، والإيجار والرواتب والأرباح تتجمّع وتتحوّل يوم استحقاقها
-        policies.BucketInput(None, "الضريبة", 1, CalcType.PERCENTAGE, 1500, Frequency.IMMEDIATE, None, "", True,
+        policies.BucketInput(None, "الضريبة", 1, CalcType.VAT_INCLUSIVE, 1500, Frequency.IMMEDIATE, None, "", True,
                              new_destination_iban="SA1100000000000000000001", new_destination_kind="sub"),
         policies.BucketInput(None, "الإيجار", 2, CalcType.FIXED_AMOUNT, 1_000_000, Frequency.DAY_OF_MONTH, 25, "", False,
                              new_destination_iban="SA1100000000000000000003", new_destination_kind="external"),
