@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
@@ -22,7 +23,37 @@ from .services.signup import find_by_login
 from .templating import templates
 from .web import redirect
 
-app = FastAPI(title="مفتاح الخزينة", docs_url=None, redoc_url=None)
+def _self_ping() -> None:
+    """الاستضافة المجانية تنوّم الموقع بعد ١٥ دقيقة بدون زيارات، وأول زيارة بعدها تاخذ قرابة دقيقة.
+    فالموقع يزور نفسه من رابطه العام كل ١٠ دقائق طول ما هو شغّال، فما يوصل للنوم أبدًا.
+    (والزيارة نفسها تشغّل صرف البنود اللي وصل موعدها.) محليًا ما يشتغل لأن الرابط مو موجود."""
+    import os
+    import threading
+    import time
+    import urllib.request
+
+    base = (os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("APP_URL") or "").rstrip("/")
+    if not base.startswith("https://"):
+        return
+
+    def loop() -> None:
+        while True:
+            time.sleep(10 * 60)
+            try:
+                urllib.request.urlopen(f"{base}/keepalive", timeout=60).read()
+            except Exception as exc:  # انقطاع مؤقت: نجرب بعد ١٠ دقائق
+                logging.getLogger(__name__).warning("self-ping failed: %s", exc)
+
+    threading.Thread(target=loop, name="self-ping", daemon=True).start()
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    _self_ping()
+    yield
+
+
+app = FastAPI(title="مفتاح الخزينة", docs_url=None, redoc_url=None, lifespan=_lifespan)
 app.add_middleware(
     SessionMiddleware, secret_key=SECRET_KEY, https_only=HTTPS_ONLY_COOKIES, same_site="lax", max_age=12 * 3600
 )
