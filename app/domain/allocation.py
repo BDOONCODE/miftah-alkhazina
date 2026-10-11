@@ -36,8 +36,12 @@ def percentage_share(amount: int, basis_points: int) -> int:
 
 
 def inclusive_tax_share(amount: int, basis_points: int) -> int:
-    """الضريبة اللي داخل مبلغ شامل الضريبة: ١١٥ بنسبة ١٥٪ فيها ١٥."""
-    return amount * basis_points // (BASIS_POINTS_FULL + basis_points)
+    """الضريبة اللي داخل مبلغ شامل الضريبة: ١١٥ بنسبة ١٥٪ فيها ١٥.
+
+    تتقرّب لأقرب هللة مثل فاتورة الضريبة (١٠,٠٠٠ فيها ١,٣٠٤٫٣٤٧ ← ١,٣٠٤٫٣٥).
+    """
+    denominator = BASIS_POINTS_FULL + basis_points
+    return (2 * amount * basis_points + denominator) // (2 * denominator)
 
 
 def rate_share(calc_type: CalcType, amount: int, basis_points: int) -> int:

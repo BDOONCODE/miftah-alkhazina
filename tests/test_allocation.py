@@ -129,12 +129,13 @@ def test_policy_change_mid_period_keeps_funded_and_uses_new_target():
 
 
 def test_vat_inclusive_takes_the_tax_inside_the_amount():
-    """مبيعات شاملة الضريبة: ١١٥ ريال فيها ١٥ ضريبة، فـ١٠,٠٠٠ فيها ١,٣٠٤٫٣٤ (مو ١,٥٠٠)."""
+    """مبيعات شاملة الضريبة: ١١٥ ريال فيها ١٥ ضريبة، فـ١٠,٠٠٠ فيها ١,٣٠٤٫٣٥ (مو ١,٥٠٠)."""
     vat = BucketSpec(7, "ضريبة القيمة المضافة", 1, CalcType.VAT_INCLUSIVE, 1500, Frequency.IMMEDIATE)
     assert line(allocate([vat], {}, 115 * SAR, date(2026, 9, 1)), 7).allocated == 15 * SAR
     result = allocate([vat], {}, 10_000 * SAR, date(2026, 9, 1))
-    assert line(result, 7).allocated == 130_434  # floor(1,000,000 × 15 / 115)
-    assert result.surplus == 10_000 * SAR - 130_434
+    assert line(result, 7).allocated == 130_435  # ١,٣٠٤٫٣٤٧ تتقرّب لأقرب هللة مثل الفاتورة
+    assert result.surplus == 10_000 * SAR - 130_435
+    assert line(allocate([vat], {}, 11_500 * SAR, date(2026, 9, 1)), 7).allocated == 1_500 * SAR
 
 
 def test_rounding_goes_to_surplus():
