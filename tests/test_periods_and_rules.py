@@ -15,15 +15,15 @@ F = Frequency
     [
         (F.IMMEDIATE, date(2026, 9, 29), None, PERPETUAL_KEY),
         (F.DAILY, date(2026, 9, 29), None, "2026-09-29"),
-        (F.WEEKLY, date(2026, 9, 29), None, "2026-09-27"),  # الثلاثاء ← الأحد
-        (F.WEEKLY, date(2026, 9, 27), None, "2026-09-27"),  # الأحد نفسه
-        (F.WEEKLY, date(2026, 9, 26), None, "2026-09-20"),  # السبت آخر الأسبوع
+        (F.WEEKLY, date(2026, 9, 29), None, "2026-09-27"),  # Tuesday -> Sunday
+        (F.WEEKLY, date(2026, 9, 27), None, "2026-09-27"),  # Sunday itself
+        (F.WEEKLY, date(2026, 9, 26), None, "2026-09-20"),  # Saturday is the end of the week
         (F.MONTHLY, date(2026, 9, 29), None, "2026-09-01"),
         (F.DAY_OF_MONTH, date(2026, 9, 29), 25, "2026-09-25"),
         (F.DAY_OF_MONTH, date(2026, 9, 10), 25, "2026-08-25"),
-        (F.DAY_OF_MONTH, date(2026, 2, 28), 31, "2026-02-28"),  # فبراير: آخر يوم
+        (F.DAY_OF_MONTH, date(2026, 2, 28), 31, "2026-02-28"),  # February: the last day
         (F.DAY_OF_MONTH, date(2026, 2, 27), 31, "2026-01-31"),
-        (F.DAY_OF_MONTH, date(2026, 1, 5), 10, "2025-12-10"),  # عبور السنة
+        (F.DAY_OF_MONTH, date(2026, 1, 5), 10, "2025-12-10"),  # crossing the year
     ],
 )
 def test_period_key(freq, on, day, expected):
@@ -31,7 +31,7 @@ def test_period_key(freq, on, day, expected):
 
 
 def test_local_date_uses_riyadh_time():
-    # 22:30 UTC = 01:30 الرياض من اليوم التالي
+    # 22:30 UTC = 01:30 Riyadh the next day
     assert local_date(datetime(2026, 9, 29, 22, 30, tzinfo=timezone.utc)) == date(2026, 9, 30)
 
 
@@ -52,11 +52,11 @@ def test_validate_policy_errors():
     assert validate_policy([b(1, 1), b(2, 2, CalcType.FIXED_AMOUNT, 500, F.MONTHLY)]) == []
     assert "أولوية" in validate_policy([b(1, 1), b(2, 1)])[0]
     assert any("100%" in e for e in validate_policy([b(1, 1, value=6000), b(2, 2, value=5000)]))
-    assert validate_policy([b(1, 1, CalcType.FIXED_AMOUNT, 500, F.IMMEDIATE)]) == []  # بدون تاريخ: ياخذ فورًا
+    assert validate_policy([b(1, 1, CalcType.FIXED_AMOUNT, 500, F.IMMEDIATE)]) == []  # no due date: takes it at once
     assert any("تاريخ الاستحقاق" in e for e in validate_policy([b(1, 1, CalcType.FIXED_AMOUNT, 500, F.SEMIANNUAL)]))
     assert any("يوم" in e for e in validate_policy([b(1, 1, freq=F.DAY_OF_MONTH)]))
     assert validate_policy([])
-    # الضريبة الشاملة ١٥٪ تاخذ ١٣٫٠٤٪ من الوارد، فمع ٨٦٪ نسبة يبقى المجموع تحت ١٠٠٪
+    # VAT at 15% takes 13.04% of the incoming amount, so with 86% in rates the total stays under 100%
     assert validate_policy([b(1, 1, CalcType.VAT_INCLUSIVE, 1500), b(2, 2, value=8600)]) == []
     assert any("100%" in e for e in validate_policy([b(1, 1, CalcType.VAT_INCLUSIVE, 1500), b(2, 2, value=8800)]))
 
@@ -65,10 +65,10 @@ def test_protected_changes_need_justification():
     old = [b(1, 1, protected=True), b(2, 2)]
     changed = [b(1, 1, value=900, protected=True), b(2, 3)]
     changes = protected_changes(old, changed, funded_bucket_ids={1, 2})
-    assert changes == ["تغيير قيمة البند المحمي «بند1»"]  # البند 2 غير محمي
+    assert changes == ["تغيير قيمة البند المحمي «بند1»"]  # item 2 is not protected
     assert justification_error(changes, "قصير")
     assert justification_error(changes, "رفع الضريبة بسبب تعديل نظامي من الهيئة") is None
-    # بند محمي ما تموّل في الفترة الحالية: التعديل حر
+    # A protected item not funded in the current period: free to edit
     assert protected_changes(old, changed, funded_bucket_ids=set()) == []
     assert protected_changes(old, [b(2, 2)], funded_bucket_ids={1}) == ["حذف البند المحمي «بند1»"]
 
@@ -97,4 +97,4 @@ def test_accrued_target_grows_daily_and_completes_before_due():
     mid = accrued_target(target, F.SEMIANNUAL, date(2026, 12, 1), due_date=due)
     last = accrued_target(target, F.SEMIANNUAL, date(2027, 2, 28), due_date=due)
     assert 0 < first < mid < last == target
-    assert accrued_target(target, F.IMMEDIATE, date(2026, 9, 1)) == target  # بدون تاريخ: كامل فورًا
+    assert accrued_target(target, F.IMMEDIATE, date(2026, 9, 1)) == target  # no due date: the whole target at once

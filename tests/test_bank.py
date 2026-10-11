@@ -1,4 +1,4 @@
-"""الحسابات البنكية، وجهات البنود، والإيداع التلقائي (محاكي البنك وإشعار البنك)."""
+"""Bank accounts, item beneficiaries, and automatic deposits (bank simulator and bank webhook)."""
 import json
 
 import pytest
@@ -47,7 +47,7 @@ def activate_policy(client, db, company, accounts):
         "priority": ["1", "2"],
         "calc_type": ["percentage", "fixed_amount"],
         "value": ["15", "10000"],
-        "frequency": ["immediate", "immediate"],  # بدون موعد: النتيجة ما تعتمد على تاريخ اليوم
+        "frequency": ["immediate", "immediate"],  # no due date: the result does not depend on today's date
         "settlement_day": ["", ""],
         "destination": [str(accounts["حساب الضريبة"].id), str(accounts["المؤجر"].id)],
         "protected": ["1", "0"],
@@ -62,9 +62,9 @@ def activate_policy(client, db, company, accounts):
 
 def test_accounts_validation(client, db, company):
     assert add(client, company, "المجمّع", "SA 0380 0000 0060 8010 1675 19", "pool").status_code == 303
-    assert db.query(models.BankAccount).one().iban == POOL  # المسافات تنشال
-    add(client, company, "مجمّع ثاني", POS, "pool")  # مجمّع واحد بس
-    add(client, company, "مكرر", POOL, "source")  # نفس الآيبان
+    assert db.query(models.BankAccount).one().iban == POOL  # spaces are removed
+    add(client, company, "مجمّع ثاني", POS, "pool")  # only one pool
+    add(client, company, "مكرر", POOL, "source")  # same IBAN
     add(client, company, "غلط", "12345", "source")
     assert db.query(models.BankAccount).count() == 1
     assert "مجمّع" in client.get(f"/entities/{company.id}/accounts").text
@@ -110,7 +110,7 @@ def test_simulator_allocates_like_the_bank(client, db, company, accounts):
     txn = db.get(models.Transaction, response.json()["transaction_id"])
     assert txn.source is TransactionSource.OPEN_BANKING and txn.created_by is None
     assert txn.external_ref.startswith("SIM-")
-    assert {e.allocated for e in txn.events} == {300_00, 1_700_00}  # ١٥٪ ضريبة، والباقي للإيجار
+    assert {e.allocated for e in txn.events} == {300_00, 1_700_00}  # 15% tax, the rest to rent
     page = client.get(f"/transactions/{txn.id}").text
     assert "البنك (تلقائي)" in page and "نقاط البيع" in page
 
@@ -140,22 +140,22 @@ def post_webhook(client, payload, secret=SECRET):
 
 def test_bank_webhook(client, db, company, accounts, monkeypatch):
     activate_policy(client, db, company, accounts)
-    client.post("/logout")  # الإشعار يجي من البنك بدون جلسة دخول
+    client.post("/logout")  # the notification comes from the bank without a login session
     payload = {"iban": POS, "amount": "4000.00", "occurred_at": "2026-09-02T10:00:00+03:00", "reference": "NEO-1"}
 
     monkeypatch.delenv("BANK_WEBHOOK_SECRET", raising=False)
-    assert post_webhook(client, payload).status_code == 503  # الربط غير مفعّل
+    assert post_webhook(client, payload).status_code == 503  # integration not enabled
 
     monkeypatch.setenv("BANK_WEBHOOK_SECRET", SECRET)
     assert post_webhook(client, payload, secret="wrong").status_code == 401
     first = post_webhook(client, payload)
     assert first.status_code == 200 and first.json()["status"] == "allocated"
-    again = post_webhook(client, payload)  # نفس الإشعار مرة ثانية
+    again = post_webhook(client, payload)  # the same notification again
     assert again.json()["transaction_id"] == first.json()["transaction_id"]
     assert db.query(models.Transaction).count() == 1
 
     unknown = post_webhook(client, payload | {"iban": LANDLORD, "reference": "NEO-2"})
-    assert unknown.status_code == 422  # حساب خارجي، مو مصدر إيراد
+    assert unknown.status_code == 422  # an external account, not a revenue source
     assert post_webhook(client, {"iban": POS}).status_code == 400
 
 
@@ -184,7 +184,7 @@ def test_new_iban_from_policy_creates_account(client, db, company):
         data=_draft_form(destination=["new"], dest_iban=["sa11 1000 0000 0000 0000 0001"], dest_kind=["sub"]),
     )
     db.refresh(draft)
-    assert draft.status is models.PolicyStatus.ACTIVE  # اعتماد ذاتي
+    assert draft.status is models.PolicyStatus.ACTIVE  # self-approval
     account = db.query(models.BankAccount).one()
     assert (account.iban, account.kind, account.name) == (TAX, AccountKind.SUB, "الضريبة")
     assert draft.buckets[0].destination_account_id == account.id
@@ -221,7 +221,7 @@ def test_semiannual_item_needs_and_saves_due_date(client, db, company):
     )
     client.post(f"/policies/{draft.id}/edit", data=form | {"due_date": [""]})
     db.refresh(draft)
-    assert draft.status is models.PolicyStatus.DRAFT  # بدون تاريخ استحقاق ما تنعتمد
+    assert draft.status is models.PolicyStatus.DRAFT  # not approved without a due date
     assert "تاريخ الاستحقاق القادم" in client.get(f"/policies/{draft.id}/edit").text
 
     client.post(f"/policies/{draft.id}/edit", data=form | {"due_date": ["2027-03-01"]})

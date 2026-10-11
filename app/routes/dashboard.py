@@ -117,7 +117,7 @@ async def save_layout(request: Request, entity_id: int, user: User = Depends(edi
     return JSONResponse({"ok": True})
 
 
-# ------------------------------------------------------------------ المؤشرات المخصصة
+# ------------------------------------------------------------------ custom metrics
 
 
 @router.post("/entities/{entity_id}/metrics")

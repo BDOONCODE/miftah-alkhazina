@@ -1,100 +1,87 @@
-# مفتاح الخزينة — خطة الـMVP المعتمدة
+# Miftah Alkhazina: the approved MVP plan
 
-> نظام Profit First قابل للتخصيص: تقسيم فوري لكل مبلغ وارد حسب سياسة يحددها المحاسب لكل شركة، بمنطق waterfall حسب الأولوية.
-> مشروع جديد من الصفر. **كل الأدوات مجانية ومفتوحة المصدر.**
+> A configurable Profit First system: every incoming amount is split immediately according to a policy the accountant defines per company, as a priority-ordered waterfall.
+> A new project from scratch. **All tools are free and open source.**
 
-## القرارات المعتمدة
+## Decisions
 
-| الموضوع | القرار |
+| Topic | Decision |
 |---|---|
-| التقنيات | Python 3.12 + FastAPI + SQLAlchemy 2 + Alembic + pytest. واجهة Jinja2 + HTMX + CSS مكتوب يدويًا باتجاه RTL (بدون Tailwind، فما نحتاج أي أداة بناء) |
-| قاعدة البيانات | SQLite للتطوير المحلي، وSupabase (PostgreSQL، خطة مجانية) عند النشر، بتغيير `DATABASE_URL` فقط |
-| النشر | استضافة مجانية (Render أو Koyeb) مع نطاق فرعي مجاني. بيانات تجريبية فقط لين نراجع متطلبات حفظ البيانات داخل المملكة |
-| الفترة «الفورية» | فترة دائمة ما تنقفل، فعجز البند الفوري يبقى مرحَّلًا لين يتسدد |
-| المبالغ | أعداد صحيحة بالهللة. التقريب للأسفل، والفرق يروح للفائض |
-| البند النسبي | يُحسب من مبلغ المعاملة الكامل M، وعجزه **يُرحَّل** للمعاملات الجاية إلى نهاية فترته |
-| البند الثابت | هدف تراكمي للفترة. في نهاية الفترة يُسجَّل العجز الباقي كعجز نهائي، ثم يبدأ من الصفر |
-| الفائض | يبقى **فائض** مسجَّل (مو بند)، ويظهر في اللوحة مع العجز |
-| المستخدمين | تسجيل دخول وأدوار: مدير (ينشئ حسابات المحاسبين) / محاسب / مراجع. اللي ينشئ السياسة ما يعتمدها. ما في تسجيل ذاتي |
-| مسار العمل | المحاسب يسجّل الشركة (سجل تجاري، رقم ضريبي، بنك، آيبان) ومعها المراجع بكلمة مرور مؤقتة ← يبني السياسة ويرسلها ← المراجع يغيّر كلمة مروره أول دخول ويعتمد ← أول مبلغ يدخل يتقسم حسب السياسة |
-| التقارير | داخل الـMVP: تقارير أسبوعية / شهرية / سنوية قابلة للتنزيل (Excel عبر openpyxl المجاني) |
-| اللوحة | قابلة للتخصيص. **لكل شركة ومشتركة**، ولوحة واحدة لكل شركة. فيها **مؤشرات بمعادلات مخصصة** من الآن |
-| الفترات | التوقيت Asia/Riyadh، تقويم ميلادي، الأسبوع يبدأ الأحد. لو اليوم المحدد ما يوجد في الشهر نعتمد آخر يوم. فترة البند الثابت هي نفسها جدولة تسويته |
+| Stack | Python 3.12 + FastAPI + SQLAlchemy 2 + Alembic + pytest. Jinja2 UI with hand-written RTL CSS and vanilla JS (no build step) |
+| Database | SQLite for local development, Supabase (PostgreSQL, free plan) in production, switched by `DATABASE_URL` only |
+| Hosting | Free hosting (Render) on a free subdomain. Demo data only until data-residency requirements in Saudi Arabia are reviewed |
+| "Immediate" period | A perpetual period that never closes, so an immediate item's deficit carries until paid |
+| Amounts | Integers in halalas. Rates round down and the remainder goes to surplus; VAT rounds to the nearest halala like an invoice |
+| Percentage item | Computed from the full transaction amount M; its deficit **carries** to later transactions until the end of its period |
+| VAT item | Optional item the accountant adds. The incoming amount already includes the tax, so its share is M x 15 / 115 |
+| Fixed item | A target per period. With a due date it accrues day by day and completes before the due date; without one it takes the whole target at once. At period end the remaining deficit is recorded |
+| Surplus | Recorded as **surplus** (not an item) and shown on the dashboard. The accountant chooses where it goes, or it stays in the pool |
+| Users | Login and roles: admin / accountant / reviewer, plus self-signup. Approval per company is either self-approval or an independent reviewer (four eyes) |
+| Workflow | The accountant registers the company (CR, VAT number, bank, IBAN) and optionally a reviewer → adds bank accounts → builds the policy and submits it → it is approved → every incoming amount is split by the policy |
+| Payouts | Each item's share is held in a virtual account at the banking provider (in the background) and transferred to its beneficiary: immediately for undated items, in full on the due date otherwise |
+| Reports | Weekly / monthly / yearly reports, downloadable as Excel (openpyxl) |
+| Dashboard | Configurable, **per company and shared**, one dashboard per company, with **custom formula metrics** |
+| Periods | Asia/Riyadh time, Gregorian calendar, weeks start on Sunday. If a set day does not exist in a month, its last day is used |
 
-## منطق المحرك
+## The engine
 
-المحرك دالة نقية معزولة عن قاعدة البيانات:
-`allocate(policy, period_states, transaction) → AllocationResult`
+The engine is a pure function, isolated from the database:
+`allocate(buckets, period_states, amount, on) -> AllocationResult`
 
 ```
-المتبقي = M
-لكل بند حسب الأولوية:
-  نسبة: المطلوب = floor(النسبة × M) + العجز_المرحَّل
-  ثابت: المطلوب = الهدف − المتجمّع_بالفترة
-  المخصص = min(المطلوب، المتبقي);  المتبقي −= المخصص
-  الحالة: FULLY_FUNDED | PARTIAL | UNFUNDED ؛ العجز_المرحَّل = المطلوب − المخصص
-الفائض = المتبقي
-شرط ثابت: Σ المخصص + الفائض == M
+remaining = M
+for each item by priority:
+  percentage: required = floor(rate x M) + carried_deficit
+  VAT:        required = round(M x rate / (1 + rate)) + carried_deficit
+  fixed:      required = accrued_target(today) - funded_this_period
+  allocated = min(required, remaining);  remaining -= allocated
+  status: FULLY_FUNDED | PARTIAL | UNFUNDED | NOT_REQUIRED; carried_deficit = required - allocated (rate items)
+surplus = remaining
+invariant: sum(allocated) + surplus == M
 ```
 
-## القواعد الصارمة
+## Hard rules
 
-1. السجلات تُضاف فقط. التصحيح يكون بقيد عكسي (`reversal_of`)، بدون حذف أو تعديل.
-2. تخصيصات الكيان الواحد تمر بالتسلسل (قفل على مستوى الكيان).
-3. الحقل `external_ref` فريد، فما تنعالج نفس المعاملة مرتين.
-4. التاريخ الماضي يُقبل ما دام في فترة مفتوحة، وما نعيد حساب ما بعده.
-5. التحقق عند بناء السياسة: مجموع النسب ≤ ١٠٠٪، الأولويات ما تتكرر، ونمنع تركيبة «ثابت + فوري».
-6. تعديل بند محمي بعد تمويله في الفترة الحالية (قيمته أو أولويته أو حذفه) يحتاج تبرير لا يقل عن ٢٠ حرف.
-7. عند تغيير السياسة يحتفظ البند برصيده، لأن هويته ثابتة عبر النسخ في جدول `buckets`.
+1. Records are append-only. Corrections use a reversing entry (`reversal_of`), never deletes or edits.
+2. Allocations for one entity are serialized (entity-level lock).
+3. `external_ref` is unique, so the same bank transaction is never processed twice.
+4. Back-dated transactions are accepted while their period is open; later results are not recomputed.
+5. Policy validation: rate total (VAT counted at its real share) <= 100%, unique priorities, required due dates.
+6. Changing a protected item after it was funded in the current period (value, priority, schedule, beneficiary, deletion) needs a written justification of at least 20 characters.
+7. When the policy changes an item keeps its balance, because its identity is stable across versions in the `buckets` table.
+8. A reversal is blocked once any of the transaction's money was transferred to a beneficiary.
 
-## نموذج البيانات
+## Data model
 
-- **المستخدمين والصلاحيات:** `users`، `user_entities`
-- **الكيانات:** `entities` (يمثل حساب واحد، وحقل `parent_id` محجوز للمستقبل)
-- **السياسات:** `policies` (status: draft / pending / active / archived، created_by، approved_by)، `buckets` (هوية ثابتة)، `policy_buckets` (إعدادات البند في كل نسخة، مع justification)
-- **المعاملات:** `transactions` (amount، occurred_at، source، external_ref، reversal_of، created_by)
-- **التخصيص والحالة:** `allocation_events` (period_key، required، allocated، status، carried_deficit)، `transaction_surplus`، `bucket_period_state` (target، funded_so_far، carried_deficit، closed_deficit)
-- **اللوحة:** `dashboards` (entity_id، واحدة لكل شركة)، `dashboard_widgets` (النوع، config بصيغة JSON، x/y/w/h)، `custom_metrics` (entity_id، الاسم، المعادلة، التنسيق)
-- **التدقيق:** `audit_log`
+- **Users and access:** `users`, `user_entities`
+- **Entities:** `entities` (one company; `parent_id` is reserved for later)
+- **Bank accounts:** `bank_accounts` (source, pool, other company account, external)
+- **Policies:** `policies` (draft / pending / active / archived / rejected), `buckets` (stable identity, virtual account reference), `policy_buckets` (item settings per version)
+- **Transactions:** `transactions` (amount, occurred_at, source, external_ref, reversal_of, created_by)
+- **Allocation and state:** `allocation_events`, `bucket_period_state`, `period_closures`
+- **Payouts:** `payouts` (transfers from an item, or the surplus, to a beneficiary)
+- **Dashboard:** `dashboards`, `dashboard_widgets`, `custom_metrics`
+- **Audit:** `audit_log`
 
-## اللوحة القابلة للتخصيص
+## Configurable dashboard
 
-- **الشبكة:** GridStack.js (رخصة MIT). **الرسوم:** Apache ECharts (رخصة Apache 2.0).
-- **العناصر:** بطاقة رقم (KPI)، تقدّم البنود، توزيع التخصيص، الحركة الزمنية، قائمة العجز، آخر المعاملات.
-- **الفترات:** الحالية، السابقة، هذا الشهر، هذه السنة، مخصصة.
-- **المؤشرات الجاهزة:** `incoming_total`، `allocated_total`، `surplus_total`، `deficit_total`، `bucket_allocated[b]`، `bucket_deficit[b]`، `bucket_target[b]`، `transactions_count`.
-- **المؤشرات المخصصة:** معادلة حسابية على المؤشرات الجاهزة، مثل `surplus_total / incoming_total * 100`.
-  - نحللها بمحلل آمن مبني على `ast` بقائمة سماح: الأرقام، والمؤشرات، و`+ − × ÷`، والأقواس، وmin/max/abs. **ما نستخدم eval أبدًا.**
-  - القسمة على صفر تعطي «—».
-  - التنسيق: ريال، أو نسبة، أو رقم.
-  - المؤشر المخصص يُستخدم في أي عنصر، ونسجّل تغييراته في سجل التدقيق.
-- **الصلاحيات:** المحاسب يعدّل اللوحة والمؤشرات. المعتمِد وباقي المستخدمين يشوفونها بدون تعديل. البيانات محصورة بـ`user_entities`.
-- **قالب افتراضي** لكل لوحة جديدة: بطاقة الفائض، بطاقة العجز، تقدّم البنود.
+- **Grid:** GridStack.js (MIT). **Charts:** Apache ECharts (Apache 2.0).
+- **Widgets:** KPI card, item progress, allocation split, time series, deficit list, latest transactions.
+- **Ranges:** current, previous, this month, this year, custom.
+- **Custom metrics:** an arithmetic formula over the built-in metrics, e.g. `الفائض / الوارد * 100`, parsed by a safe `ast` allow-list (numbers, metrics, `+ - x /`, parentheses, min/max/abs). **Never eval.** Division by zero shows "—".
+- **Permissions:** accountants edit dashboards and metrics; reviewers and others view them. Data is scoped by `user_entities`.
 
-## خطوات البناء
+## Progress
 
-1. الأساس: هيكل المشروع، الجداول، تسجيل الدخول والأدوار، أمر `create-admin`.
-2. **المحرك واختباراته.** ⏸ نوقف هنا ونعرض نتائج السيناريوهات للاعتماد.
-3. السياسات: البناء، التحقق، الاعتماد، النسخ، البنود المحمية.
-4. المعاملات: الإدخال اليدوي، عرض النتيجة فورًا، القيد العكسي، إغلاق الفترات.
-5. طبقة المؤشرات، ومحلل المعادلات، ومنشئ اللوحة.
-6. سجل التدقيق.
-7. تجربة كاملة: ضريبة ١٥٪ (أولوية ١)، إيجار ١٠,٠٠٠ شهري (أولوية ٢)، أرباح ٥٪ (أولوية ٣)، مع ٥ معاملات.
-8. النشر: قاعدة Supabase + استضافة مجانية + كوكيز HTTPS فقط.
+- [x] Foundation: tables, Alembic, login and roles, `create-admin`
+- [x] Engine with tests, including a property test of the invariant
+- [x] Company and reviewer registration, policies (build, validate, submit, approve/reject, versions, protection)
+- [x] Transactions: manual entry, bank webhook, bank simulator, reversal of the latest transaction
+- [x] Dashboard, reports (Excel), audit log
+- [x] Deployment (Supabase + Render)
+- [x] Bank accounts, beneficiaries, due-date accrual, payouts (simulated), VAT item
+- [ ] Real Neotek integration (virtual accounts + payouts), waiting on their API documentation
 
-## التقدم
+## Out of scope for now
 
-- [x] ١. الأساس: ١٤ جدولًا، Alembic، تسجيل الدخول والأدوار، أمر `create-admin`
-- [x] ٢. المحرك: `app/domain/` مع ٢٥ اختبارًا، منها اختبار خصائص يثبت الشرط الثابت
-- [x] ٣. تسجيل الشركة والمراجع + السياسات (بناء، تحقق، إرسال، اعتماد/رفض، نسخ، حماية) — مجرّبة في المتصفح
-- [x] ٤. المعاملات: إدخال وتقسيم فوري، رفض الفترات المقفلة والتواريخ المستقبلية، منع التكرار، قيد عكسي لآخر معاملة
-- [x] ٥. اللوحة: ٦ أنواع عناصر، سحب وتغيير حجم، قالب افتراضي، مؤشرات بمعادلات عربية آمنة
-- [x] ٦. التقارير (أسبوعي / شهري / سنوي، Excel بثلاث أوراق) وسجل التدقيق
-- [ ] ٧. مراجعة الـMVP مع المستخدمين
-- [ ] ٨. النشر (Supabase + استضافة مجانية)
-
-الاختبارات: 54 اختبارًا ناجحًا. بيانات تجريبية: `python -m app.cli seed-demo`.
-
-## خارج الـMVP
-
-التسويات وتقاريرها، تصدير Excel، الربط البنكي (Lean أو Neotek، وهي **خدمات مدفوعة**)، التحويلات الفعلية، الهرمية بين الكيانات، تعدد الحسابات، تصنيف المعاملات، تعدد العملات، لوحات خاصة لكل محاسب، ولوحات تجمع أكثر من شركة.
+Real bank transfers until the Neotek integration, purchase VAT netting, classifying incoming amounts (sales vs owner deposits), entity hierarchies, multiple currencies, per-accountant dashboards, and cross-company dashboards.

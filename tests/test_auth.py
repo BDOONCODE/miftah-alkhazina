@@ -58,7 +58,7 @@ def test_login_blocked_after_repeated_failures(client, make_user):
     make_user("acc")
     for _ in range(throttle.MAX_FAILURES):
         assert login(client, "acc", "wrong-pass").status_code == 401
-    assert login(client, "acc").status_code == 429  # حتى الكلمة الصحيحة تنرفض مؤقتًا
+    assert login(client, "acc").status_code == 429  # even the correct password is temporarily refused
     throttle._failures.clear()
     assert login(client, "acc").status_code == 303
 

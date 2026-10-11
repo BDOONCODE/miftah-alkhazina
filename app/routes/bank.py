@@ -1,8 +1,8 @@
-"""استقبال إشعارات البنك (Webhook) — نقطة الربط مع مزوّد المصرفية المفتوحة (نيوتك).
+"""Bank notifications (webhook): the integration point with the open-banking provider (Neotek).
 
-الشكل المتوقع (بيتعدّل حسب توثيق نيوتك لما يوصل):
+Expected shape (will be adjusted to Neotek's documentation when it arrives):
     POST /api/bank/incoming
-    X-Signature: hex(HMAC-SHA256(BANK_WEBHOOK_SECRET, جسم الطلب))
+    X-Signature: hex(HMAC-SHA256(BANK_WEBHOOK_SECRET, request body))
     {"iban": "SA..", "amount": "1500.00", "occurred_at": "2026-09-30T10:00:00+03:00", "reference": "..."}
 """
 from __future__ import annotations
@@ -49,7 +49,7 @@ async def bank_incoming(request: Request, session: Session = Depends(get_session
         if occurred_at.tzinfo is None:
             occurred_at = occurred_at.replace(tzinfo=RIYADH)
         txn = ingest_bank_credit(session, str(data["iban"]), amount, occurred_at, str(data["reference"]))
-    except TransactionError as exc:  # قبل ValueError لأنه نوع منه
+    except TransactionError as exc:  # before ValueError because it is a subclass
         session.rollback()
         return JSONResponse({"error": str(exc)}, status_code=422)
     except (KeyError, ValueError, TypeError) as exc:

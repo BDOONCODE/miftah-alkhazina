@@ -2,7 +2,7 @@ from logging.config import fileConfig
 
 from alembic import context
 
-from app import models  # noqa: F401 — يسجّل الجداول في Base.metadata
+from app import models  # noqa: F401 (registers the tables on Base.metadata)
 from app.db import Base, engine
 
 config = context.config
@@ -26,10 +26,10 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     with engine.connect() as connection:
         if connection.dialect.name == "sqlite":
-            # SQLite يعيد بناء الجدول عند تعديله، وفحص المفاتيح الأجنبية يمنع ذلك أثناء الترحيل
+            # SQLite rebuilds a table when altering it, and foreign-key checks block that during migrations
             connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
-            connection.commit()  # نقفل المعاملة الضمنية عشان Alembic يفتح معاملته ويثبّتها
-        # render_as_batch: يخلي تعديل الأعمدة يشتغل على SQLite كذلك
+            connection.commit()  # close the implicit transaction so Alembic opens and commits its own
+        # render_as_batch: makes column changes work on SQLite too
         context.configure(connection=connection, target_metadata=target_metadata, render_as_batch=True)
         with context.begin_transaction():
             context.run_migrations()

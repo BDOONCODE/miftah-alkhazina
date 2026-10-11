@@ -1,4 +1,4 @@
-"""المعاملات، القيد العكسي، المؤشرات، اللوحة، التقارير — على شركة بسياسة نشطة."""
+"""Transactions, reversals, metrics, dashboard and reports on a company with an active policy."""
 from datetime import date, datetime
 from io import BytesIO
 
@@ -63,14 +63,14 @@ def test_record_matches_engine_scenario(db, setup):
     t2 = record(db, entity, user, 9_000, at(2026, 9, 10))
     alloc = lambda t: {e.bucket_id: e.allocated for e in t.events}  # noqa: E731
     assert alloc(t1) == {ids["الضريبة"]: 600 * SAR, ids["الإيجار"]: 3_400 * SAR, ids["الأرباح"]: 0}
-    assert alloc(t2)[ids["الأرباح"]] == 650 * SAR  # 450 + 200 مرحَّلة
+    assert alloc(t2)[ids["الأرباح"]] == 650 * SAR  # 450 + 200 carried
     assert (t1.surplus, t2.surplus) == (0, 400 * SAR)
-    assert states(db, entity)[ids["الإيجار"]] == ("0000-00-00", 10_000 * SAR, 0)  # بدون موعد: فترة دائمة
+    assert states(db, entity)[ids["الإيجار"]] == ("0000-00-00", 10_000 * SAR, 0)  # no due date: perpetual period
 
 
 def test_occurred_at_round_trips_with_timezone(db, setup):
     entity, user, _ = setup
-    txn = record(db, entity, user, 100, at(2026, 9, 29, 1))  # 1 صباحًا الرياض = 22:00 UTC أمس
+    txn = record(db, entity, user, 100, at(2026, 9, 29, 1))  # 1 AM Riyadh = 22:00 UTC the day before
     db.expire_all()
     stored = db.get(models.Transaction, txn.id).occurred_at
     assert stored.astimezone(RIYADH) == at(2026, 9, 29, 1)
@@ -100,7 +100,7 @@ def test_external_ref_is_idempotent(db, setup):
 
 @pytest.fixture
 def no_transfers(monkeypatch):
-    """القيد العكسي ممكن بس قبل ما يطلع المبلغ للمستفيد، فهنا نختبر منطق العكس بدون تحويلات."""
+    """A reversal is only possible before money leaves for a beneficiary, so this tests reversal logic without transfers."""
     monkeypatch.setattr(txs.payouts, "pay_on_allocation", lambda *a, **k: [])
     monkeypatch.setattr(txs.payouts, "run_due", lambda *a, **k: [])
 
@@ -121,7 +121,7 @@ def test_reversal_restores_state_and_only_latest(db, setup, no_transfers):
     db.commit()
     assert states(db, entity) == before
     assert (rev.amount, rev.surplus) == (-t2.amount, -t2.surplus)
-    # بعد عكس الثانية، الأولى صارت الأخيرة وينفع تنعكس، والحالة ترجع فاضية
+    # After reversing the second, the first is now the latest and can be reversed; the state returns to empty
     assert txs.reversible_transaction(db, entity.id).id == t1.id
     txs.reverse_transaction(db, t1, user, "تجربة")
     db.commit()
@@ -132,7 +132,7 @@ def test_reversal_voids_period_closures(db, setup, no_transfers):
     entity, user, _ = setup
     record(db, entity, user, 1_000, at(2026, 9, 5))
     t2 = record(db, entity, user, 1_000, at(2026, 10, 5))
-    assert db.query(models.PeriodClosure).filter_by(voided=False).count() == 1  # شهر الأرباح
+    assert db.query(models.PeriodClosure).filter_by(voided=False).count() == 1  # the profit month
     txs.reverse_transaction(db, t2, user, "تاريخ غلط")
     db.commit()
     assert db.query(models.PeriodClosure).filter_by(voided=False).count() == 0
@@ -141,12 +141,12 @@ def test_reversal_voids_period_closures(db, setup, no_transfers):
 
 def test_snapshot_and_variables(db, setup):
     entity, user, ids = setup
-    record(db, entity, user, 500, at(2026, 8, 20))  # خارج الشهر
+    record(db, entity, user, 500, at(2026, 8, 20))  # outside the month
     record(db, entity, user, 4_000, at(2026, 9, 2))
     record(db, entity, user, 9_000, at(2026, 9, 10))
 
     snap = metrics.snapshot(db, entity.id, metrics.resolve_range("this_month", date(2026, 9, 15)), today=date(2026, 9, 15))
-    # إيداع أغسطس موّل الإيجار 425 (بدون موعد = فترة دائمة)، فسبتمبر يكمّل 9,575 بس والفائض أكبر
+    # The August deposit funded 425 of rent (no due date = perpetual period), so September only adds 9,575 and the surplus is larger
     assert (snap.incoming, snap.surplus, snap.count) == (13_000 * SAR, 825 * SAR, 2)
     rent = next(b for b in snap.buckets if b.name == "الإيجار")
     assert (rent.allocated, rent.funded, rent.deficit) == (9_575 * SAR, 10_000 * SAR, 0)
@@ -158,13 +158,13 @@ def test_snapshot_and_variables(db, setup):
 def test_formula_safety():
     ok = {"الفائض": 10.0, "الوارد": 0.0}
     assert formula.evaluate("max(الفائض, 5) × ٢", ok) == 20
-    assert formula.evaluate("الفائض / الوارد", ok) is None  # قسمة على صفر
+    assert formula.evaluate("الفائض / الوارد", ok) is None  # division by zero
     for bad in ["__import__('os')", "الفائض.real", "[1,2]", "الفائض ** 2", "غير_موجود + 1", "lambda: 1"]:
         with pytest.raises(formula.FormulaError):
             formula.evaluate(bad, ok)
 
 
-# ------------------------------------------------------------------ عبر الواجهة
+# ------------------------------------------------------------------ through the UI
 
 
 def login(client, username, password="password123"):
@@ -185,7 +185,7 @@ def test_transaction_pages_and_roles(client, db, setup):
 
     client.post("/logout")
     login(client, "sara", "Password-123!")
-    assert "4,000.00" in client.get(f"/entities/{entity.id}/transactions").text  # المراجع يشوف
+    assert "4,000.00" in client.get(f"/entities/{entity.id}/transactions").text  # the reviewer can see it
     assert client.post(f"/entities/{entity.id}/transactions", data={"amount": "1", "occurred_at": "2026-09-02T10:00"}).status_code == 403
 
 
@@ -206,7 +206,7 @@ def test_dashboard_default_widgets_and_customization(client, db, setup):
     dash = db.query(models.Dashboard).filter_by(entity_id=entity.id).one()
     assert len(dash.widgets) == len(dashboards.DEFAULT_LAYOUT)
 
-    # مؤشر مخصص ثم بطاقة تعرضه
+    # A custom metric, then a card showing it
     client.post(f"/entities/{entity.id}/metrics", data={"name": "نسبة التخصيص", "formula": "(مخصص_الضريبة + مخصص_الإيجار) / الوارد * 100", "fmt": "percent"})
     metric = db.query(models.CustomMetric).one()
     client.post(f"/entities/{entity.id}/dashboard/widgets", data={"kind": "kpi", "title": "نسبة التخصيص", "metric": f"custom:{metric.id}", "period": "this_month"})
@@ -214,17 +214,17 @@ def test_dashboard_default_widgets_and_customization(client, db, setup):
     assert len(dash.widgets) == len(dashboards.DEFAULT_LAYOUT) + 1
     assert "100.0%" in client.get(f"/entities/{entity.id}/dashboard").text  # (600 + 3,400) / 4,000
 
-    # معادلة غير آمنة ما تنحفظ
+    # An unsafe formula is not saved
     client.post(f"/entities/{entity.id}/metrics", data={"name": "خطر", "formula": "__import__('os')", "fmt": "number"})
     assert db.query(models.CustomMetric).count() == 1
 
-    # حفظ الترتيب
+    # Saving the layout
     widget = dash.widgets[0]
     assert client.post(f"/entities/{entity.id}/dashboard/layout", json={"items": [{"id": widget.id, "x": 6, "y": 5, "w": 4, "h": 3}]}).json() == {"ok": True}
     db.refresh(widget)
     assert (widget.x, widget.y, widget.w, widget.h) == (6, 5, 4, 3)
 
-    # حذف المؤشر يحذف البطاقة اللي تعرضه
+    # Deleting the metric deletes the card showing it
     client.post(f"/metrics/{metric.id}/delete")
     db.expire_all()
     assert len(dash.widgets) == len(dashboards.DEFAULT_LAYOUT)

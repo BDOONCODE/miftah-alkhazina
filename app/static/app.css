@@ -64,7 +64,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); o
   .topnav { order: 3; flex-basis: 100%; overflow-x: auto; }
 }
 
-/* ---------- الصفحات ---------- */
+/* ---------- pages ---------- */
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .page-head h1 { margin: 0; }
 .card + .card, .stack > .card + .card, section.card { margin-bottom: 1rem; }
@@ -104,7 +104,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); o
 .unit { color: var(--muted); font-size: .85rem; white-space: nowrap; }
 .js-day { margin-top: .3rem; }
 
-/* الخانات تبدأ من نفس الخط، وأي ملاحظة تحت الخانة (مثل شروط كلمة المرور) تنزل تحتها بدون ما تزحزح الباقي */
+/* Fields start on the same line; any note under a field (like password rules) sits below it without shifting the others */
 .form-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); align-items: start; }
 .form-grid > .form-actions { padding-top: calc(1lh + .35rem); }
 .form-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
@@ -127,7 +127,7 @@ small { font-weight: 400; }
 .decision { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 details summary { cursor: pointer; color: var(--primary); margin: .75rem 0; }
 
-/* ---------- المعاملات والمؤشرات ---------- */
+/* ---------- transactions and metrics ---------- */
 .small { font-size: .85rem; }
 .row-muted td { color: var(--muted); }
 .inline { display: inline; }
@@ -142,7 +142,7 @@ code { font-family: ui-monospace, monospace; background: #f1f3f5; padding: .05re
 .status-unfunded { background: #fdecea; color: var(--negative); }
 .status-not_required { background: #eef0f3; color: var(--muted); }
 
-/* ---------- اللوحة ---------- */
+/* ---------- dashboard ---------- */
 .grid-stack { margin: 0 -8px 1rem; }
 .grid-stack.editing .grid-stack-item-content { outline: 2px dashed #b9d9cf; cursor: move; }
 .widget { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; }
@@ -171,7 +171,7 @@ dialog { border: none; border-radius: var(--radius); padding: 1.5rem; width: min
 dialog::backdrop { background: rgba(20, 26, 36, .35); }
 [hidden] { display: none !important; }
 
-/* تحسينات العناصر: رأس بسطر واحد، والأزرار تظهر عند التمرير أو في وضع الترتيب */
+/* Widget polish: one-line header; buttons show on hover or in arrange mode */
 .widget-head { flex-wrap: nowrap; min-width: 0; }
 .widget-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .widget-period { white-space: nowrap; flex-shrink: 0; }
@@ -196,9 +196,9 @@ dialog::backdrop { background: rgba(20, 26, 36, .35); }
 .inline-form { display: flex; gap: .4rem; margin-top: .4rem; }
 .inline-form input { width: 9rem; }
 
-/* كلمة المرور: زر العين وقائمة الشروط */
+/* Password: the eye button and the rules list */
 .pw-wrap { position: relative; display: block; }
-/* الخانة نفسها dir=ltr، فالعين على اليمين والمسافة يمين بشكل ثابت */
+/* The input itself is dir=ltr, so the eye and its padding are consistently on the right */
 .pw-wrap input { width: 100%; padding-right: 2.6rem; }
 .pw-wrap input::-ms-reveal, .pw-wrap input::-ms-clear { display: none; }
 .inline-form .pw-wrap { display: inline-block; }
@@ -210,13 +210,13 @@ dialog::backdrop { background: rgba(20, 26, 36, .35); }
 .pw-rules li.ok { color: var(--positive); }
 .pw-rules li.ok::before { content: "✓ "; }
 
-/* صفحات الدخول والتسجيل */
+/* Login and signup pages */
 .login-card.wide { max-width: 460px; }
 .auth-links { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; font-size: .9rem; }
 fieldset.plain { border: none; padding: 0; margin: 0; }
 fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 
-/* الحسابات البنكية */
+/* Bank accounts */
 .kind-grid { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .kind-pool { background: #e3f4ea; color: var(--positive); }
 .kind-source { background: #e8f0fb; color: #2b5ea7; }
@@ -226,7 +226,7 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 .channel-manual { background: #eef0f3; color: var(--muted); }
 .channel-open_banking { background: #e3f4ea; color: var(--positive); }
 
-/* صفحة المعاملات: الإدخال اليدوي والتلقائي جنب بعض */
+/* Transactions page: manual and automatic entry side by side */
 .intake { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); margin-bottom: 1rem; }
 .intake .card { margin-bottom: 0; }
 .card-sim { border-color: #b9d9cf; }
@@ -234,12 +234,12 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 .pw-rules li.bad { color: var(--negative); }
 .pw-rules li.bad::before { content: "✗ "; }
 
-/* محرر السياسة: كل بند بطاقة، وكل خانة لها عنوان */
+/* Policy editor: each item is a card, and each field has a label */
 .bucket-list { display: flex; flex-direction: column; gap: .75rem; margin-bottom: .75rem; }
 .bucket-card { border: 1px solid var(--border); border-radius: var(--radius); padding: .75rem .9rem; display: flex; flex-direction: column; gap: .6rem; background: var(--surface); }
 .bucket-card label { font-size: .85rem; color: var(--muted); font-weight: 500; }
 .bucket-card label > input, .bucket-card label > select, .bucket-card label > span { color: var(--text); font-size: 1rem; }
-/* سطر واحد: الأولوية، الاسم، النوع، القيمة، الاستحقاق، محمي، حذف */
+/* One line: priority, name, type, value, schedule, protected, delete */
 .bucket-main { display: grid; gap: .6rem; align-items: end;
   grid-template-columns: 4.5rem minmax(9rem, 1.6fr) minmax(7rem, 1fr) minmax(7rem, 1fr) minmax(9rem, 1.3fr) 7.5rem auto; }
 .bucket-dest { display: flex; flex-direction: column; gap: .5rem; }
@@ -249,7 +249,7 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 .freq-pair select { flex: 1; min-width: 0; }
 .freq-pair .js-day { width: 5rem; margin: 0; }
 @media (max-width: 900px) {
-  /* الشاشات الضيقة: السطر ينقسم لسطرين بدل ما ينضغط */
+  /* Narrow screens: the line wraps to two lines instead of squeezing */
   .bucket-main { grid-template-columns: 4.5rem 1fr 1fr auto; }
   .bucket-main .f-name { grid-column: span 2; }
 }
@@ -260,10 +260,10 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 }
 .next-step { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
 
-/* الأرقام والآيبانات تُكتب يسار-يمين، لكن محاذاتها تحت عنوان العمود (يمين) */
+/* Numbers and IBANs are written left-to-right but aligned under the column header (right) */
 .table td.num, .table th.num { text-align: right; }
 .freq-pair .js-due { width: 9.5rem; margin: 0; }
 
-/* أرصدة البنود */
+/* Item balances */
 .when-now { background: #e8f0fb; color: #2b5ea7; }
 .surplus-field { max-width: 32rem; }

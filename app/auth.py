@@ -1,4 +1,4 @@
-"""الجلسات والصلاحيات: من المستخدم الحالي، وهل يحق له هذا الإجراء."""
+"""Sessions and permissions: who the current user is, and whether they may do this."""
 from __future__ import annotations
 
 from fastapi import Depends, HTTPException, Request, status
@@ -10,15 +10,15 @@ from .models import Entity, Role, User
 
 
 class LoginRequired(Exception):
-    """تُحوَّل إلى إعادة توجيه لصفحة الدخول."""
+    """Turned into a redirect to the login page."""
 
 
 class PasswordChangeRequired(Exception):
-    """كلمة مرور مؤقتة: لازم تتغيّر قبل أي شي ثاني."""
+    """Temporary password: must be changed before anything else."""
 
 
 def current_user_any(request: Request, session: Session = Depends(get_session)) -> User:
-    """المستخدم المسجّل، حتى لو كلمة مروره مؤقتة (لصفحة تغيير كلمة المرور فقط)."""
+    """The signed-in user, even with a temporary password (for the change-password page only)."""
     user_id = request.session.get("user_id")
     user = session.get(User, user_id) if user_id else None
     if user is None or not user.is_active:
@@ -49,7 +49,7 @@ def accessible_entities(user: User, session: Session) -> list[Entity]:
 
 
 def get_entity_for(user: User, entity_id: int, session: Session) -> Entity:
-    """يرجّع الكيان لو المستخدم مسموح له فيه، وإلا 404 (ما نكشف وجوده)."""
+    """Return the entity if the user may access it, otherwise 404 (we do not reveal that it exists)."""
     entity = session.get(Entity, entity_id)
     if entity is None or (user.role is not Role.ADMIN and entity not in user.entities):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "الشركة غير موجودة")

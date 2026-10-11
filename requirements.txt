@@ -9,7 +9,7 @@ itsdangerous==2.2.0
 openpyxl==3.1.5
 psycopg[binary]==3.3.6
 
-# للتطوير والاختبار
+# Development and testing
 pytest==9.1.1
 hypothesis==6.168.3
 httpx==0.28.1

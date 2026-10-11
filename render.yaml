@@ -1,10 +1,10 @@
-# إعداد النشر على Render (الخطة المجانية). الخطوات كاملة في DEPLOY.md
+# Render deployment (free plan). Full steps in DEPLOY.md
 services:
   - type: web
     name: miftah-alkhazina
     runtime: python
     plan: free
-    region: frankfurt  # أقرب منطقة للسعودية، ونفس منطقة قاعدة Supabase
+    region: frankfurt  # closest region to Saudi Arabia, same region as the Supabase database
     buildCommand: pip install -r requirements.txt
     startCommand: >-
       alembic upgrade head &&
@@ -14,25 +14,25 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.10
-      - key: DATABASE_URL  # رابط Session pooler من Supabase
+      - key: DATABASE_URL  # Supabase Session pooler URL
         sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: HTTPS_ONLY_COOKIES
         value: "1"
-      - key: ADMIN_USERNAME  # حساب المدير الأول
+      - key: ADMIN_USERNAME  # first admin account
         sync: false
-      - key: ADMIN_PASSWORD  # مؤقتة، النظام يطلب تغييرها أول دخول
+      - key: ADMIN_PASSWORD  # temporary; must be changed on first login
         sync: false
-      - key: DEMO_SEED  # 1 = شركة تجريبية بسياسة ومعاملات للعرض
+      - key: DEMO_SEED  # 1 = demo company with a policy and transactions
         value: "1"
-      - key: DEMO_PASSWORD  # كلمة مرور حسابات العرض demo-acc و demo-rev2
+      - key: DEMO_PASSWORD  # password for the demo-acc and demo-rev2 accounts
         sync: false
-      - key: APP_URL  # رابط الموقع اللي ينحط في رسائل البريد
+      - key: APP_URL  # site URL used in emails
         value: https://miftah-alkhazina.onrender.com
-      - key: BREVO_API_KEY  # مفتاح Brevo لإرسال بريد التأكيد (مجاني)
+      - key: BREVO_API_KEY  # Brevo key for confirmation emails (free)
         sync: false
-      - key: MAIL_FROM  # البريد المرسِل المؤكد في Brevo
+      - key: MAIL_FROM  # verified sender address in Brevo
         sync: false
-      - key: BANK_WEBHOOK_SECRET  # سر توقيع إشعارات البنك (نعطيه لنيوتك عند الربط)
+      - key: BANK_WEBHOOK_SECRET  # signing secret for bank notifications (given to Neotek at integration)
         generateValue: true

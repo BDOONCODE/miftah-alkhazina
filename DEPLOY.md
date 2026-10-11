@@ -1,92 +1,89 @@
-# نشر مفتاح الخزينة (مجانًا)
+# Deploying Miftah Alkhazina (free)
 
-ثلاث خدمات مجانية:
+Three free services:
 
-- **GitHub:** يحفظ الكود.
-- **Supabase:** قاعدة البيانات.
-- **Render:** يشغّل الموقع ويعطيه رابط.
+- **GitHub:** stores the code.
+- **Supabase:** the database.
+- **Render:** runs the site and gives it a URL.
 
-> ⚠️ للعرض والتجربة فقط. خوادم Supabase وRender ما هي داخل السعودية، فلا تدخل بيانات عملاء حقيقية قبل مراجعة متطلبات حماية البيانات.
+> ⚠️ For demos and testing only. Supabase and Render servers are outside Saudi Arabia, so do not enter real customer data before reviewing data-protection requirements.
 
-## ١. GitHub: رفع الكود
+## 1. GitHub: push the code
 
-1. سجّل في https://github.com (مجاني).
-2. من زر **+** فوق، اختر **New repository**.
-   - الاسم: `miftah-alkhazina`
-   - اختر **Private** (خاص).
-   - لا تضيف README ولا .gitignore.
-3. انسخ رابط المستودع، مثل `https://github.com/USERNAME/miftah-alkhazina.git`، وأرسله لـClaude عشان يرفع الكود.
+1. Sign up at https://github.com (free).
+2. From the **+** button choose **New repository**.
+   - Name: `miftah-alkhazina`
+   - Choose **Private**.
+   - Do not add a README or .gitignore.
+3. Copy the repository URL, e.g. `https://github.com/USERNAME/miftah-alkhazina.git`, and push the code to it.
 
-## ٢. Supabase: قاعدة البيانات
+## 2. Supabase: the database
 
-1. سجّل في https://supabase.com (مجاني).
-2. اضغط **New project**:
-   - الاسم: `miftah-alkhazina`
-   - **Database password:** اضغط Generate، وانسخها واحفظها عندك.
-   - **Region:** اختر **Central EU (Frankfurt)**.
-3. بعد ما يجهز المشروع (دقيقتين تقريبًا)، اضغط زر **Connect** فوق.
-4. اختر **Session pooler** (مهم: مو Direct connection، لأن Render ما يدعمه) وانسخ الرابط. شكله كذا:
+1. Sign up at https://supabase.com (free).
+2. Click **New project**:
+   - Name: `miftah-alkhazina`
+   - **Database password:** click Generate, then copy and keep it.
+   - **Region:** choose **Central EU (Frankfurt)**.
+3. When the project is ready (about two minutes), click **Connect** at the top.
+4. Choose **Session pooler** (important: not Direct connection, which is IPv6-only and does not work from Render) and copy the URL. It looks like:
    `postgresql://postgres.xxxx:[YOUR-PASSWORD]@aws-0-eu-central-1.pooler.supabase.com:5432/postgres`
-5. استبدل `[YOUR-PASSWORD]` بكلمة مرور القاعدة من الخطوة ٢.
+5. Replace `[YOUR-PASSWORD]` with the database password from step 2.
 
-> 🔒 هذا الرابط فيه كلمة مرور القاعدة. **لا ترسله في المحادثة.** الصقه بنفسك في Render في الخطوة الجاية.
+> 🔒 This URL contains the database password. **Never paste it into a chat.** Paste it into Render yourself in the next step.
 
-## ٣. Render: تشغيل الموقع
+## 3. Render: run the site
 
-1. سجّل في https://render.com بحساب GitHub نفسه.
-2. من **New +** اختر **Blueprint**، واختر مستودع `miftah-alkhazina`. Render يقرأ ملف `render.yaml` تلقائيًا.
-3. بيطلب منك أربع قيم:
+1. Sign up at https://render.com with the same GitHub account.
+2. From **New +** choose **Blueprint**, then the `miftah-alkhazina` repository. Render reads `render.yaml` automatically.
+3. It asks for four values:
 
-   | المتغير | وش تحط فيه |
+   | Variable | Value |
    |---|---|
-   | `DATABASE_URL` | رابط Supabase من الخطوة ٢ (مع كلمة المرور) |
-   | `ADMIN_USERNAME` | اسم دخول المدير، مثل `admin` |
-   | `ADMIN_PASSWORD` | كلمة مرور مؤقتة للمدير (٨ أحرف على الأقل). النظام يطلب تغييرها أول دخول |
-   | `DEMO_PASSWORD` | كلمة مرور لحسابات العرض (`demo-acc` المحاسب و`demo-rev2` المراجع) |
+   | `DATABASE_URL` | the Supabase URL from step 2 (with the password) |
+   | `ADMIN_USERNAME` | the admin login name, e.g. `admin` |
+   | `ADMIN_PASSWORD` | a temporary admin password (8+ characters); it must be changed on first login |
+   | `DEMO_PASSWORD` | password for the demo accounts (`demo-acc` accountant and `demo-rev2` reviewer) |
 
-4. اضغط **Apply**. أول نشر ياخذ ٣ إلى ٥ دقائق.
-5. الرابط يطلع فوق، مثل `https://miftah-alkhazina.onrender.com`.
+4. Click **Apply**. The first deploy takes 3 to 5 minutes.
+5. The URL appears at the top, e.g. `https://miftah-alkhazina.onrender.com`.
 
-## ٤. المشاركة مع المدير
+## 4. Sharing with stakeholders
 
-- **الرابط:** رابط Render.
-- **للعرض السريع:** ادخل بحساب `demo-acc` (المحاسب) وكلمة `DEMO_PASSWORD`. فيه شركة تجريبية بسياسة معتمدة ومعاملات.
-- **لو يبي يجرب الاعتماد:** يدخل بحساب `demo-rev2` (المراجع).
-- **لو تبي له حساب خاص:** ادخل بحساب المدير، ثم **المستخدمين**، ثم أضف محاسب.
+- **Link:** the Render URL.
+- **Quick demo:** sign in as `demo-acc` (accountant) with `DEMO_PASSWORD`. There is a demo company with an approved policy and transactions.
+- **To try approvals:** sign in as `demo-rev2` (reviewer).
+- **A personal account:** sign in as the admin, open **Users**, and add an accountant.
 
-## ٥. خلّ الموقع يفتح على طول (بدون شاشة «Waking up»)
+## 5. Keep the site awake
 
-الخطة المجانية في Render **تنام بعد ١٥ دقيقة** بدون زيارات، وأول فتح بعدها ياخذ تقريبًا دقيقة.
-الحل: خدمة مراقبة مجانية تزور الموقع كل ٥ دقائق. نفس الزيارة تلمس قاعدة البيانات،
-فتمنع كمان مشروع Supabase المجاني من التوقف بعد أسبوع.
+Render's free plan **sleeps after 15 idle minutes**, and the first visit after that takes about a minute. Three things keep it awake:
 
-1. سجّل في https://uptimerobot.com (مجاني).
-2. اضغط **New monitor** وعبّه كذا:
-   - **Monitor type:** HTTP(s)
-   - **URL:** `https://miftah-alkhazina.onrender.com/keepalive`
-   - **Monitoring interval:** 5 minutes
-3. اضغط **Create monitor**.
+- **The site pings itself** every 10 minutes while running (`app/main.py`, using `RENDER_EXTERNAL_URL`, which Render sets automatically).
+- **A GitHub Actions workflow** (`.github/workflows/keepalive.yml`) visits `/keepalive` every 5 minutes as a backup. GitHub may delay scheduled runs, and disables them after 60 days without repository activity.
+- Optionally, **UptimeRobot** (https://uptimerobot.com, free): add an HTTP(s) monitor for `https://miftah-alkhazina.onrender.com/keepalive` every 5 minutes.
 
-الساعات المجانية في Render (٧٥٠ ساعة بالشهر) تكفي خدمة وحدة شغّالة طول الشهر.
-ولو احتجت ضمان أعلى لاحقًا، الخطة المدفوعة في Render (Starter) ما تنام أصلًا.
+`/keepalive` also runs a trivial database query, which keeps the free Supabase project from pausing after a week, and runs any payouts that are due.
 
-## ٦. إرسال بريد التأكيد واستعادة كلمة المرور (Brevo، مجاني)
+Render's free hours (750 per month) cover one service running all month. The paid Starter plan never sleeps.
 
-التسجيل الذاتي يرسل رابط تأكيد للبريد. بدون هذي الخطوة، الروابط تنطبع في سجل Render (Logs) بدل ما تنرسل.
+## 6. Confirmation and password-reset email (Brevo, free)
 
-1. سجّل في https://www.brevo.com (الخطة المجانية: ٣٠٠ رسالة يوميًا).
-2. **أكّد البريد المرسِل:** من القائمة اختر **Senders, Domains & Dedicated IPs** ثم **Senders** ثم **Add a sender**.
-   اكتب بريدك (مثلًا Gmail)، ويوصلك رابط تأكيد منهم.
-3. **مفتاح API:** من القائمة اختر **SMTP & API** ثم **API Keys** ثم **Generate a new API key**. انسخه (يظهر مرة وحدة).
-4. في Render ثم **Environment** ضيف:
-   - `BREVO_API_KEY` = المفتاح
-   - `MAIL_FROM` = البريد اللي أكّدته في الخطوة ٢
+Self-signup sends a confirmation link by email. Without this step, signups are verified automatically and links are printed to the Render logs instead.
+
+Note: Render's free plan blocks SMTP ports, so email goes through Brevo's HTTPS API.
+
+1. Sign up at https://www.brevo.com (free plan: 300 emails a day).
+2. **Verify the sender:** **Senders, Domains & Dedicated IPs** → **Senders** → **Add a sender**, and confirm the link they email you.
+3. **API key:** **SMTP & API** → **API Keys** → **Generate a new API key**. Copy it (it is shown once).
+4. In Render → **Environment** add:
+   - `BREVO_API_KEY` = the key
+   - `MAIL_FROM` = the address verified in step 2
 5. **Save Changes**.
 
-> 🔒 مفتاح API سري، لا ترسله لأحد ولا في المحادثة. الصقه في Render بس.
+> 🔒 The API key is secret. Never share it or paste it into a chat; only into Render.
 
-## ملاحظات
+## Notes
 
-- لو Supabase توقف رغم كذا، ترجّعه من لوحة Supabase بزر **Restore**.
-- أي تحديث للكود يُرفع لـGitHub، وRender ينشره تلقائيًا.
-- ما تبي الشركة التجريبية؟ غيّر `DEMO_SEED` إلى `0` في إعدادات Render.
+- If Supabase pauses anyway, restore it from the Supabase dashboard with **Restore**.
+- Every push to GitHub is deployed by Render automatically.
+- Don't want the demo company? Set `DEMO_SEED` to `0` in the Render settings.

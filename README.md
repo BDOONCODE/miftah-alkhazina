@@ -1,30 +1,35 @@
-# مفتاح الخزينة
+# Miftah Alkhazina (مفتاح الخزينة)
 
-نظام Profit First قابل للتخصيص. الخطة والقرارات في [PLAN.md](PLAN.md).
+A configurable Profit First system: every incoming amount is split immediately according to a policy the accountant defines per company. Plan and decisions are in [PLAN.md](PLAN.md); deployment steps are in [DEPLOY.md](DEPLOY.md).
 
-## التشغيل محليًا
+The user interface is in Arabic; code, comments and documentation are in English.
+
+## Running locally
 
 ```bash
 py -3.12 -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt
 .venv/Scripts/alembic upgrade head
-.venv/Scripts/python -m app.cli create-admin --username admin --full-name "مدير النظام"
+.venv/Scripts/python -m app.cli create-admin --username admin --full-name "System Admin"
 .venv/Scripts/uvicorn app.main:app --reload
 ```
 
-ثم افتح http://localhost:8000
+Then open http://localhost:8000
 
-للتجربة السريعة (محليًا فقط): `python -m app.cli seed-demo` ينشئ حسابات تجريبية وشركة بسياسة معتمدة ومعاملات. أسماء الحسابات وكلمات مرورها في `app/cli.py`.
+For a quick demo (local only): `python -m app.cli seed-demo` creates demo accounts and a company with an approved policy and transactions. The account names and passwords are in `app/cli.py`.
 
-## الاختبارات
+## Tests
 
 ```bash
 .venv/Scripts/python -m pytest -q
 ```
 
-## الهيكل
+## Layout
 
-- `app/domain/` — محرك التخصيص والقواعد، بدون أي اعتماد على قاعدة البيانات
-- `app/models.py` — الجداول
-- `app/main.py` — الواجهة
-- `migrations/` — تغييرات قاعدة البيانات (Alembic)
+- `app/domain/` — the allocation engine and rules, with no database dependency
+- `app/services/` — business logic (policies, transactions, payouts, metrics, reports)
+- `app/services/banking.py` — the banking provider layer (simulated until the Neotek integration)
+- `app/routes/` and `app/templates/` — the web UI
+- `app/models.py` — database tables
+- `migrations/` — database migrations (Alembic)
+- `docs/` — the illustrated overview for stakeholders (in Arabic)

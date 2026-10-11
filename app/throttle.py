@@ -1,6 +1,6 @@
-"""حد لمحاولات الدخول الفاشلة (حماية من تخمين كلمات المرور).
+"""Limit on failed login attempts (protection against password guessing).
 
-بالذاكرة، ويكفي لخادم واحد مثل الاستضافة المجانية.
+In memory, which is enough for a single server like the free host.
 """
 from __future__ import annotations
 

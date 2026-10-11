@@ -1,7 +1,7 @@
-"""الضريبة ترجع بند يضيفه المحاسب (مو إلزامية)، بالحساب الصحيح.
+"""VAT goes back to being an item the accountant adds (not mandatory), computed correctly.
 
-بنود الضريبة اللي تحوّلت للضريبة الإلزامية ترجع لسياسات شركاتها بنفس الرصيد والمستفيد،
-بنوع «ضريبة القيمة المضافة» (١٥ من كل ١١٥) وبالأولوية ١، وبعدها تنشال أعمدة الضريبة الإلزامية.
+Tax items that became the mandatory VAT return to their companies' policies with the same balance and beneficiary,
+as type "VAT" (15 of every 115) at priority 1; then the mandatory-VAT columns are dropped.
 
 Revision ID: 537d4949f5bd
 Revises: 4f9a858b069f
@@ -64,7 +64,7 @@ def _restore_tax_items() -> None:
             taken = conn.execute(
                 sa.text("SELECT 1 FROM policy_buckets WHERE policy_id = :p AND priority = 1"), {"p": policy_id}
             ).first()
-            if taken:  # الأولوية ١ مشغولة: البنود الباقية تنزل درجة
+            if taken:  # priority 1 is taken: shift the other items down
                 conn.execute(sa.text("UPDATE policy_buckets SET priority = priority + 1 WHERE policy_id = :p"), {"p": policy_id})
             conn.execute(
                 sa.text("""

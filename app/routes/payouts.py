@@ -20,13 +20,13 @@ router = APIRouter()
 def balances_page(
     request: Request, entity_id: int, user: User = Depends(current_user), session: Session = Depends(get_session)
 ):
-    """المحجوز لكل بند، ومتى يتحوّل ولمين، وسجل التحويلات. للمتابعة فقط: التحويل يمشي حسب الجدولة."""
+    """Held balance per item, when and to whom it transfers, and the transfer log. Read-only: transfers follow the schedule."""
     entity = get_entity_for(user, entity_id, session)
     today = local_date(utcnow())
     if policy := active_policy(session, entity_id):
-        # سياسات اعتُمدت قبل الربط: تنفتح حسابات بنودها في الخلفية
+        # Policies approved before the integration: open their items' accounts in the background
         svc.ensure_virtual_accounts(session, entity_id, [pb.bucket_id for pb in policy.buckets])
-    svc.run_due(session, entity_id, today)  # لو الخادم كان نايم يوم الاستحقاق
+    svc.run_due(session, entity_id, today)  # in case the server was asleep on the due date
     session.commit()
     views = svc.held_balances(session, entity_id, today)
     return templates.TemplateResponse(

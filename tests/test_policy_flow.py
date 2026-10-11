@@ -1,4 +1,4 @@
-"""المسار الكامل: المحاسب يسجّل الشركة والمراجع ← يبني السياسة ← المراجع يعتمدها."""
+"""The full flow: the accountant registers the company and reviewer -> builds the policy -> the reviewer approves it."""
 import pytest
 
 from app import models
@@ -49,7 +49,7 @@ def company(client, db, make_user):
 
 
 def test_registration_creates_company_reviewer_and_dashboard(company, db):
-    pool = db.query(models.BankAccount).one()  # آيبان التسجيل صار الحساب المجمّع
+    pool = db.query(models.BankAccount).one()  # the registration IBAN became the pool account
     assert (pool.iban, pool.kind, pool.entity_id) == ("SA0380000000608010167519", models.AccountKind.POOL, company.id)
     reviewer = db.query(models.User).filter_by(username="sara").one()
     assert reviewer.role is Role.APPROVER and reviewer.must_change_password
@@ -71,12 +71,12 @@ def test_full_flow_accountant_builds_reviewer_approves(client, company, db):
     assert draft.status is PolicyStatus.PENDING
     assert [(b.name, b.value) for b in draft.buckets] == [("الضريبة", 1500), ("الإيجار", 1_000_000), ("الأرباح", 500)]
 
-    # المحاسب ما يقدر يعتمد سياسته (الشركة على الاعتماد بمراجع)
+    # The accountant cannot approve their own policy (the company uses reviewer approval)
     client.post(f"/policies/{draft.id}/approve")
     db.refresh(draft)
     assert draft.status is PolicyStatus.PENDING
 
-    # المراجع: أول دخول يجبره يغيّر كلمة المرور
+    # The reviewer: the first login forces a password change
     client.post("/logout")
     assert login(client, "sara", "Temp-pass-1!").headers["location"] == "/account/password"
     assert client.get("/", follow_redirects=False).headers["location"] == "/account/password"
@@ -138,12 +138,12 @@ def test_four_eyes_and_protected_bucket_justification(db, company):
     v1 = _activate(db, company, accountant, reviewer)
     tax_id = v1.buckets[0].bucket_id
 
-    # الضريبة تموّلت هالفترة
+    # Tax was funded this period
     db.add(models.BucketPeriodState(bucket_id=tax_id, entity_id=company.id, period_key="0000-00-00", funded=100))
     db.commit()
 
     v2 = svc.start_draft(db, company, accountant)
-    assert [b.bucket_id for b in v2.buckets] == [b.bucket_id for b in v1.buckets]  # نفس الهويات
+    assert [b.bucket_id for b in v2.buckets] == [b.bucket_id for b in v1.buckets]  # same identities
     changed = [svc.BucketInput(tax_id, "الضريبة", 1, models.CalcType.PERCENTAGE, 1000, models.Frequency.IMMEDIATE, None, "", True, new_destination_iban="SA1100000000000000000001")]
     svc.save_draft(db, v2, changed, "", accountant)
 
@@ -157,12 +157,12 @@ def test_four_eyes_and_protected_bucket_justification(db, company):
     svc.approve(db, v2, reviewer)
     db.commit()
     assert v1.status is PolicyStatus.ARCHIVED and v2.status is PolicyStatus.ACTIVE
-    # البند المحذوف (الأرباح) ما عنده حالة، فما ينقفل شي؛ والضريبة باقية
+    # The removed item (profit) has no state, so nothing closes; tax remains
     assert db.get(models.BucketPeriodState, tax_id) is not None
 
 
 def _make_self_approver(db, accountant):
-    """نفس الشخص حتى لو صار معتمِد: ما يعتمد اللي أنشأه."""
+    """The same person, even after becoming an approver, cannot approve what they created."""
     accountant.role = Role.APPROVER
     return accountant
 
@@ -199,12 +199,12 @@ def test_withdraw_pending_and_edit_after_rejection(db, company):
     svc.save_draft(db, draft, [tax], "", accountant)
     svc.submit(db, draft, accountant, "")
 
-    # سحب من المراجع للتعديل
+    # Withdraw from the reviewer to edit
     svc.withdraw(db, draft, accountant)
     assert draft.status is PolicyStatus.DRAFT and draft.submitted_at is None
     svc.submit(db, draft, accountant, "")
 
-    # الرفض ثم مسودة جديدة تبدأ من البنود المرفوضة
+    # Rejection, then a new draft starting from the rejected items
     svc.reject(db, draft, reviewer, "النسبة عالية")
     db.commit()
     v2 = svc.start_draft(db, company, accountant)
@@ -249,13 +249,13 @@ def test_reviewer_mode_still_requires_reviewer(client, db, make_user):
 
 
 def test_switching_to_self_unblocks_pending_policy(client, company, db):
-    """حالة المدير اللي أنشأ السياسة وعلّقت لأنه ما يقدر يعتمد نفسه."""
+    """An admin who created the policy and got stuck because they cannot approve their own."""
     client.post(f"/entities/{company.id}/policy/draft")
     draft = svc.open_policy(db, company.id)
     client.post(f"/policies/{draft.id}/edit", data=POLICY_FORM | {"intent": "submit"})
     client.post(f"/policies/{draft.id}/approve")
     db.refresh(draft)
-    assert draft.status is PolicyStatus.PENDING  # الاعتماد بمراجع: المنشئ ممنوع
+    assert draft.status is PolicyStatus.PENDING  # reviewer approval: the creator is blocked
 
     client.post(f"/entities/{company.id}/approval-mode", data={"approval_mode": "self"})
     page = client.get(f"/entities/{company.id}/policy").text

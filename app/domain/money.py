@@ -1,4 +1,4 @@
-"""تحويل المبالغ والنسب بين النص المُدخل والتخزين الداخلي (هللات / نقاط أساس)."""
+"""Convert amounts and rates between user input and internal storage (halalas / basis points)."""
 from __future__ import annotations
 
 from decimal import ROUND_DOWN, Decimal, InvalidOperation
@@ -15,7 +15,7 @@ def _to_decimal(text: str) -> Decimal:
 
 
 def parse_amount(text: str) -> int:
-    """'1,234.56' → 123456 هللة. أكثر من خانتين عشريتين مرفوض."""
+    """'1,234.56' -> 123456 halalas. More than two decimal places is rejected."""
     value = _to_decimal(text)
     halalas = value * 100
     if halalas != halalas.to_integral_value():
@@ -24,7 +24,7 @@ def parse_amount(text: str) -> int:
 
 
 def parse_percent(text: str) -> int:
-    """'15.5' → 1550 نقطة أساس."""
+    """'15.5' -> 1550 basis points."""
     value = _to_decimal(text) * 100
     if value != value.to_integral_value():
         raise ValueError("النسبة ما تقبل أكثر من خانتين عشريتين")

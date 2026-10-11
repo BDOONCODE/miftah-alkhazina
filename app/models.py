@@ -1,7 +1,7 @@
-"""جداول قاعدة البيانات. المبالغ BigInteger بالهللة، والنسب بنقاط الأساس.
+"""Database tables. Amounts are BigInteger halalas and rates are basis points.
 
-السجلات المالية (transactions, allocation_events, period_closures, audit_log)
-تُضاف فقط — التصحيح يكون بقيد عكسي، ما في تعديل ولا حذف.
+Financial records (transactions, allocation_events, period_closures, audit_log)
+are append-only: corrections are made with a reversing entry, never by editing or deleting.
 """
 from __future__ import annotations
 
@@ -33,10 +33,10 @@ def utcnow() -> datetime:
 
 
 class UTCDateTime(TypeDecorator):
-    """يخزّن الوقت دائمًا بتوقيت UTC ويرجّعه مع المنطقة الزمنية.
+    """Always store time in UTC and return it with a time zone.
 
-    SQLite ما يحفظ المنطقة الزمنية، فبدون هذا ترجع الأوقات بدون منطقة وتنعرض غلط،
-    ومقارنة الفترات تختلط. PostgreSQL يتعامل معه بنفس الطريقة.
+    SQLite does not keep the time zone, so without this times come back naive and display wrong,
+    and period comparisons get mixed up. PostgreSQL is handled the same way.
     """
 
     impl = DateTime
@@ -81,7 +81,7 @@ class TransactionSource(StrEnum):
     OPEN_BANKING = "open_banking"
 
 
-# ---------------------------------------------------------------- المستخدمين والكيانات
+# ---------------------------------------------------------------- users and entities
 
 
 class User(Base):
@@ -93,10 +93,10 @@ class User(Base):
     role: Mapped[Role] = mapped_column(_enum(Role))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
-    # التسجيل الذاتي: البريد لازم يتأكد قبل الدخول. الحسابات اللي ينشئها المدير أو المحاسب مؤكدة أصلًا
+    # Self-signup: the email must be confirmed before login. Accounts created by an admin or accountant are already confirmed
     email: Mapped[str | None] = mapped_column(String(254), unique=True)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
-    account_type: Mapped[str | None] = mapped_column(String(16))  # office | business (للتسجيل الذاتي)
+    account_type: Mapped[str | None] = mapped_column(String(16))  # office | business (self-signup)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
     entities: Mapped[list[Entity]] = relationship(secondary="user_entities", back_populates="users")
@@ -107,15 +107,15 @@ class Entity(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(128))
     type: Mapped[str] = mapped_column(String(32), default="company")
-    parent_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id"))  # محجوز للهرمية لاحقًا
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id"))  # reserved for hierarchies later
     currency: Mapped[str] = mapped_column(String(3), default="SAR")
-    cr_number: Mapped[str] = mapped_column(String(32), default="")  # السجل التجاري
-    vat_number: Mapped[str] = mapped_column(String(32), default="")  # الرقم الضريبي
+    cr_number: Mapped[str] = mapped_column(String(32), default="")  # commercial registration
+    vat_number: Mapped[str] = mapped_column(String(32), default="")  # VAT number
     bank_name: Mapped[str] = mapped_column(String(64), default="")
     iban: Mapped[str] = mapped_column(String(34), default="")
     contact_name: Mapped[str] = mapped_column(String(128), default="")
     contact_phone: Mapped[str] = mapped_column(String(32), default="")
-    # من يعتمد السياسات: "self" = منشئ السياسة يعتمدها بنفسه، "reviewer" = مراجع مستقل
+    # Who approves policies: "self" = the creator approves it, "reviewer" = an independent reviewer
     approval_mode: Mapped[str] = mapped_column(String(16), default="reviewer", server_default="reviewer")
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
@@ -128,14 +128,14 @@ class Entity(Base):
 
 
 class AccountKind(StrEnum):
-    SOURCE = "source"  # مصدر إيراد: نقاط البيع، مدى/فيزا، التوصيل
-    POOL = "pool"  # الحساب المجمّع اللي تتجمع فيه الإيرادات
-    SUB = "sub"  # حساب ثاني تملكه الشركة (الحسابات الافتراضية للبنود تنفتح تلقائيًا عند المزوّد)
-    EXTERNAL = "external"  # حساب جهة ثانية: مؤجر، مورد
+    SOURCE = "source"  # revenue source: POS, mada/Visa, delivery apps
+    POOL = "pool"  # the pool account where revenue collects
+    SUB = "sub"  # another account the company owns (items' virtual accounts are opened automatically at the provider)
+    EXTERNAL = "external"  # a third party's account: landlord, supplier
 
 
 class BankAccount(Base):
-    """حسابات الشركة البنكية. provider_ref = معرّف الحساب عند مزوّد الربط (نيوتك) لاحقًا."""
+    """Company bank accounts. provider_ref = the account id at the banking provider (Neotek), later."""
 
     __tablename__ = "bank_accounts"
     __table_args__ = (UniqueConstraint("entity_id", "iban"),)
@@ -156,16 +156,16 @@ class UserEntity(Base):
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True)
 
 
-# ---------------------------------------------------------------- السياسات
+# ---------------------------------------------------------------- policies
 
 
 class Bucket(Base):
-    """هوية ثابتة للبند عبر نسخ السياسة، عشان يحتفظ برصيده لما تتغير السياسة."""
+    """Stable identity of an item across policy versions, so it keeps its balance when the policy changes."""
 
     __tablename__ = "buckets"
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
-    # الحساب الافتراضي للبند عند مزوّد الربط (نيوتك): ينفتح أول ما تنعتمد سياسة فيها البند
+    # The item's virtual account at the banking provider (Neotek): opened when a policy with the item is approved
     virtual_iban: Mapped[str | None] = mapped_column(String(34))
     virtual_ref: Mapped[str | None] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
@@ -186,7 +186,7 @@ class Policy(Base):
     decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     decision_note: Mapped[str] = mapped_column(Text, default="")
-    # وين يروح الفائض (المتبقي بعد كل البنود). فاضي أو الحساب المجمّع = يبقى في المجمّع
+    # Where the surplus (left after all items) goes. Empty or the pool account = stays in the pool
     surplus_account_id: Mapped[int | None] = mapped_column(ForeignKey("bank_accounts.id"))
 
     buckets: Mapped[list[PolicyBucket]] = relationship(
@@ -208,34 +208,34 @@ class PolicyBucket(Base):
     value: Mapped[int] = mapped_column(BigInteger)
     frequency: Mapped[Frequency] = mapped_column(_enum(Frequency))
     settlement_day: Mapped[int | None] = mapped_column(Integer)
-    due_date: Mapped[date | None] = mapped_column(Date)  # تاريخ الاستحقاق القادم (ربع/نصف سنوي، سنوي)
-    destination: Mapped[str] = mapped_column(String(128), default="")  # اسم المستفيد للعرض
-    # المستفيد: الحساب اللي يتحوّل له مبلغ البند من حسابه الافتراضي.
-    # بدون موعد استحقاق يتحوّل أول ما يتقسّم، ومع موعد يتجمّع ويتحوّل كامل يوم الاستحقاق
+    due_date: Mapped[date | None] = mapped_column(Date)  # next due date (quarterly, semiannual, annual)
+    destination: Mapped[str] = mapped_column(String(128), default="")  # beneficiary name for display
+    # Beneficiary: the account the item's money is transferred to from its virtual account.
+    # Without a due date it transfers as soon as it is split; with one it accumulates and transfers in full on the due date
     destination_account_id: Mapped[int | None] = mapped_column(ForeignKey("bank_accounts.id"))
     protected: Mapped[bool] = mapped_column(Boolean, default=False)
 
     policy: Mapped[Policy] = relationship(back_populates="buckets")
 
 
-# ---------------------------------------------------------------- المعاملات والتخصيص
+# ---------------------------------------------------------------- transactions and allocation
 
 
 class Transaction(Base):
     __tablename__ = "transactions"
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
-    amount: Mapped[int] = mapped_column(BigInteger)  # سالب للقيد العكسي
+    amount: Mapped[int] = mapped_column(BigInteger)  # negative for a reversing entry
     surplus: Mapped[int] = mapped_column(BigInteger, default=0)
     occurred_at: Mapped[datetime] = mapped_column(UTCDateTime(), index=True)
     source: Mapped[TransactionSource] = mapped_column(_enum(TransactionSource), default=TransactionSource.MANUAL)
-    # الحساب اللي دخل منه المبلغ (نقاط البيع، مدى، التوصيل...)
+    # The account the money came in from (POS, mada, delivery...)
     source_account_id: Mapped[int | None] = mapped_column(ForeignKey("bank_accounts.id"))
     external_ref: Mapped[str | None] = mapped_column(String(128), unique=True)
     reversal_of: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), unique=True)
     policy_id: Mapped[int] = mapped_column(ForeignKey("policies.id"))
     note: Mapped[str] = mapped_column(Text, default="")
-    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))  # فاضي = وصلت تلقائيًا من البنك
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))  # empty = arrived automatically from the bank
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
     events: Mapped[list[AllocationEvent]] = relationship(back_populates="transaction", order_by="AllocationEvent.id")
@@ -253,7 +253,7 @@ class AllocationEvent(Base):
     status: Mapped[FundingStatus] = mapped_column(_enum(FundingStatus))
     funded_after: Mapped[int] = mapped_column(BigInteger)
     carried_deficit_after: Mapped[int] = mapped_column(BigInteger)
-    # لقطة الحالة قبل المعاملة — تُستخدم لاسترجاعها بالقيد العكسي
+    # Snapshot of the state before the transaction, used to restore it on reversal
     before_period_key: Mapped[str | None] = mapped_column(String(10))
     before_target: Mapped[int | None] = mapped_column(BigInteger)
     before_funded: Mapped[int | None] = mapped_column(BigInteger)
@@ -264,7 +264,7 @@ class AllocationEvent(Base):
 
 
 class BucketPeriodState(Base):
-    """الحالة الحية لكل بند في فترته الحالية (صف واحد لكل بند)."""
+    """Live state of each item in its current period (one row per item)."""
 
     __tablename__ = "bucket_period_state"
     bucket_id: Mapped[int] = mapped_column(ForeignKey("buckets.id"), primary_key=True)
@@ -285,27 +285,27 @@ class PeriodClosure(Base):
     target: Mapped[int] = mapped_column(BigInteger)
     funded: Mapped[int] = mapped_column(BigInteger)
     closed_deficit: Mapped[int] = mapped_column(BigInteger)
-    # الإقفال يصير إما بمعاملة في فترة جديدة، أو باعتماد سياسة حذفت البند
+    # Closed either by a transaction in a new period, or by approving a policy that removed the item
     closed_by_transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"))
     closed_by_policy_id: Mapped[int | None] = mapped_column(ForeignKey("policies.id"))
-    voided: Mapped[bool] = mapped_column(Boolean, default=False)  # ألغاها قيد عكسي
+    voided: Mapped[bool] = mapped_column(Boolean, default=False)  # voided by a reversing entry
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
 
 class Payout(Base):
-    """تحويل من الحساب الافتراضي لبند (أو الفائض من المجمّع) إلى المستفيد. يُضاف فقط، ما يتعدّل."""
+    """A transfer from an item's virtual account (or the surplus from the pool) to the beneficiary. Append-only."""
 
     __tablename__ = "payouts"
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
-    bucket_id: Mapped[int | None] = mapped_column(ForeignKey("buckets.id"), index=True)  # فاضي = الفائض
+    bucket_id: Mapped[int | None] = mapped_column(ForeignKey("buckets.id"), index=True)  # empty = the surplus
     amount: Mapped[int] = mapped_column(BigInteger)
     reason: Mapped[str] = mapped_column(String(16))  # immediate | due | surplus
-    # الفترة اللي انصرف رصيدها (للصرف في تاريخ الاستحقاق)، عشان ما تنصرف مرتين
+    # The period whose balance was paid out (due-date payouts), so it is never paid twice
     period_key: Mapped[str | None] = mapped_column(String(10))
     transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), index=True)
     beneficiary_account_id: Mapped[int] = mapped_column(ForeignKey("bank_accounts.id"))
-    beneficiary_name: Mapped[str] = mapped_column(String(128))  # لقطة وقت التحويل
+    beneficiary_name: Mapped[str] = mapped_column(String(128))  # snapshot at transfer time
     beneficiary_iban: Mapped[str] = mapped_column(String(34))
     status: Mapped[PayoutStatus] = mapped_column(_enum(PayoutStatus), default=PayoutStatus.SENT)
     reference: Mapped[str] = mapped_column(String(64), unique=True)
@@ -314,7 +314,7 @@ class Payout(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
 
 
-# ---------------------------------------------------------------- اللوحة
+# ---------------------------------------------------------------- dashboard
 
 
 class Dashboard(Base):
@@ -322,7 +322,7 @@ class Dashboard(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), unique=True)
     title: Mapped[str] = mapped_column(String(128))
-    initialized: Mapped[bool] = mapped_column(Boolean, default=False)  # القالب الافتراضي انطبق مرة
+    initialized: Mapped[bool] = mapped_column(Boolean, default=False)  # the default template was applied once
     updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
@@ -358,7 +358,7 @@ class CustomMetric(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
 
-# ---------------------------------------------------------------- التدقيق
+# ---------------------------------------------------------------- audit
 
 
 class AuditLog(Base):

@@ -1,4 +1,4 @@
-"""التسجيل الذاتي، تأكيد البريد، استعادة كلمة المرور، وشروط كلمة المرور."""
+"""Self-signup, email confirmation, password reset and password rules."""
 import re
 
 import pytest
@@ -33,7 +33,7 @@ def signup(client, **overrides):
 
 def test_password_rules():
     assert password_problems(STRONG) == []
-    assert len(password_problems("password123")) == 2  # بدون حرف كبير ولا رمز
+    assert len(password_problems("password123")) == 2  # no uppercase letter and no symbol
     assert "رمز خاص مثل ! @ # $" in password_problems("Password123")
 
 
@@ -46,7 +46,7 @@ def test_signup_verify_and_login(client, db, outbox):
     )
     assert outbox[0]["to"] == "ahmed@example.com"
 
-    # قبل التأكيد: الدخول ممنوع مع عرض خيار إعادة الإرسال
+    # Before confirmation: login is blocked with an option to resend
     blocked = client.post("/login", data={"username": "ahmed@example.com", "password": STRONG})
     assert blocked.status_code == 403 and "أرسل لي رابط جديد" in blocked.text
 
@@ -54,14 +54,14 @@ def test_signup_verify_and_login(client, db, outbox):
     assert verified.headers["location"] == "/"
     db.refresh(user)
     assert user.email_verified
-    assert client.get("/", follow_redirects=False).status_code == 200  # داخل بدون إعادة توجيه للدخول
+    assert client.get("/", follow_redirects=False).status_code == 200  # signed in, not redirected to login
 
 
 def test_signup_rejects_weak_password_and_duplicates(client, db):
     assert signup(client, password="password123", confirm="password123").status_code == 422
     assert db.query(models.User).count() == 0
     signup(client)
-    assert signup(client, email="ahmed@example.com").status_code == 422  # نفس البريد بحروف مختلفة
+    assert signup(client, email="ahmed@example.com").status_code == 422  # same email with different letter case
     assert signup(client, email="not-an-email").status_code == 422
 
 
@@ -77,7 +77,7 @@ def test_resend_does_not_reveal_accounts(client, outbox):
 
 def test_forgot_password_link_is_single_use(client, db, outbox):
     signup(client)
-    client.get(link_from(outbox[0]))  # تأكيد البريد
+    client.get(link_from(outbox[0]))  # confirm the email
     client.post("/logout")
 
     page = client.post("/forgot-password", data={"login": "AHMED@example.com"})
@@ -95,7 +95,7 @@ def test_forgot_password_link_is_single_use(client, db, outbox):
     )
     assert done.headers["location"] == "/login"
     assert client.post("/login", data={"username": "ahmed@example.com", "password": new}, follow_redirects=False).status_code == 303
-    # نفس الرابط ما يشتغل مرة ثانية
+    # The same link does not work a second time
     assert client.get(reset_link).status_code == 400
 
 

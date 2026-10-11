@@ -1,4 +1,4 @@
-"""دورة حياة السياسة: مسودة ← بانتظار الاعتماد ← نشطة (أو مرفوضة)، مع الأرشفة والتدقيق."""
+"""Policy lifecycle: draft -> pending approval -> active (or rejected), with archiving and audit."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -45,10 +45,10 @@ class BucketInput:
     destination: str
     protected: bool
     destination_account_id: int | None = None
-    # «+ آيبان جديد» من صفحة السياسة: يتسجّل حساب جديد باسم البند
+    # "+ new IBAN" from the policy page: a new account is registered under the item's name
     new_destination_iban: str = ""
     new_destination_kind: str = "external"
-    due_date: date | None = None  # تاريخ الاستحقاق القادم (ربع/نصف سنوي، سنوي)
+    due_date: date | None = None  # next due date (quarterly, semiannual, annual)
 
 
 def bucket_spec(pb: PolicyBucket) -> BucketSpec:
@@ -77,7 +77,7 @@ def active_policy(session: Session, entity_id: int) -> Policy | None:
 
 
 def open_policy(session: Session, entity_id: int) -> Policy | None:
-    """المسودة أو السياسة بانتظار الاعتماد (وحدة بالكثير لكل كيان)."""
+    """The draft or pending policy (at most one per entity)."""
     return session.scalar(
         select(Policy).where(Policy.entity_id == entity_id, Policy.status.in_(OPEN_STATUSES))
     )
@@ -99,8 +99,8 @@ def _audit(session: Session, user: User, policy: Policy, action: str, **details)
 
 
 def _draft_base(session: Session, entity_id: int) -> Policy | None:
-    """المسودة الجديدة تبدأ من آخر نسخة نشطة، أو من آخر نسخة مرفوضة لو كانت أحدث
-    (عشان المحاسب يعدّل على اللي رفضه المراجع بدل ما يبدأ من الصفر)."""
+    """A new draft starts from the latest active version, or from the latest rejected one if it is newer
+    (so the accountant edits what the reviewer rejected instead of starting over)."""
     return session.scalar(
         select(Policy)
         .where(Policy.entity_id == entity_id, Policy.status.in_((PolicyStatus.ACTIVE, PolicyStatus.REJECTED)))
@@ -110,7 +110,7 @@ def _draft_base(session: Session, entity_id: int) -> Policy | None:
 
 
 def start_draft(session: Session, entity: Entity, user: User) -> Policy:
-    """مسودة جديدة تبدأ من آخر نسخة (بنفس هويات البنود)."""
+    """A new draft starting from the latest version (with the same item identities)."""
     if open_policy(session, entity.id):
         raise PolicyError("فيه مسودة أو سياسة بانتظار الاعتماد لهذي الشركة")
     last_version = session.scalar(select(func.max(Policy.version)).where(Policy.entity_id == entity.id)) or 0
@@ -190,7 +190,7 @@ def save_draft(
                 protected=row.protected,
             )
         )
-    # نمسح القديمة أول عشان قيد (policy_id, bucket_id) الفريد
+    # Delete the old ones first because of the unique (policy_id, bucket_id) constraint
     policy.buckets.clear()
     session.flush()
     policy.buckets.extend(new_buckets)
@@ -202,7 +202,7 @@ def save_draft(
 
 
 def _destination_from_iban(session: Session, policy: Policy, user: User, row: BucketInput, destinations: dict) -> BankAccount:
-    """آيبان جديد من صفحة السياسة: نستخدم الحساب لو مسجّل، وإلا نسجّله باسم البند."""
+    """New IBAN from the policy page: reuse the account if registered, otherwise register it under the item's name."""
     iban = normalize_iban(row.new_destination_iban)
     existing = session.scalar(
         select(BankAccount).where(BankAccount.entity_id == policy.entity_id, BankAccount.iban == iban)
@@ -226,7 +226,7 @@ def _destination_from_iban(session: Session, policy: Policy, user: User, row: Bu
 
 
 def destination_errors(policy: Policy) -> list[str]:
-    """كل بند له مستفيد يتحوّل له مبلغه. (الفائض: بدون حساب محدد يبقى في المجمّع.)"""
+    """Every item has a beneficiary its money transfers to. (Surplus: with no account it stays in the pool.)"""
     return [f"البند «{pb.name}» ما له مستفيد: اختر الآيبان اللي يتحوّل له" for pb in policy.buckets
             if pb.destination_account_id is None]
 
@@ -277,9 +277,9 @@ def is_self_approval(session: Session, policy: Policy) -> bool:
 
 
 def can_decide(session: Session, policy: Policy, user: User) -> bool:
-    """هل يقدر هذا المستخدم يعتمد أو يرفض السياسة؟"""
+    """Can this user approve or reject the policy?"""
     if is_self_approval(session, policy):
-        # الشركة اختارت الاعتماد الذاتي: المحاسب/المدير يعتمد حتى لو هو المنشئ
+        # The company chose self-approval: the accountant/admin approves even as the creator
         return user.role in (Role.ACCOUNTANT, Role.ADMIN, Role.APPROVER)
     return user.role in (Role.APPROVER, Role.ADMIN) and policy.created_by != user.id
 
@@ -296,7 +296,7 @@ def _check_decider(session: Session, policy: Policy, user: User) -> None:
 
 def approve(session: Session, policy: Policy, user: User, note: str = "") -> None:
     _check_decider(session, policy, user)
-    if errors := validate_policy(specs(policy)):  # احتياط لو تغيّر شي بعد الإرسال
+    if errors := validate_policy(specs(policy)):  # safety net in case something changed after submission
         raise PolicyError("؛ ".join(errors))
 
     previous = active_policy(session, policy.entity_id)
@@ -307,7 +307,7 @@ def approve(session: Session, policy: Policy, user: User, note: str = "") -> Non
         removed = [pb.bucket_id for pb in previous.buckets if pb.bucket_id not in kept]
         _close_removed_buckets(session, policy, removed)
 
-    session.flush()  # الأرشفة قبل التفعيل
+    session.flush()  # archive before activating
     policy.status = PolicyStatus.ACTIVE
     policy.decided_by = user.id
     policy.decided_at = utcnow()
@@ -332,7 +332,7 @@ def set_approval_mode(session: Session, entity: Entity, user: User, mode: str) -
 
 
 def _close_removed_buckets(session: Session, policy: Policy, bucket_ids: list[int]) -> None:
-    """البند المحذوف تنقفل فترته فورًا ويُسجَّل عجزه النهائي."""
+    """A removed item's period closes immediately and its final deficit is recorded."""
     for bucket_id in bucket_ids:
         state = session.get(BucketPeriodState, bucket_id)
         if state is None:
@@ -364,7 +364,7 @@ def reject(session: Session, policy: Policy, user: User, note: str) -> None:
 
 
 def withdraw(session: Session, policy: Policy, user: User) -> None:
-    """المحاسب يسحب السياسة من المراجع ويرجّعها مسودة عشان يعدّل عليها."""
+    """The accountant pulls the policy back from the reviewer as a draft to edit it."""
     if policy.status is not PolicyStatus.PENDING:
         raise PolicyError("السياسة مو بانتظار الاعتماد")
     policy.status = PolicyStatus.DRAFT

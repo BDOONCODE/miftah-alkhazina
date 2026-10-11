@@ -1,4 +1,4 @@
-"""تسجيل المعاملات الواردة وتقسيمها فورًا، والقيد العكسي لآخر معاملة."""
+"""Recording incoming transactions and splitting them immediately, and reversing the latest one."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -31,7 +31,7 @@ class TransactionError(ValueError):
 
 
 def _lock_entity(session: Session, entity_id: int) -> Entity:
-    """يسلسل التخصيص لكل كيان (FOR UPDATE على PostgreSQL؛ SQLite يسلسل الكتابة أصلًا)."""
+    """Serialize allocation per entity (FOR UPDATE on PostgreSQL; SQLite already serializes writes)."""
     return session.scalars(select(Entity).where(Entity.id == entity_id).with_for_update()).one()
 
 
@@ -55,7 +55,7 @@ def record_transaction(
     external_ref: str | None = None,
     source_account_id: int | None = None,
 ) -> Transaction:
-    """user=None: المبلغ وصل تلقائيًا من البنك."""
+    """user=None: the money arrived automatically from the bank."""
     _lock_entity(session, entity.id)
 
     if source_account_id is not None:
@@ -66,13 +66,13 @@ def record_transaction(
     if external_ref:
         existing = session.scalar(select(Transaction).where(Transaction.external_ref == external_ref))
         if existing is not None:
-            return existing  # نفس المعاملة وصلت مرة ثانية
+            return existing  # the same transaction arrived again
 
     policy = active_policy(session, entity.id)
     if policy is None:
         raise TransactionError("ما في سياسة نشطة لهذي الشركة. لازم يعتمد المراجع السياسة قبل تقسيم أي مبلغ")
 
-    # لو فيه بنود وصل موعد صرفها، تتحوّل قبل ما يتقسّم الجديد
+    # If any items are due for payout, transfer them before splitting the new money
     payouts.run_due(session, entity.id, local_date(utcnow()))
 
     rows = _load_states(session, entity.id)
@@ -165,7 +165,7 @@ def is_reversed(session: Session, txn: Transaction) -> bool:
 
 
 def reversible_transaction(session: Session, entity_id: int) -> Transaction | None:
-    """آخر معاملة أصلية غير معكوسة — هي الوحيدة اللي ينفع نعكسها (الأحدث أولًا)."""
+    """Latest original, non-reversed transaction: the only one that can be reversed (newest first)."""
     reversed_ids = set(
         session.scalars(
             select(Transaction.reversal_of).where(Transaction.entity_id == entity_id, Transaction.reversal_of.is_not(None))
@@ -196,7 +196,7 @@ def reverse_transaction(session: Session, txn: Transaction, user: User, reason: 
         entity_id=txn.entity_id,
         amount=-txn.amount,
         surplus=-txn.surplus,
-        occurred_at=txn.occurred_at,  # نفس الفترة، فالتقارير تصفّي الأثر
+        occurred_at=txn.occurred_at,  # same period, so reports net out the effect
         source=txn.source,
         reversal_of=txn.id,
         source_account_id=txn.source_account_id,
@@ -247,7 +247,7 @@ def reverse_transaction(session: Session, txn: Transaction, user: User, reason: 
     return reversal
 
 
-# ------------------------------------------------------------------ الوارد من البنك
+# ------------------------------------------------------------------ incoming from the bank
 
 
 def ingest_bank_credit(
@@ -258,9 +258,9 @@ def ingest_bank_credit(
     reference: str,
     note: str = "",
 ) -> Transaction:
-    """مبلغ وصل لحساب الشركة في البنك (إشعار مزوّد الربط أو المحاكي): يتقسّم فورًا.
+    """Money arrived in a company bank account (provider notification or the simulator): split immediately.
 
-    نفس المرجع ما يتقسّم مرتين، لأن البنوك تعيد إرسال الإشعار أحيانًا.
+    The same reference is never split twice, because banks sometimes resend notifications.
     """
     from .accounts import find_by_iban
 

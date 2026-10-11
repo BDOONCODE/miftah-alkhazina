@@ -1,4 +1,4 @@
-"""حساب المستخدم (تغيير كلمة المرور) وإدارة المحاسبين للمدير."""
+"""User account (change password) and accountant management for admins."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
@@ -81,7 +81,7 @@ async def create_accountant(request: Request, user: User = Depends(admin_only), 
 async def reset_password(
     request: Request, user_id: int, user: User = Depends(admin_only), session: Session = Depends(get_session)
 ):
-    """المدير يعطي المستخدم كلمة مرور مؤقتة جديدة، والنظام يطلب تغييرها أول دخول."""
+    """The admin gives the user a new temporary password, which must be changed on first login."""
     target = session.get(User, user_id)
     if target is None:
         flash(request, "المستخدم غير موجود", "error")
@@ -104,7 +104,7 @@ async def reset_password(
 def verify_email_manually(
     request: Request, user_id: int, user: User = Depends(admin_only), session: Session = Depends(get_session)
 ):
-    """لو رسالة التأكيد ما وصلت، المدير يفعّل البريد يدويًا."""
+    """If the confirmation email never arrived, the admin verifies the email manually."""
     target = session.get(User, user_id)
     if target is None:
         flash(request, "المستخدم غير موجود", "error")

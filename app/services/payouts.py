@@ -1,12 +1,12 @@
-"""تحويل مبالغ البنود للمستفيدين حسب جدولة الاستحقاق.
+"""Transferring item balances to beneficiaries according to their schedule.
 
-المسار: الدخل ينزل في الحساب المجمّع ← يتقسّم ← نصيب كل بند يتحجز في حساب افتراضي خاص فيه
-(عند مزوّد الربط، في الخلفية، والمستخدم ما يتعامل معه) ← ويتحوّل للمستفيد:
-  - بند بدون موعد استحقاق (فوري): يتحوّل أول ما يتقسّم.
-  - بند له موعد: يتجمّع، ويتحوّل كامل يوم الاستحقاق (أول يوم بعد نهاية الدورة).
-والفائض يتحوّل للحساب اللي حدده المحاسب، أو يبقى في المجمّع.
+Flow: income lands in the pool account -> is split -> each item's share is held in its own virtual account
+(at the banking provider, in the background; users never deal with it) -> and is transferred to the beneficiary:
+  - an item with no due date (immediate): transfers as soon as it is split.
+  - an item with a due date: accumulates and transfers in full on the due date (first day after the cycle ends).
+The surplus goes to the account the accountant chose, or stays in the pool.
 
-رصيد البند المحجوز = مجموع اللي تخصص له − مجموع التحويلات الناجحة منه.
+Held balance of an item = total allocated to it - total successful transfers from it.
 """
 from __future__ import annotations
 
@@ -43,11 +43,11 @@ def _lock_entity(session: Session, entity_id: int) -> None:
     session.scalars(select(Entity).where(Entity.id == entity_id).with_for_update()).one()
 
 
-# ------------------------------------------------------------------ الحسابات الافتراضية (خلفية)
+# ------------------------------------------------------------------ virtual accounts (background)
 
 
 def ensure_virtual_accounts(session: Session, entity_id: int, bucket_ids: list[int]) -> None:
-    """كل بند في سياسة معتمدة له حساب افتراضي عند المزوّد (ينفتح مرة وحدة ويبقى مع البند)."""
+    """Every item in an approved policy has a virtual account at the provider (opened once, kept with the item)."""
     names = {
         pb.bucket_id: pb.name
         for pb in session.scalars(select(PolicyBucket).where(PolicyBucket.bucket_id.in_(bucket_ids)))
@@ -66,7 +66,7 @@ def ensure_virtual_accounts(session: Session, entity_id: int, bucket_ids: list[i
 
 
 def balances(session: Session, entity_id: int) -> dict[int, int]:
-    """المحجوز لكل بند (بالهللة)."""
+    """Held balance per item (halalas)."""
     session.flush()
     allocated = session.execute(
         select(AllocationEvent.bucket_id, func.sum(AllocationEvent.allocated))
@@ -96,7 +96,7 @@ def _allocated_in_period(session: Session, bucket_id: int, key: str) -> int:
     )
 
 
-# ------------------------------------------------------------------ التحويل
+# ------------------------------------------------------------------ transfers
 
 
 def _send(
@@ -116,7 +116,7 @@ def _send(
             ensure_virtual_accounts(session, entity_id, [bucket_id])
         from_ref = bucket.virtual_ref
     else:
-        from_ref = f"pool-{entity_id}"  # الفائض يطلع من الحساب المجمّع نفسه
+        from_ref = f"pool-{entity_id}"  # the surplus leaves from the pool account itself
     payout = Payout(
         entity_id=entity_id,
         bucket_id=bucket_id,
@@ -159,7 +159,7 @@ def _beneficiary(session: Session, entity_id: int, account_id: int | None) -> Ba
 def pay_on_allocation(
     session: Session, entity_id: int, policy: Policy, txn: Transaction, lines: tuple[AllocationLine, ...], surplus: int
 ) -> list[Payout]:
-    """بعد التقسيم مباشرة: البنود اللي بدون موعد تتحوّل، والفائض يروح لحسابه."""
+    """Right after the split: items with no due date transfer, and the surplus goes to its account."""
     by_bucket = {pb.bucket_id: pb for pb in policy.buckets}
     sent = []
     for line in lines:
@@ -168,7 +168,7 @@ def pay_on_allocation(
             continue
         beneficiary = _beneficiary(session, entity_id, pb.destination_account_id)
         if beneficiary is None:
-            continue  # يبقى محجوز لين يتحدد مستفيد
+            continue  # stays held until a beneficiary is set
         sent.append(
             _send(session, entity_id, pb.bucket_id, line.allocated, beneficiary, "immediate",
                   transaction_id=txn.id, period=line.period_key)
@@ -180,16 +180,16 @@ def pay_on_allocation(
 
 
 def _periods(pb: PolicyBucket, today: date) -> tuple[str, str]:
-    """(مفتاح الدورة الحالية، مفتاح الدورة اللي انتهت قبلها)."""
+    """(current cycle key, key of the cycle that ended before it)."""
     start, _ = period_bounds(pb.frequency, today, pb.settlement_day, pb.due_date)
     current = period_key(pb.frequency, today, pb.settlement_day, pb.due_date)
     return current, period_key(pb.frequency, start - timedelta(days=1), pb.settlement_day, pb.due_date)
 
 
 def run_due(session: Session, entity_id: int, today: date) -> list[Payout]:
-    """البنود اللي لها موعد: أول ما تنتهي الدورة يتحوّل رصيدها (بدون نصيب الدورة الجديدة).
+    """Items with a due date: when a cycle ends its balance transfers (excluding the new cycle's share).
 
-    آمنة للتكرار: الدورة اللي انصرفت تنسجّل، فما تنصرف مرة ثانية.
+    Safe to repeat: a paid cycle is recorded, so it is never paid twice.
     """
     from .policies import active_policy
 
@@ -227,7 +227,7 @@ def run_due_all(session: Session, today: date) -> int:
 
 
 def reversal_blocker(session: Session, txn: Transaction) -> str | None:
-    """القيد العكسي يرجّع أرصدة البنود، فما ينفع لو المبلغ تحوّل للمستفيد."""
+    """A reversal restores item balances, so it is not allowed once money went to a beneficiary."""
     if session.scalar(
         select(Payout.id).where(Payout.transaction_id == txn.id, Payout.status == PayoutStatus.SENT)
     ):
@@ -238,7 +238,7 @@ def reversal_blocker(session: Session, txn: Transaction) -> str | None:
     return None
 
 
-# ------------------------------------------------------------------ العرض
+# ------------------------------------------------------------------ view
 
 
 @dataclass
@@ -247,14 +247,14 @@ class HeldView:
     name: str
     balance: int
     beneficiary: BankAccount | None
-    next_due: date | None  # فاضي = يتحوّل مع كل دخل
-    target: int  # هدف الدورة للمبلغ الثابت
-    funded: int  # المتجمّع في الدورة الحالية
+    next_due: date | None  # empty = transfers with each deposit
+    target: int  # cycle target for a fixed amount
+    funded: int  # funded in the current cycle
     in_policy: bool
 
 
 def held_balances(session: Session, entity_id: int, today: date) -> list[HeldView]:
-    """بنود السياسة النشطة، ومعها أي بند انحذف وباقي له رصيد محجوز."""
+    """Items of the active policy, plus any removed item that still has a held balance."""
     from .policies import active_policy
 
     policy = active_policy(session, entity_id)

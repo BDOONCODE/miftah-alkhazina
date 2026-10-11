@@ -1,7 +1,7 @@
-"""ضريبة القيمة المضافة إلزامية يحسبها النظام.
+"""Mandatory system-computed VAT (later reverted by 537d4949f5bd).
 
-بنود الضريبة اللي أضافها المحاسبين في السياسات الحالية تتحوّل للضريبة الإلزامية
-(نفس الرصيد ونفس الحساب)، وتنشال من السياسات النشطة والمفتوحة عشان ما تنحسب مرتين.
+Tax items accountants had added to current policies become the mandatory VAT
+(same balance and account) and are removed from active and open policies so they are not counted twice.
 
 Revision ID: 4f9a858b069f
 Revises: 0873550f3102

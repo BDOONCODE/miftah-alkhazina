@@ -1,4 +1,4 @@
-"""قواعد التحقق من السياسة، وحماية البنود المحمية عند التعديل."""
+"""Policy validation rules, and protection of protected items when editing."""
 from __future__ import annotations
 
 from collections.abc import Collection, Sequence
@@ -9,14 +9,14 @@ MIN_JUSTIFICATION_LENGTH = 20
 
 
 def effective_rate(b: BucketSpec) -> int:
-    """نصيب البند من المبلغ الوارد بنقاط الأساس (الضريبة الشاملة ١٥٪ = ١٣٫٠٤٪ من الوارد)."""
+    """The item's share of an incoming amount in basis points (15% VAT = 13.04% of the amount)."""
     if b.calc_type is CalcType.VAT_INCLUSIVE:
         return b.value * BASIS_POINTS_FULL // (BASIS_POINTS_FULL + b.value)
     return b.value
 
 
 def validate_policy(buckets: Sequence[BucketSpec]) -> list[str]:
-    """يرجّع قائمة أخطاء بالعربي؛ القائمة الفاضية تعني السياسة سليمة."""
+    """Return a list of errors (in Arabic, shown to the user); an empty list means the policy is valid."""
     errors: list[str] = []
     if not buckets:
         return ["السياسة لازم يكون فيها بند واحد على الأقل"]
@@ -49,7 +49,7 @@ def protected_changes(
     new: Sequence[BucketSpec],
     funded_bucket_ids: Collection[int],
 ) -> list[str]:
-    """التعديلات اللي تمس بنود محمية تموّلت في الفترة الحالية."""
+    """Changes that touch protected items funded in the current period."""
     new_by_id = {b.bucket_id: b for b in new}
     changes: list[str] = []
     for b in old:

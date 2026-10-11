@@ -108,7 +108,7 @@
 
 {% block scripts %}
 <script>
-  // الإيداع التلقائي: يرسل إيداع تجريبي كل ٢٠ ثانية ويحدّث الصفحة، ويتذكر التشغيل بعد التحديث
+  // Automatic deposits: send a demo deposit every 20 seconds and refresh; remembers being on after a reload
   (() => {
     const form = document.getElementById("sim-form");
     const auto = document.getElementById("sim-auto");
@@ -119,7 +119,7 @@
 
     const send = async () => {
       const data = new FormData(form);
-      data.set("amount", "");  // التلقائي دائمًا بمبلغ عشوائي
+      data.set("amount", "");  // automatic mode always uses a random amount
       status.textContent = "يرسل إيداع…";
       try {
         const r = await fetch(form.action, { method: "POST", body: data, headers: { Accept: "application/json" } });

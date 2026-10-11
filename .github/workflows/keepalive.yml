@@ -1,5 +1,5 @@
-# يبقي الموقع صاحي: الاستضافة المجانية (Render) تنوّم الموقع بعد ١٥ دقيقة بدون زيارات،
-# وأول زيارة بعدها تاخذ قرابة دقيقة. هذا يزوره كل ٥ دقائق، ويشغّل معه صرف البنود اللي وصل موعدها.
+# Keeps the site awake: Render's free plan sleeps the service after 15 idle minutes,
+# and the first visit after that takes about a minute. This visits it every 5 minutes (and runs due payouts).
 name: keepalive
 
 on:
@@ -12,5 +12,5 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: زيارة الموقع
+      - name: Visit the site
         run: curl -fsS --retry 3 --retry-delay 10 --max-time 90 https://miftah-alkhazina.onrender.com/keepalive

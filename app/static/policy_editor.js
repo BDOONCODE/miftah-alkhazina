@@ -1,4 +1,4 @@
-// منشئ السياسة: إضافة وحذف البنود، وتبديل الوحدة، وحساب مجموع النسب مباشرة.
+// Policy editor: add and remove items, switch the unit, and update the rate total live.
 (() => {
   const rows = document.getElementById("rows");
   const template = document.getElementById("row-template");
@@ -17,12 +17,12 @@
       const due = tr.querySelector(".js-due");
       due.hidden = !["quarterly", "semiannual", "annual"].includes(freq);
       due.required = !due.hidden;
-      // «+ آيبان جديد»: تظهر خانة الآيبان ونوعه
+      // "+ new IBAN": show the IBAN field and its kind
       const isNew = tr.querySelector(".js-dest").value === "new";
       const box = tr.querySelector(".js-new-dest");
       box.hidden = !isNew;
       box.querySelector('input[name="dest_iban"]').required = isNew;
-      // الضريبة الشاملة ١٥٪ تاخذ ١٣٫٠٤٪ من الوارد (١٥ ÷ ١١٥)
+      // VAT at 15% takes 13.04% of the incoming amount (15 / 115)
       const rate = toNumber(tr.querySelector(".js-value").value);
       if (isPct) sum += calc === "vat_inclusive" ? (rate * 100) / (100 + rate) : rate;
     });

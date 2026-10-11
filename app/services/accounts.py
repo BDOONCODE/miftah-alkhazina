@@ -1,4 +1,4 @@
-"""حسابات الشركة البنكية: مصادر الإيراد، والحساب المجمّع، والحسابات الفرعية، وحسابات الجهات الخارجية."""
+"""Company bank accounts: revenue sources, the pool account, the company's other accounts, and third parties."""
 from __future__ import annotations
 
 import re
@@ -20,7 +20,7 @@ KIND_HINTS = {
     AccountKind.SUB.value: "حساب ثاني تملكه الشركة، مثل حساب أرباح المالك أو حساب الرواتب",
     AccountKind.EXTERNAL.value: "حساب جهة تتحوّل لها فلوس: مانح الامتياز، المؤجر، مورد",
 }
-# الأنواع اللي تصلح وجهة لبند في السياسة
+# Account kinds that can be an item's beneficiary
 DESTINATION_KINDS = (AccountKind.POOL, AccountKind.SUB, AccountKind.EXTERNAL)
 IBAN_RE = re.compile(r"^SA\d{22}$")
 
@@ -95,7 +95,7 @@ def toggle_account(session: Session, account: BankAccount, user: User) -> None:
 
 
 def find_by_iban(session: Session, iban: str) -> BankAccount | None:
-    """الحساب اللي وصل له المبلغ (لإشعارات البنك): مصدر إيراد أو مجمّع فقط."""
+    """The account the money arrived in (for bank notifications): a revenue source or the pool only."""
     return session.scalar(
         select(BankAccount).where(
             BankAccount.iban == normalize_iban(iban),

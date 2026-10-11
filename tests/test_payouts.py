@@ -1,4 +1,4 @@
-"""تحويل مبالغ البنود للمستفيدين حسب الاستحقاق: فوري مع كل دخل، أو كامل يوم الاستحقاق. والفائض لحسابه."""
+"""Transferring item balances to beneficiaries by schedule: immediately with each deposit, or in full on the due date. And the surplus to its account."""
 from datetime import date, datetime, timezone
 
 import pytest
@@ -19,7 +19,7 @@ OWNER_IBAN = "SA8880000000000000000008"
 
 @pytest.fixture
 def setup(db, make_user, monkeypatch):
-    # «اليوم» ثابت في منتصف سبتمبر، عشان صرف الاستحقاق ما يعتمد على تاريخ تشغيل الاختبار
+    # "Today" is fixed mid-September, so due payouts do not depend on when the test runs
     monkeypatch.setattr(tx, "utcnow", lambda: datetime(2026, 9, 15, 9, tzinfo=timezone.utc))
     user = make_user("acc")
     entity = models.Entity(name="مزاج", approval_mode="self")
@@ -70,7 +70,7 @@ def test_undated_item_and_surplus_transfer_with_each_deposit(db, setup):
     assert (royalty.amount, royalty.beneficiary_account_id, royalty.transaction_id) == (600 * SAR, accounts["royalty"].id, txn.id)
     surplus = paid[(None, "surplus")]
     assert (surplus.amount, surplus.beneficiary_account_id) == (txn.surplus, accounts["owner"].id)
-    assert len(paid) == 2  # الإيجار والاحتياطي لهم موعد: محجوزين
+    assert len(paid) == 2  # rent and reserve have a schedule: held
     balances = po.balances(db, entity.id)
     assert balances[ids["الإتاوة"]] == 0
     assert balances[ids["الاحتياطي"]] == 1_000 * SAR
@@ -86,24 +86,24 @@ def test_surplus_stays_in_pool_by_default(db, setup):
 def test_dated_item_accumulates_then_pays_on_due_date_once(db, setup):
     entity, user, ids, accounts = setup
     deposit(db, entity, user, 10_000 * SAR, 10)
-    deposit(db, entity, user, 10_000 * SAR, 30)  # آخر يوم بالدورة: يكتمل الهدف
+    deposit(db, entity, user, 10_000 * SAR, 30)  # last day of the cycle: the target completes
     rent = ids["الإيجار"]
     assert po.balances(db, entity.id)[rent] == 3_000 * SAR
-    assert po.run_due(db, entity.id, date(2026, 9, 30)) == []  # قبل الموعد ما يتحرك
+    assert po.run_due(db, entity.id, date(2026, 9, 30)) == []  # nothing moves before the due date
 
     paid = {p.bucket_id: p for p in po.run_due(db, entity.id, date(2026, 10, 1))}
     assert (paid[rent].amount, paid[rent].beneficiary_account_id, paid[rent].period_key) == (
         3_000 * SAR, accounts["landlord"].id, "2026-09-01"
     )
     assert paid[ids["الاحتياطي"]].amount == 2_000 * SAR
-    assert po.run_due(db, entity.id, date(2026, 10, 3)) == []  # ما ينصرف مرتين
+    assert po.run_due(db, entity.id, date(2026, 10, 3)) == []  # never paid twice
     assert po.balances(db, entity.id)[rent] == 0
 
 
 def test_due_payout_leaves_new_period_money(db, setup, monkeypatch):
     entity, user, ids, _ = setup
     deposit(db, entity, user, 10_000 * SAR, 20)
-    # دخل يوم ٢ أكتوبر قبل ما يشتغل الصرف: نصيب أكتوبر يبقى، وسبتمبر بس ينصرف
+    # Income on October 2 before payouts ran: October's share stays, only September is paid
     monkeypatch.setattr(tx, "utcnow", lambda: datetime(2026, 9, 30, 9, tzinfo=timezone.utc))
     tx.record_transaction(db, entity, user, 10_000 * SAR, datetime(2026, 10, 2, 10, tzinfo=timezone.utc))
     rent = ids["الإيجار"]
@@ -131,7 +131,7 @@ def test_failed_transfer_keeps_money_held(db, setup, monkeypatch):
     entity, user, ids, _ = setup
     deposit(db, entity, user, 10_000 * SAR, 10)
     assert {p.status for p in db.query(models.Payout)} == {PayoutStatus.FAILED}
-    assert po.balances(db, entity.id)[ids["الإتاوة"]] == 600 * SAR  # ما طلع، فيبقى محجوز
+    assert po.balances(db, entity.id)[ids["الإتاوة"]] == 600 * SAR  # it did not leave, so it stays held
 
 
 def test_balances_page_hides_virtual_accounts(client, db, setup):

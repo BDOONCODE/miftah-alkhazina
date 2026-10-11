@@ -30,7 +30,7 @@ def _policy_for(user: User, policy_id: int, session: Session) -> Policy:
 
 
 def _row_view(pb) -> dict:
-    """البند كنصوص للنموذج."""
+    """The item as form strings."""
     value = str(pb.value / 100).rstrip("0").rstrip(".") if pb.calc_type.is_rate else format_amount(pb.value)
     return {
         "bucket_id": str(pb.bucket_id),
@@ -41,7 +41,7 @@ def _row_view(pb) -> dict:
         "frequency": pb.frequency.value,
         "settlement_day": str(pb.settlement_day or ""),
         "destination": str(pb.destination_account_id or ""),
-        # وجهة قديمة مكتوبة نص (قبل الحسابات البنكية): نعرضها تلميح عشان يختار حسابها
+        # Legacy destination stored as text (before bank accounts): shown as a hint so the account can be picked
         "legacy_destination": "" if pb.destination_account_id else pb.destination,
         "protected": "1" if pb.protected else "0",
         "dest_iban": "",
@@ -52,7 +52,7 @@ def _row_view(pb) -> dict:
 
 def _parse_rows(form) -> tuple[list[dict], list[svc.BucketInput], list[str]]:
     fields = ["bucket_id", "name", "priority", "calc_type", "value", "frequency", "settlement_day", "destination", "protected"]
-    # خانات «+ آيبان جديد» وتاريخ الاستحقاق وطريقة الصرف
+    # Fields for "+ new IBAN" and the due date
     optional = {"dest_iban": "", "dest_kind": "external", "due_date": ""}
     columns = {f: form.getlist(f) for f in fields}
     count = len(columns["name"])
@@ -193,7 +193,7 @@ async def save_draft(request: Request, policy_id: int, user: User = Depends(edit
                 svc.approve(session, policy, user)
         except svc.PolicyError as exc:
             session.rollback()
-            # أخطاء التحقق تظهر أصلًا فوق الجدول، فما نكررها في التنبيه
+            # Validation errors already show above the table, so do not repeat them in the alert
             detail = "راجع الملاحظات تحت" if validate_policy(svc.specs(policy)) or svc.destination_errors(policy) else str(exc)
             flash(request, f"انحفظت المسودة لكن ما {'اعتُمدت' if self_approval else 'انرسلت للمراجع'}: {detail}", "error")
             return redirect(f"/policies/{policy.id}/edit")

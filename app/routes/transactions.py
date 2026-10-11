@@ -27,7 +27,7 @@ PAGE_SIZE = 50
 
 
 def _bucket_names(session: Session, txns: list[Transaction]) -> dict[int, str]:
-    """اسم كل بند كما كان في السياسة اللي قسّمت المعاملة."""
+    """Each item's name as it was in the policy that split the transaction."""
     policy_ids = {t.policy_id for t in txns}
     names: dict[int, str] = {}
     if policy_ids:
@@ -105,7 +105,7 @@ async def add_transaction(
 async def simulate_bank_credit(
     request: Request, entity_id: int, user: User = Depends(editor), session: Session = Depends(get_session)
 ):
-    """محاكاة إيداع يوصل من البنك: يمر بنفس مسار إشعار البنك الحقيقي بالضبط."""
+    """Simulated deposit from the bank: goes through exactly the same path as a real bank notification."""
     entity = get_entity_for(user, entity_id, session)
     form = await request.form()
     wants_json = "application/json" in request.headers.get("accept", "")
@@ -117,12 +117,12 @@ async def simulate_bank_credit(
     else:
         try:
             raw = str(form.get("amount", "")).strip()
-            # بدون مبلغ: مبلغ عشوائي واقعي بين ٥٠٠ و١٥,٠٠٠ ريال
+            # No amount: a realistic random amount between 500 and 15,000 riyals
             amount = parse_amount(raw) if raw else random.randint(500, 15_000) * 100
             txn = svc.ingest_bank_credit(
                 session, account.iban, amount, utcnow(), f"SIM-{uuid.uuid4().hex[:12]}", note="إيداع تجريبي (محاكاة البنك)"
             )
-        except ValueError as exc:  # يشمل TransactionError
+        except ValueError as exc:  # includes TransactionError
             error = str(exc)
     if error:
         session.rollback()

@@ -1,6 +1,6 @@
-"""أنواع المجال الأساسية لمحرك التخصيص — بدون أي اعتماد على قاعدة البيانات.
+"""Core domain types for the allocation engine, with no database dependency.
 
-كل المبالغ أعداد صحيحة بالهللة، وكل النسب بنقاط الأساس (1550 = 15.50%).
+All amounts are integers in halalas, and all rates are basis points (1550 = 15.50%).
 """
 from __future__ import annotations
 
@@ -10,30 +10,30 @@ from enum import StrEnum
 
 
 class CalcType(StrEnum):
-    PERCENTAGE = "percentage"  # نسبة من المبلغ الوارد
+    PERCENTAGE = "percentage"  # a share of each incoming amount
     FIXED_AMOUNT = "fixed_amount"
-    # ضريبة القيمة المضافة والمبيعات شاملة الضريبة: الضريبة جزء من المبلغ نفسه،
-    # فنصيبها = المبلغ × النسبة ÷ (١ + النسبة). مثال ١٥٪: ١١٥ ريال فيها ١٥ ضريبة
+    # VAT: sales amounts already include the tax, so the tax is part of the amount itself;
+    # its share = amount x rate / (1 + rate). At 15%, 115 riyals contain 15 riyals of tax
     VAT_INCLUSIVE = "vat_inclusive"
 
     @property
     def is_rate(self) -> bool:
-        """نوع يحسب نصيبه من كل مبلغ وارد (ويترحّل عجزه)، مو هدف ثابت."""
+        """A type whose share is computed from each incoming amount (its deficit carries over), not a fixed target."""
         return self is not CalcType.FIXED_AMOUNT
 
 
 class Frequency(StrEnum):
-    IMMEDIATE = "immediate"  # بدون تاريخ استحقاق: البند ياخذ حاجته فورًا
+    IMMEDIATE = "immediate"  # no due date: the item takes what it needs at once
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
     DAY_OF_MONTH = "day_of_month"
-    QUARTERLY = "quarterly"  # كل ٣ شهور، من تاريخ استحقاق محدد
-    SEMIANNUAL = "semiannual"  # كل ٦ شهور
-    ANNUAL = "annual"  # كل سنة
+    QUARTERLY = "quarterly"  # every 3 months, from a set due date
+    SEMIANNUAL = "semiannual"  # every 6 months
+    ANNUAL = "annual"  # every year
 
 
-# المواعيد اللي تحتاج «تاريخ الاستحقاق القادم» وعدد شهور دورتها
+# Schedules that need a "next due date", and their cycle length in months
 ANCHORED_MONTHS = {Frequency.QUARTERLY: 3, Frequency.SEMIANNUAL: 6, Frequency.ANNUAL: 12}
 
 
@@ -41,7 +41,7 @@ class FundingStatus(StrEnum):
     FULLY_FUNDED = "FULLY_FUNDED"
     PARTIAL = "PARTIAL"
     UNFUNDED = "UNFUNDED"
-    NOT_REQUIRED = "NOT_REQUIRED"  # بند ثابت مكتمل هدفه، أو نسبة ناتجها صفر
+    NOT_REQUIRED = "NOT_REQUIRED"  # a fixed item whose target is met, or a percentage that comes to zero
 
 
 BASIS_POINTS_FULL = 10_000  # 100%
@@ -49,33 +49,33 @@ BASIS_POINTS_FULL = 10_000  # 100%
 
 @dataclass(frozen=True)
 class BucketSpec:
-    """إعدادات بند واحد داخل نسخة سياسة."""
+    """Settings for one item within a policy version."""
 
     bucket_id: int
     name: str
     priority: int
     calc_type: CalcType
-    value: int  # نقاط أساس للنسبة، هللات للمبلغ الثابت
+    value: int  # basis points for rates, halalas for fixed amounts
     frequency: Frequency
     settlement_day: int | None = None
     destination: str = ""
     protected: bool = False
-    due_date: date | None = None  # تاريخ الاستحقاق القادم (للربع سنوي والنصف سنوي والسنوي)
+    due_date: date | None = None  # next due date (quarterly, semiannual and annual)
 
 
 @dataclass(frozen=True)
 class BucketState:
-    """الحالة التراكمية لبند في فترته الحالية."""
+    """Cumulative state of an item in its current period."""
 
     bucket_id: int
     period_key: str
-    target: int  # هدف الفترة للبند الثابت، وصفر للنسبة
-    funded: int  # المتجمّع للبند في هذه الفترة
-    carried_deficit: int  # عجز البند النسبي المرحَّل للمعاملات الجاية
+    target: int  # period target for a fixed item, zero for rates
+    funded: int  # funded for the item in this period
+    carried_deficit: int  # deficit of a rate item carried to the next transactions
 
     @property
     def deficit(self) -> int:
-        """العجز الحالي: الباقي من الهدف للثابت، أو المرحَّل للنسبة."""
+        """Current deficit: what is left of the target for fixed items, or the carried amount for rates."""
         if self.target:
             return max(0, self.target - self.funded)
         return self.carried_deficit
@@ -88,13 +88,13 @@ class AllocationLine:
     required: int
     allocated: int
     status: FundingStatus
-    state_before: BucketState | None  # None = أول مرة يتموّل فيها البند
+    state_before: BucketState | None  # None = first time the item is funded
     state_after: BucketState
 
 
 @dataclass(frozen=True)
 class PeriodClosure:
-    """فترة انتهت لبند: كم تموّل فيها، وكم بقي عجز نهائي."""
+    """A period that ended for an item: how much it was funded and the final deficit."""
 
     bucket_id: int
     period_key: str

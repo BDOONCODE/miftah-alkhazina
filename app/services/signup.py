@@ -1,8 +1,8 @@
-"""التسجيل الذاتي، تأكيد البريد، واستعادة كلمة المرور.
+"""Self-signup, email confirmation and password reset.
 
-الروابط موقّعة بمفتاح الخادم (itsdangerous) ولها مدة صلاحية، فما نحتاج جدول رموز.
-رابط استعادة كلمة المرور يستخدم مرة وحدة: فيه بصمة من كلمة المرور الحالية،
-فأول ما تتغيّر يبطل الرابط.
+Links are signed with the server key (itsdangerous) and expire, so no token table is needed.
+A password reset link works once: it carries a fingerprint of the current password,
+so it stops working as soon as the password changes.
 """
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ def normalize_email(email: str) -> str:
 
 
 def find_by_login(session: Session, login: str) -> User | None:
-    """الدخول باسم المستخدم أو البريد، بدون حساسية للأحرف."""
+    """Sign in with username or email, case-insensitive."""
     value = login.strip().lower()
     return session.scalar(
         select(User).where((func.lower(User.username) == value) | (func.lower(User.email) == value))
@@ -76,7 +76,7 @@ def register(session: Session, data: SignupInput) -> User:
         email=email,
         full_name=data.full_name.strip(),
         password_hash=password_hash,
-        role=Role.ACCOUNTANT,  # الاثنين يسجّلون شركات ويبنون سياسات
+        role=Role.ACCOUNTANT,  # both kinds register companies and build policies
         account_type=data.account_type,
         email_verified=False,
     )
@@ -86,7 +86,7 @@ def register(session: Session, data: SignupInput) -> User:
     return user
 
 
-# ------------------------------------------------------------------ تأكيد البريد
+# ------------------------------------------------------------------ email confirmation
 
 
 def verification_token(user: User) -> str:
@@ -130,7 +130,7 @@ def send_verification(user: User, base_url: str) -> bool:
     )
 
 
-# ------------------------------------------------------------------ استعادة كلمة المرور
+# ------------------------------------------------------------------ password reset
 
 
 def _password_fingerprint(user: User) -> str:
@@ -173,5 +173,5 @@ def reset_password(session: Session, user: User, password: str, confirm: str = "
     except ValueError as exc:
         raise SignupError(str(exc)) from exc
     user.must_change_password = False
-    user.email_verified = True  # وصل الرابط لبريده، فالبريد مؤكد
+    user.email_verified = True  # the link reached their inbox, so the email is confirmed
     session.add(AuditLog(user_id=user.id, action="user.password_reset_by_email"))

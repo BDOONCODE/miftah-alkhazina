@@ -1,4 +1,4 @@
-"""صفحات التسجيل الذاتي، تأكيد البريد، واستعادة كلمة المرور."""
+"""Self-signup, email confirmation and password reset pages."""
 from __future__ import annotations
 
 import os
@@ -14,7 +14,7 @@ from ..templating import templates
 from ..web import flash, redirect
 
 router = APIRouter()
-# حد للطلبات اللي ترسل بريد، عشان ما ينستخدم الموقع لإغراق بريد أحد
+# Limit requests that send email, so the site cannot be used to flood someone's inbox
 EMAIL_ACTIONS_PER_WINDOW = throttle.MAX_FAILURES
 
 
@@ -30,7 +30,7 @@ def _email_throttled(request: Request, email: str) -> bool:
     key = f"mail:{email.strip().lower()}"
     if throttle.is_blocked(_ip(request), key):
         return True
-    throttle.record_failure(_ip(request), key)  # نعدّ كل رسالة، مو بس الفاشلة
+    throttle.record_failure(_ip(request), key)  # count every message, not just failures
     return False
 
 
@@ -62,7 +62,7 @@ async def signup(request: Request, session: Session = Depends(get_session)):
         session.rollback()
         return _page(request, "signup", {"form": values, "error": str(exc), "TYPES": svc.ACCOUNT_TYPES}, 422)
     if not mailer.is_configured():
-        # إرسال البريد مو مُعدّ: ما نعلّق المستخدم على رابط ما بيوصله، نفعّله مباشرة
+        # Email sending is not configured: do not leave the user waiting for a link that will not arrive; verify directly
         user.email_verified = True
         session.commit()
         request.session.clear()
@@ -91,7 +91,7 @@ async def resend_verification(request: Request, session: Session = Depends(get_s
     user = svc.find_by_login(session, email)
     if user is not None and user.email and not user.email_verified:
         svc.send_verification(user, _base_url(request))
-    # نفس الرد دائمًا، عشان ما نكشف مين مسجّل
+    # Always the same response, so we do not reveal who is registered
     flash(request, "لو البريد مسجّل وما تأكد، وصله رابط تأكيد جديد")
     return redirect("/signup/check-email")
 
@@ -122,7 +122,7 @@ async def forgot(request: Request, session: Session = Depends(get_session)):
         user = svc.find_by_login(session, login)
         if user is not None and user.email and user.is_active:
             svc.send_reset(user, _base_url(request))
-    # نفس الرد دائمًا، عشان ما نكشف مين مسجّل
+    # Always the same response, so we do not reveal who is registered
     return _page(request, "forgot", {"sent": True})
 
 

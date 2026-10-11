@@ -1,13 +1,13 @@
-"""حساب الفترات: كل بند له دورة تحددها جدولة استحقاقه، ونهاية الدورة هي تاريخ الاستحقاق.
+"""Periods: each item has a cycle set by its schedule, and the cycle ends on the due date.
 
-- فوري: بدون تاريخ استحقاق، فترة واحدة دائمة (البند ياخذ حاجته فورًا، والعجز المرحَّل يبقى لين يتسدد).
-- يومي / أسبوعي (يبدأ الأحد) / شهري.
-- يوم محدد بالشهر: الدورة من ذاك اليوم لين نفس اليوم بالشهر الجاي،
-  ولو الشهر ما فيه اليوم المطلوب نعتمد آخر يوم فيه.
-- ربع سنوي / نصف سنوي / سنوي: الدورات تمشي على «تاريخ الاستحقاق القادم» اللي يحدده المحاسب،
-  كل ٣ أو ٦ أو ١٢ شهر قبله وبعده.
+- Immediate: no due date, one perpetual period (the item takes what it needs at once; a carried deficit stays until paid).
+- Daily / weekly (starts Sunday) / monthly.
+- Day of month: the cycle runs from that day to the same day next month;
+  if a month lacks that day, its last day is used.
+- Quarterly / semiannual / annual: cycles are anchored on the "next due date" set by the accountant,
+  every 3, 6 or 12 months before and after it.
 
-مفتاح الفترة نص قابل للمقارنة ترتيبيًا (تاريخ بداية الدورة).
+The period key is a sortable string (the cycle start date).
 """
 from __future__ import annotations
 
@@ -16,12 +16,12 @@ from datetime import date, datetime, timedelta, timezone
 
 from .types import ANCHORED_MONTHS, Frequency
 
-RIYADH = timezone(timedelta(hours=3), "Asia/Riyadh")  # بدون توقيت صيفي
+RIYADH = timezone(timedelta(hours=3), "Asia/Riyadh")  # no daylight saving time
 PERPETUAL_KEY = "0000-00-00"
 
 
 def local_date(moment: datetime | date) -> date:
-    """تاريخ اللحظة بتوقيت الرياض."""
+    """The date of the moment in Riyadh time."""
     if isinstance(moment, datetime):
         if moment.tzinfo is None:
             moment = moment.replace(tzinfo=RIYADH)
@@ -41,13 +41,13 @@ def _add_months(d: date, months: int, day: int) -> date:
 def period_bounds(
     frequency: Frequency, on: date, settlement_day: int | None = None, due_date: date | None = None
 ) -> tuple[date | None, date | None]:
-    """(بداية الدورة، نهايتها = تاريخ الاستحقاق). فوري = (None, None)."""
+    """(cycle start, cycle end = due date). Immediate = (None, None)."""
     if frequency is Frequency.IMMEDIATE:
         return None, None
     if frequency is Frequency.DAILY:
         return on, on + timedelta(days=1)
     if frequency is Frequency.WEEKLY:
-        start = on - timedelta(days=(on.weekday() + 1) % 7)  # weekday(): الاثنين=0 ... الأحد=6
+        start = on - timedelta(days=(on.weekday() + 1) % 7)  # weekday(): Monday=0 ... Sunday=6
         return start, start + timedelta(days=7)
     if frequency is Frequency.MONTHLY:
         start = on.replace(day=1)
@@ -90,14 +90,14 @@ def period_key(
 def accrued_target(
     target: int, frequency: Frequency, on: date, settlement_day: int | None = None, due_date: date | None = None
 ) -> int:
-    """كم لازم يكون متجمّع لبند مبلغ ثابت إلى يوم `on` (شامل).
+    """How much a fixed-amount item should have accrued by day `on` (inclusive).
 
-    بدون تاريخ استحقاق (فوري): الهدف كامل فورًا.
-    مع تاريخ استحقاق: يتجمّع بالتدريج بالأيام، ويكتمل في آخر يوم قبل الاستحقاق.
+    No due date (immediate): the whole target at once.
+    With a due date: accrues day by day and completes on the last day before the due date.
     """
     start, end = period_bounds(frequency, on, settlement_day, due_date)
     if start is None:
         return target
     total = (end - start).days
     elapsed = min(total, (on - start).days + 1)
-    return -(-target * elapsed // total)  # تقريب للأعلى، عشان يكتمل الهدف بالضبط في آخر يوم
+    return -(-target * elapsed // total)  # round up so the target completes exactly on the last day

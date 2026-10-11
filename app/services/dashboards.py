@@ -1,4 +1,4 @@
-"""اللوحة القابلة للتخصيص: عناصر يضيفها المحاسب ويرتّبها، ومؤشرات بمعادلات خاصة بالشركة."""
+"""Configurable dashboard: widgets the accountant adds and arranges, and company-specific formula metrics."""
 from __future__ import annotations
 
 from sqlalchemy import select
@@ -113,7 +113,7 @@ def save_layout(session: Session, dashboard: Dashboard, user: User, items: list[
     dashboard.updated_by = user.id
 
 
-# ------------------------------------------------------------------ المؤشرات المخصصة
+# ------------------------------------------------------------------ custom metrics
 
 
 def customs_for(session: Session, entity_id: int) -> list[CustomMetric]:
@@ -156,7 +156,7 @@ def delete_custom_metric(session: Session, metric: CustomMetric, user: User) -> 
     session.delete(metric)
 
 
-# ------------------------------------------------------------------ بيانات العرض
+# ------------------------------------------------------------------ view data
 
 
 def widget_views(session: Session, dashboard: Dashboard) -> list[dict]:

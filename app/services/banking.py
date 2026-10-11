@@ -1,7 +1,7 @@
-"""طبقة مزوّد الربط البنكي (نيوتك): فتح الحسابات الافتراضية والتحويل للمستفيدين.
+"""Banking provider layer (Neotek): opening virtual accounts and transferring to beneficiaries.
 
-كل اللي يعرفه باقي النظام هو `provider()`. اليوم المزوّد محاكاة تنجح دائمًا،
-ولما توصل وثائق نيوتك ينضاف `NeotekProvider` بنفس الدالتين ويتبدل من هنا بس.
+The rest of the system only knows `provider()`. Today the provider is a simulation that always succeeds;
+when Neotek's documentation arrives, a `NeotekProvider` with the same two methods is swapped in here only.
 """
 from __future__ import annotations
 
@@ -10,24 +10,24 @@ from typing import Protocol
 
 
 class BankingError(RuntimeError):
-    """المزوّد رفض العملية (رصيد، آيبان، انقطاع...)."""
+    """The provider rejected the operation (balance, IBAN, outage...)."""
 
 
 class BankingProvider(Protocol):
     def open_virtual_account(self, entity_id: int, bucket_id: int, name: str) -> tuple[str, str]:
-        """يفتح حساب افتراضي تحت الحساب المجمّع للشركة. يرجّع (الآيبان، معرّفه عند المزوّد)."""
+        """Open a virtual account under the company's pool account. Returns (IBAN, provider id)."""
 
     def transfer(self, *, from_ref: str, to_iban: str, amount: int, reference: str) -> str:
-        """يحوّل `amount` هللة من حساب افتراضي لآيبان مستفيد. يرجّع رقم العملية عند المزوّد."""
+        """Transfer `amount` halalas from a virtual account to a beneficiary IBAN. Returns the provider's operation id."""
 
 
 class SimulatedProvider:
-    """محاكاة: آيبان افتراضي ثابت لكل بند، والتحويل ينجح فورًا."""
+    """Simulation: a fixed virtual IBAN per item, and transfers succeed immediately."""
 
     name = "simulated"
 
     def open_virtual_account(self, entity_id: int, bucket_id: int, name: str) -> tuple[str, str]:
-        # SA + 22 رقم: «90» تميّز الافتراضي، ثم رقم الشركة ورقم البند
+        # SA + 22 digits: "90" marks it as virtual, then the company id and the item id
         iban = f"SA90{entity_id:08d}{bucket_id:012d}"
         return iban, f"sim-va-{entity_id}-{bucket_id}"
 

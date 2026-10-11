@@ -1,4 +1,4 @@
-"""تسجيل الشركات والمراجعين: المحاسب يسجّل الشركة ومين يراجع معه."""
+"""Company and reviewer registration: the accountant registers the company and who reviews with them."""
 from __future__ import annotations
 
 import re
@@ -89,7 +89,7 @@ def register_company(
     *,
     enforce_password_rules: bool = True,
 ) -> Entity:
-    """الاعتماد الذاتي ما يحتاج مراجع؛ الاعتماد بمراجع يحتاج بيانات المراجع."""
+    """Self-approval needs no reviewer; reviewer approval needs the reviewer's details."""
     _validate_company(company)
     if approval_mode not in ("self", "reviewer"):
         raise CompanyError("طريقة اعتماد غير معروفة")
@@ -100,10 +100,10 @@ def register_company(
     session.add(entity)
     session.flush()
 
-    if accountant.role is not Role.ADMIN:  # المدير يشوف كل الشركات أصلًا
+    if accountant.role is not Role.ADMIN:  # admins already see every company
         entity.users.append(accountant)
     if company.iban.strip():
-        # آيبان التسجيل هو الحساب المجمّع اللي تتجمع فيه الإيرادات
+        # The registration IBAN is the pool account where revenue collects
         try:
             add_account(
                 session, entity, accountant,

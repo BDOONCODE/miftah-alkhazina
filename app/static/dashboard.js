@@ -1,11 +1,11 @@
-// اللوحة: الشبكة (GridStack)، الرسوم (ECharts)، نافذة إعداد العنصر، ومحرر المعادلات.
+// Dashboard: the grid (GridStack), charts (ECharts), the widget settings dialog, and the formula editor.
 (() => {
   const css = getComputedStyle(document.documentElement);
   const palette = ["#0f6e5a", "#3b82c4", "#d98e04", "#8a5cc2", "#c2410c", "#64748b", "#0e9384"];
   const font = css.getPropertyValue("font-family") || "IBM Plex Sans Arabic";
   const sar = (v) => Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // ---------- الرسوم
+  // ---------- charts
   const charts = [];
   document.querySelectorAll(".chart[data-chart]").forEach((el) => {
     const spec = JSON.parse(el.dataset.chart);
@@ -45,7 +45,7 @@
   const resizeCharts = () => charts.forEach((c) => c.resize());
   window.addEventListener("resize", resizeCharts);
 
-  // ---------- الشبكة
+  // ---------- grid
   const gridEl = document.querySelector(".grid-stack");
   const grid = GridStack.init({ column: 12, cellHeight: 70, margin: 8, staticGrid: true, float: false, rtl: true }, gridEl);
   grid.on("resizestop", resizeCharts);
@@ -70,7 +70,7 @@
     });
   }
 
-  // ---------- نافذة إعداد العنصر
+  // ---------- widget settings dialog
   const dialog = document.getElementById("widget-dialog");
   if (dialog) {
     const form = document.getElementById("widget-form");
@@ -99,7 +99,7 @@
     dialog.querySelector("[data-close]").addEventListener("click", () => dialog.close());
   }
 
-  // ---------- محرر المعادلات
+  // ---------- formula editor
   const metricForm = document.getElementById("metric-form");
   if (metricForm) {
     const input = metricForm.elements.formula;

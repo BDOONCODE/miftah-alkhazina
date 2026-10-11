@@ -1,13 +1,13 @@
-"""محرك التخصيص (waterfall) — دالة نقية تطبّق السياسة على معاملة واردة واحدة.
+"""Allocation engine (waterfall): a pure function that applies the policy to one incoming transaction.
 
-لكل بند حسب الأولوية:
-    نسبة:  المطلوب = floor(النسبة × المبلغ) + العجز المرحَّل
-    ضريبة شاملة: المطلوب = floor(المبلغ × النسبة ÷ (١ + النسبة)) + العجز المرحَّل
-    ثابت:  المطلوب = المستحق لين اليوم − المتجمّع له
-           (بدون تاريخ استحقاق: المستحق = الهدف كامل؛
-            مع تاريخ استحقاق: يتجمّع بالتدريج بالأيام لين يكتمل قبل الاستحقاق)
-    المخصص = الأصغر بين المطلوب والمتبقي
-الباقي بعد كل البنود = فائض.  الشرط الثابت: مجموع المخصص + الفائض = المبلغ.
+For each item, by priority:
+    percentage:  required = floor(rate x amount) + carried deficit
+    VAT:         required = round(amount x rate / (1 + rate)) + carried deficit   (amount already includes the tax)
+    fixed:       required = due by today - funded so far
+           (no due date: the whole target is due at once;
+            with a due date: it accrues day by day and completes before the due date)
+    allocated = min(required, remaining)
+What is left after all items is surplus. Invariant: sum(allocated) + surplus == amount.
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from .types import (
 
 
 class ClosedPeriodError(ValueError):
-    """المعاملة تاريخها في فترة انتهت لبند واحد على الأقل."""
+    """The transaction falls in a period that has already closed for at least one item."""
 
 
 def percentage_share(amount: int, basis_points: int) -> int:
@@ -36,9 +36,9 @@ def percentage_share(amount: int, basis_points: int) -> int:
 
 
 def inclusive_tax_share(amount: int, basis_points: int) -> int:
-    """الضريبة اللي داخل مبلغ شامل الضريبة: ١١٥ بنسبة ١٥٪ فيها ١٥.
+    """The tax contained in a tax-inclusive amount: 115 at 15% contains 15.
 
-    تتقرّب لأقرب هللة مثل فاتورة الضريبة (١٠,٠٠٠ فيها ١,٣٠٤٫٣٤٧ ← ١,٣٠٤٫٣٥).
+    Rounded to the nearest halala, like a tax invoice (10,000 contains 1,304.347 -> 1,304.35).
     """
     denominator = BASIS_POINTS_FULL + basis_points
     return (2 * amount * basis_points + denominator) // (2 * denominator)
@@ -57,7 +57,7 @@ def _period_start_date(key: str) -> date | None:
 def _roll_state(
     bucket: BucketSpec, state: BucketState | None, on: date
 ) -> tuple[BucketState, PeriodClosure | None]:
-    """يرجّع حالة البند في فترة التاريخ `on`، ويقفل الفترة السابقة لو انتهت."""
+    """Return the item's state for the period of `on`, closing the previous period if it ended."""
     key = period_key(bucket.frequency, on, bucket.settlement_day, bucket.due_date)
     target = bucket.value if bucket.calc_type is CalcType.FIXED_AMOUNT else 0
 
@@ -65,7 +65,7 @@ def _roll_state(
         return BucketState(bucket.bucket_id, key, target, 0, 0), None
 
     if state.period_key == key:
-        # نفس الفترة: الهدف يتبع السياسة الحالية (لو تغيّرت بمنتصف الفترة)
+        # Same period: the target follows the current policy (in case it changed mid-period)
         return BucketState(bucket.bucket_id, key, target, state.funded, state.carried_deficit), None
 
     old_start = _period_start_date(state.period_key)
@@ -91,11 +91,11 @@ def allocate(
     amount: int,
     on: date,
 ) -> AllocationResult:
-    """يوزّع `amount` (بالهللة) على البنود حسب الأولوية، بدون أي أثر جانبي."""
+    """Distribute `amount` (halalas) across the items by priority, with no side effects."""
     if amount <= 0:
         raise ValueError("مبلغ المعاملة لازم يكون أكبر من صفر")
 
-    # نتحقق من كل البنود قبل ما نحسب أي شي، عشان الرفض يكون كامل أو لا شي
+    # Validate every item before computing anything, so a rejection is all-or-nothing
     rolled: dict[int, tuple[BucketState, PeriodClosure | None]] = {
         b.bucket_id: _roll_state(b, states.get(b.bucket_id), on) for b in buckets
     }
@@ -108,7 +108,7 @@ def allocate(
         if bucket.calc_type.is_rate:
             required = rate_share(bucket.calc_type, amount, bucket.value) + current.carried_deficit
         else:
-            # مع تاريخ استحقاق: ياخذ بس المستحق لين اليوم (تجميع تدريجي). بدون تاريخ: الهدف كامل فورًا
+            # With a due date: take only what is due by today (gradual accrual). Without one: the whole target now
             due_by_now = accrued_target(current.target, bucket.frequency, on, bucket.settlement_day, bucket.due_date)
             required = max(0, due_by_now - current.funded)
 

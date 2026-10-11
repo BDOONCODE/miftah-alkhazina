@@ -1,6 +1,6 @@
-"""أوامر الإدارة من سطر الأوامر.
+"""Command-line administration.
 
-    python -m app.cli create-admin --username admin --full-name "مدير النظام"
+    python -m app.cli create-admin --username admin --full-name "System Admin"
 """
 from __future__ import annotations
 
@@ -34,8 +34,8 @@ def create_admin(username: str, full_name: str) -> None:
         print(f"تم إنشاء المدير «{username}»")
 
 
-# حسابات تجريبية. محليًا بهذي الكلمات؛ على الخادم تُستبدل كلها بـDEMO_PASSWORD.
-# مراجع التجربة اليدوية يُسجَّل من شاشة الشركة: demo-rev بكلمة مؤقتة demo-rev-temp ← demo-rev-pass
+# Demo accounts. Locally they use these passwords; on the server all of them use DEMO_PASSWORD.
+# The manual-testing reviewer is registered from the company screen: demo-rev, temp password demo-rev-temp -> demo-rev-pass
 DEMO_USERS = [
     ("demo-admin", "مدير تجريبي", Role.ADMIN, "demo-admin-pass"),
     ("demo-acc", "محاسب تجريبي", Role.ACCOUNTANT, "demo-acc-pass"),
@@ -43,7 +43,7 @@ DEMO_USERS = [
 
 
 def seed_demo(password: str | None = None) -> None:
-    """محليًا بكلمات المرور المكتوبة فوق. على الخادم (bootstrap) بكلمة DEMO_PASSWORD وبدون مدير تجريبي."""
+    """Locally with the passwords above. On the server (bootstrap) with DEMO_PASSWORD and no demo admin."""
     from .config import IS_PRODUCTION
 
     if IS_PRODUCTION and not password:
@@ -51,7 +51,7 @@ def seed_demo(password: str | None = None) -> None:
     with SessionLocal() as session:
         for username, full_name, role, default_password in DEMO_USERS:
             if IS_PRODUCTION and role is Role.ADMIN:
-                continue  # مدير الإنتاج يجي من ADMIN_USERNAME
+                continue  # production admin comes from ADMIN_USERNAME
             if not session.scalar(select(User).where(User.username == username)):
                 session.add(
                     User(username=username, full_name=full_name, password_hash=hash_password(password or default_password, enforce_rules=False), role=role)
@@ -64,9 +64,9 @@ def seed_demo(password: str | None = None) -> None:
 
 
 def bootstrap() -> None:
-    """يشتغل مع كل تشغيل للخادم (ما في طرفية في الاستضافة المجانية):
-    ينشئ المدير الأول من ADMIN_USERNAME/ADMIN_PASSWORD لو ما في مستخدمين،
-    ويضيف الشركة التجريبية لو DEMO_SEED=1.
+    """Runs on every server start (the free host has no shell):
+    creates the first admin from ADMIN_USERNAME/ADMIN_PASSWORD when there are no users,
+    and adds the demo company when DEMO_SEED=1.
     """
     import os
 
@@ -79,7 +79,7 @@ def bootstrap() -> None:
                 full_name=os.environ.get("ADMIN_FULL_NAME", "مدير النظام"),
                 password_hash=hash_password(password, enforce_rules=False),
                 role=Role.ADMIN,
-                must_change_password=True,  # كلمة البيئة مؤقتة، تتغيّر أول دخول
+                must_change_password=True,  # the env password is temporary and must change on first login
             )
             session.add(user)
             session.flush()
@@ -92,10 +92,10 @@ def bootstrap() -> None:
 
 
 def _recover_account(session) -> None:
-    """استرجاع حساب مقفول من إعدادات الاستضافة (لما ما في مدير يقدر يدخل).
+    """Recover a locked account from the host settings (when no admin can sign in).
 
-    RECOVER_USERNAME + RECOVER_PASSWORD: تُعطى الحساب كلمة مؤقتة، ويتفعّل، ويُطلب تغييرها أول دخول.
-    RECOVER_AS_ADMIN=1: يرقّى الحساب لمدير كمان. بعد الدخول تُحذف هذي المتغيرات من الإعدادات.
+    RECOVER_USERNAME + RECOVER_PASSWORD: the account gets a temporary password, is activated, and must change it on first login.
+    RECOVER_AS_ADMIN=1: also promotes the account to admin. Remove these variables from the settings after signing in.
     """
     import os
 
@@ -125,7 +125,7 @@ DEMO_REVIEWER = ("demo-rev2", "مراجع تجريبي", "demo-rev2-pass")
 
 
 def _seed_demo_company(session, password: str | None = None) -> None:
-    """شركة بسياسة معتمدة وخمس معاملات في الشهر الحالي، عشان اللوحة والتقارير يكون فيها بيانات."""
+    """A company with an approved policy and five transactions this month, so the dashboard and reports have data."""
     from datetime import datetime, timedelta
 
     from .domain.periods import RIYADH
@@ -137,13 +137,13 @@ def _seed_demo_company(session, password: str | None = None) -> None:
     entity = companies.register_company(
         session, accountant, companies.CompanyInput(name=DEMO_COMPANY, bank_name="بنك تجريبي"),
         companies.ReviewerInput(full_name, username, password or default_password),
-        enforce_password_rules=False,  # كلمة تجريبية من الإعدادات
+        enforce_password_rules=False,  # demo password from the settings
     )
     reviewer = session.scalar(select(User).where(User.username == username))
     reviewer.must_change_password = False
     draft = policies.start_draft(session, entity, accountant)
     policies.save_draft(session, draft, [
-        # الضريبة تتحوّل فورًا لحسابها، والإيجار والرواتب والأرباح تتجمّع وتتحوّل يوم استحقاقها
+        # Tax transfers to its account immediately; rent, salaries and profit accumulate and transfer on their due date
         policies.BucketInput(None, "الضريبة", 1, CalcType.VAT_INCLUSIVE, 1500, Frequency.IMMEDIATE, None, "", True,
                              new_destination_iban="SA1100000000000000000001", new_destination_kind="sub"),
         policies.BucketInput(None, "الإيجار", 2, CalcType.FIXED_AMOUNT, 1_000_000, Frequency.DAY_OF_MONTH, 25, "", False,
@@ -160,7 +160,7 @@ def _seed_demo_company(session, password: str | None = None) -> None:
     now = datetime.now(RIYADH)
     start = now.replace(day=1, hour=10, minute=0, second=0, microsecond=0)
     span = max(1, (now - start).days)
-    for i, amount in enumerate([400_000, 900_000, 300_000, 1_200_000, 650_000]):  # بالهللة
+    for i, amount in enumerate([400_000, 900_000, 300_000, 1_200_000, 650_000]):  # in halalas
         when = min(now, start + timedelta(days=span * i // 5, hours=i))
         transactions.record_transaction(session, entity, accountant, amount, when, note=f"دفعة عميل {i + 1}")
 

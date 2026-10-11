@@ -1,7 +1,7 @@
-"""إرسال البريد عبر واجهة Brevo (HTTPS، خطة مجانية ٣٠٠ رسالة يوميًا).
+"""Send email through the Brevo API (HTTPS, free plan of 300 emails a day).
 
-HTTPS بدل SMTP لأن الاستضافات المجانية كثير منها تقفل منافذ SMTP.
-بدون BREVO_API_KEY (التطوير المحلي): الرسالة تنطبع في سجل الخادم بدل ما تنرسل.
+HTTPS instead of SMTP because many free hosts block SMTP ports.
+Without BREVO_API_KEY (local development) the message is printed to the server log instead of sent.
 """
 from __future__ import annotations
 
@@ -14,19 +14,19 @@ import urllib.request
 log = logging.getLogger("mailer")
 BREVO_URL = "https://api.brevo.com/v3/smtp/email"
 
-# الاختبارات تستبدل هذي القائمة عشان تلتقط الرسائل
+# Tests replace this list to capture messages
 outbox: list[dict] | None = None
 
 
 def is_configured() -> bool:
-    """هل إرسال البريد مفعّل؟ (أو الاختبارات تلتقط الرسائل)"""
+    """Is sending email enabled? (or are tests capturing messages)"""
     if outbox is not None:
         return True
     return bool(os.environ.get("BREVO_API_KEY", "").strip() and os.environ.get("MAIL_FROM", "").strip())
 
 
 def send_email(to: str, subject: str, html: str, text: str) -> bool:
-    """يرجّع True لو انرسلت فعلًا."""
+    """Return True if it was actually sent."""
     message = {"to": to, "subject": subject, "html": html, "text": text}
     if outbox is not None:
         outbox.append(message)
@@ -35,7 +35,7 @@ def send_email(to: str, subject: str, html: str, text: str) -> bool:
     api_key = os.environ.get("BREVO_API_KEY", "").strip()
     sender = os.environ.get("MAIL_FROM", "").strip()
     if not (api_key and sender):
-        # بدون إعداد: نطبع الرابط في السجل عشان المدير يقدر يكمل يدويًا
+        # Not configured: print the link to the log so an admin can finish manually
         print(f"[البريد غير مُعدّ] إلى: {to} | {subject}\n{text}", flush=True)
         return False
 

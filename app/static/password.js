@@ -1,7 +1,7 @@
-// كل خانات كلمة المرور: زر العين لإظهار/إخفاء الكلمة.
-// الخانات اللي فيها data-rules: قائمة شروط تتحدث مع الكتابة (نفس شروط الخادم في security.py).
+// Every password field: an eye button to show/hide the password.
+// Fields with data-rules: a rules list that updates while typing (same rules as the server in security.py).
 (() => {
-  // نفس شروط الخادم (security.py). الرموز من لوحة المفاتيح الإنجليزية فقط، فالحروف العربية ما تنحسب رمز
+  // Same rules as the server (security.py). Symbols are English-keyboard only, so Arabic letters do not count as a symbol
   const RULES = [
     [(p) => p.length >= 8, "8 أحرف على الأقل"],
     [(p) => /[A-Z]/.test(p), "حرف إنجليزي كبير (A-Z)"],
@@ -11,7 +11,7 @@
     [(p) => /^[!-~]*$/.test(p), "إنجليزي فقط (بدون عربي أو مسافات)"],
   ];
 
-  // أيقونات خطية (بدون إيموجي) تاخذ لون النص
+  // Line icons (no emoji) that take the text color
   const svg = (paths) =>
     `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
   const EYE = svg('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>');
@@ -52,7 +52,7 @@
       RULES.forEach(([passes], i) => {
         const pass = passes(input.value);
         items[i].classList.toggle("ok", pass);
-        items[i].classList.toggle("bad", !pass && input.value.length > 0);  // أحمر بعد ما يبدأ يكتب
+        items[i].classList.toggle("bad", !pass && input.value.length > 0);  // red once they start typing
         ok = ok && pass;
       });
       input.setCustomValidity(ok || !input.value ? "" : "كلمة المرور ما تحقق كل الشروط");

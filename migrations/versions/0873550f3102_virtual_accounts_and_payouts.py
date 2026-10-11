@@ -1,4 +1,4 @@
-"""حساب افتراضي لكل بند (في الخلفية)، وتحويلات المستفيدين، ووجهة الفائض.
+"""A virtual account per item (in the background), beneficiary transfers, and the surplus destination.
 
 Revision ID: 0873550f3102
 Revises: d06ce678686c

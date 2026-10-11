@@ -1,8 +1,8 @@
-"""معادلات المؤشرات المخصصة — محلل آمن بقائمة سماح، بدون eval.
+"""Custom metric formulas: a safe allow-list parser, no eval.
 
-المسموح: أرقام، أسماء مؤشرات معروفة (بالعربي مثل الفائض أو مخصص_الضريبة)،
-العمليات + − × ÷ والأقواس، والدوال min و max و abs.
-مثال: الفائض / الوارد * 100
+Allowed: numbers, known metric names (Arabic names such as الفائض or مخصص_الضريبة),
+the operators + - x / and parentheses, and the functions min, max and abs.
+Example: الفائض / الوارد * 100
 """
 from __future__ import annotations
 
@@ -81,7 +81,7 @@ def _eval(node: ast.AST, variables: Mapping[str, float]) -> float:
 
 
 def evaluate(expr: str, variables: Mapping[str, float]) -> float | None:
-    """يرجّع None لو فيه قسمة على صفر."""
+    """Return None on division by zero."""
     tree = _parse(expr)
     _check(tree, variables.keys())
     try:

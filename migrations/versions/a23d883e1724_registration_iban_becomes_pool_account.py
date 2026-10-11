@@ -20,15 +20,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """آيبان الشركة اللي انكتب وقت التسجيل يصير «الحساب المجمّع» في الحسابات البنكية.
+    """The IBAN entered at registration becomes the "pool account" under bank accounts.
 
-    بيانات فقط: لكل شركة لها آيبان وما لها حساب مجمّع، وما في حساب مسجّل بنفس الآيبان.
+    Data only: for each company with an IBAN, no pool account, and no account registered with the same IBAN.
     """
     from datetime import datetime, timezone
 
     conn = op.get_bind()
     companies = conn.execute(sa.text("SELECT id, iban, bank_name FROM entities WHERE iban IS NOT NULL AND iban <> ''"))
-    now = datetime.now(timezone.utc).replace(tzinfo=None)  # UTCDateTime يخزّن UTC بدون منطقة
+    now = datetime.now(timezone.utc).replace(tzinfo=None)  # UTCDateTime stores UTC without a zone
     for entity_id, iban, bank_name in companies.fetchall():
         taken = conn.execute(
             sa.text("SELECT 1 FROM bank_accounts WHERE entity_id = :e AND (kind = 'pool' OR iban = :i)"),
@@ -46,4 +46,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """ما نحذف حسابات ممكن صارت مستخدمة كوجهات أو مصادر."""
+    """Do not delete accounts that may already be used as beneficiaries or sources."""

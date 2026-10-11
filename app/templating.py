@@ -18,7 +18,7 @@ templates.env.globals["pop_flashes"] = pop_flashes
 
 
 def _asset_version() -> str:
-    """رقم نسخة يتغيّر مع كل تحديث للملفات الثابتة، عشان المتصفح ياخذ النسخة الجديدة بدل المحفوظة عنده."""
+    """A version number that changes with every static file update, so browsers fetch the new copy instead of a cached one."""
     digest = hashlib.sha1()
     for path in sorted((BASE_DIR / "app" / "static").rglob("*")):
         if path.is_file():

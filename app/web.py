@@ -1,4 +1,4 @@
-"""أدوات مشتركة للصفحات: رسائل التنبيه وإعادة التوجيه."""
+"""Shared page helpers: flash messages and redirects."""
 from __future__ import annotations
 
 from fastapi import Request

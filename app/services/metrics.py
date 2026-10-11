@@ -1,8 +1,8 @@
-"""طبقة المؤشرات: كل رقم في اللوحة والتقارير يُحسب من هنا، عشان الأرقام تتطابق في كل مكان.
+"""Metrics layer: every number on the dashboard and in reports is computed here, so numbers match everywhere.
 
-المؤشرات نوعين:
-- خلال فترة (الوارد، المخصص، الفائض، مخصص كل بند…) من المعاملات اللي تاريخها داخل الفترة.
-- حيّة (المتجمّع، العجز الحالي) من حالة البنود في فتراتها الحالية.
+Two kinds of metrics:
+- Over a period (incoming, allocated, surplus, per-item allocation...) from transactions dated within it.
+- Live (funded, current deficit) from the items' state in their current periods.
 """
 from __future__ import annotations
 
@@ -41,8 +41,8 @@ PERIOD_LABELS = {
 
 @dataclass(frozen=True)
 class DateRange:
-    start: date | None  # None = من البداية
-    end: date  # غير شامل
+    start: date | None  # None = from the beginning
+    end: date  # exclusive
     label: str
 
     def bounds(self) -> tuple[datetime | None, datetime]:
@@ -81,7 +81,7 @@ REPORT_KINDS = {"week": "أسبوعي", "month": "شهري", "year": "سنوي"}
 
 
 def report_range(kind: str, anchor: date) -> DateRange:
-    """الأسبوع (من الأحد) أو الشهر أو السنة اللي فيها التاريخ."""
+    """The week (from Sunday), month or year containing the date."""
     if kind == "week":
         start = period_start(Frequency.WEEKLY, anchor)
         end = start + timedelta(days=7)
@@ -105,10 +105,10 @@ class BucketView:
     calc_type: CalcType | None
     value: int
     frequency: Frequency | None
-    allocated: int = 0  # خلال الفترة
-    target: int = 0  # حي
-    funded: int = 0  # حي
-    deficit: int = 0  # حي
+    allocated: int = 0  # during the period
+    target: int = 0  # live
+    funded: int = 0  # live
+    deficit: int = 0  # live
     in_policy: bool = True
 
     @property
@@ -172,7 +172,7 @@ def snapshot(session: Session, entity_id: int, rng: DateRange, today: date | Non
         if pb.calc_type is CalcType.FIXED_AMOUNT:
             view.target = pb.value
             view.funded = state.funded if current else 0
-            # العجز = المتأخر عن الجدول لين اليوم، مو باقي الهدف كامل (الباقي مو مستحق للحين)
+            # Deficit = behind schedule as of today, not the whole remaining target (the rest is not due yet)
             due_by_today = accrued_target(pb.value, pb.frequency, today, pb.settlement_day, pb.due_date)
             view.deficit = max(0, due_by_today - view.funded)
         else:
@@ -181,7 +181,7 @@ def snapshot(session: Session, entity_id: int, rng: DateRange, today: date | Non
         views[pb.bucket_id] = view
 
     missing = [b for b in allocated if b not in views]
-    if missing:  # بنود انحذفت من السياسة لكن لها تخصيص خلال الفترة
+    if missing:  # items removed from the policy but allocated during the period
         for pb in session.scalars(select(PolicyBucket).where(PolicyBucket.bucket_id.in_(missing)).order_by(PolicyBucket.id.desc())):
             views.setdefault(
                 pb.bucket_id, BucketView(pb.bucket_id, pb.name, 1000 + pb.priority, pb.calc_type, pb.value, pb.frequency, in_policy=False)
@@ -202,7 +202,7 @@ def snapshot(session: Session, entity_id: int, rng: DateRange, today: date | Non
     return snap
 
 
-# ------------------------------------------------------------------ المتغيرات والمعادلات
+# ------------------------------------------------------------------ variables and formulas
 
 BASE_METRICS = {
     "incoming": ("الوارد", "sar"),
@@ -237,7 +237,7 @@ def _bucket_value(view: BucketView, kind: str) -> int:
 
 
 def variables(snap: Snapshot) -> dict[str, float]:
-    """قيم المتغيرات للمعادلات بالريال (عدد المعاملات كرقم)."""
+    """Formula variable values in riyals (transaction count as a number)."""
     out: dict[str, float] = {}
     for key, (var, fmt) in BASE_METRICS.items():
         value = _base_value(snap, key)
@@ -263,7 +263,7 @@ def format_value(value: float | int | None, fmt: str) -> str:
 
 
 def metric_catalog(snap: Snapshot, customs: list[CustomMetric]) -> list[tuple[str, str]]:
-    """خيارات المؤشر في إعداد العنصر: (المفتاح، الاسم)."""
+    """Metric choices in the widget settings: (key, label)."""
     options = [(k, label) for k, label in BASE_LABELS.items()]
     for view in snap.buckets:
         for kind, (_, label) in BUCKET_METRICS.items():
@@ -273,7 +273,7 @@ def metric_catalog(snap: Snapshot, customs: list[CustomMetric]) -> list[tuple[st
 
 
 def metric_value(snap: Snapshot, key: str, customs: dict[int, CustomMetric]) -> tuple[str, float | None, str]:
-    """(الاسم، القيمة بالريال أو كرقم، التنسيق)."""
+    """(label, value in riyals or as a number, format)."""
     if key in BASE_METRICS:
         _, fmt = BASE_METRICS[key]
         raw = _base_value(snap, key)
@@ -289,12 +289,12 @@ def metric_value(snap: Snapshot, key: str, customs: dict[int, CustomMetric]) -> 
         try:
             return metric.name, formula.evaluate(metric.formula, variables(snap)), metric.fmt
         except formula.FormulaError:
-            return metric.name, None, metric.fmt  # مثلًا بند انحذف من السياسة
+            return metric.name, None, metric.fmt  # e.g. an item removed from the policy
     return "مؤشر غير معروف", None, "number"
 
 
 def timeseries(snap: Snapshot, granularity: str) -> dict:
-    """الوارد والمخصص والفائض مجمّعة يوميًا أو أسبوعيًا أو شهريًا."""
+    """Incoming, allocated and surplus grouped by day, week or month."""
     def bucket_of(d: date) -> date:
         if granularity == "week":
             return period_start(Frequency.WEEKLY, d)

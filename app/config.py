@@ -1,4 +1,4 @@
-"""الإعدادات من متغيرات البيئة، بقيم افتراضية مناسبة للتطوير المحلي."""
+"""Settings from environment variables, with defaults suited to local development."""
 from __future__ import annotations
 
 import os
@@ -10,11 +10,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def _database_url() -> str:
-    """SQLite محليًا. للإنتاج رابط PostgreSQL (مثلًا Supabase) كما هو من لوحتهم."""
+    """SQLite locally. In production a PostgreSQL URL (e.g. Supabase) exactly as their dashboard shows it."""
     url = os.environ.get("DATABASE_URL", "").strip()
     if not url:
         return f"sqlite:///{(BASE_DIR / 'treasury.db').as_posix()}"
-    # Supabase وغيره يعطون postgres:// أو postgresql://؛ نستخدم مشغّل psycopg 3
+    # Supabase and others give postgres:// or postgresql://; we use the psycopg 3 driver
     for prefix in ("postgres://", "postgresql://"):
         if url.startswith(prefix):
             return "postgresql+psycopg://" + url[len(prefix):]

@@ -24,9 +24,9 @@ from .templating import templates
 from .web import redirect
 
 def _self_ping() -> None:
-    """الاستضافة المجانية تنوّم الموقع بعد ١٥ دقيقة بدون زيارات، وأول زيارة بعدها تاخذ قرابة دقيقة.
-    فالموقع يزور نفسه من رابطه العام كل ١٠ دقائق طول ما هو شغّال، فما يوصل للنوم أبدًا.
-    (والزيارة نفسها تشغّل صرف البنود اللي وصل موعدها.) محليًا ما يشتغل لأن الرابط مو موجود."""
+    """The free host sleeps the site after 15 idle minutes, and the first visit after that takes about a minute.
+    So the site visits its own public URL every 10 minutes while it runs, and never reaches sleep.
+    (The visit also runs any payouts that are due.) Locally it does nothing because there is no public URL."""
     import os
     import threading
     import time
@@ -41,7 +41,7 @@ def _self_ping() -> None:
             time.sleep(10 * 60)
             try:
                 urllib.request.urlopen(f"{base}/keepalive", timeout=60).read()
-            except Exception as exc:  # انقطاع مؤقت: نجرب بعد ١٠ دقائق
+            except Exception as exc:  # temporary outage: retry in 10 minutes
                 logging.getLogger(__name__).warning("self-ping failed: %s", exc)
 
     threading.Thread(target=loop, name="self-ping", daemon=True).start()
@@ -71,7 +71,7 @@ app.include_router(reports.router)
 
 
 class _HideHealthChecks(logging.Filter):
-    """فحوصات الاستضافة والإبقاء مستيقظًا تتكرر كثير وتزحم السجل، فما نسجّلها."""
+    """Health and keep-alive checks repeat often and clutter the log, so they are not logged."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         message = record.getMessage()
@@ -83,16 +83,16 @@ logging.getLogger("uvicorn.access").addFilter(_HideHealthChecks())
 
 @app.get("/healthz", include_in_schema=False)
 def healthz():
-    """فحص Render (كل ٥ ثواني): خفيف، بدون قاعدة بيانات ولا صفحات."""
+    """Render health check (every 5 seconds): lightweight, no database or pages."""
     return PlainTextResponse("ok")
 
 
 @app.get("/keepalive", include_in_schema=False)
 def keepalive(session: Session = Depends(get_session)):
-    """تزوره خدمة مراقبة خارجية كل ٥ دقائق: تمنع الاستضافة المجانية من النوم،
-    واستعلام بسيط يمنع Supabase من إيقاف القاعدة بعد أسبوع بدون نشاط."""
+    """Visited by an external monitor every 5 minutes: keeps the free host awake,
+    and a trivial query keeps Supabase from pausing the database after a week of inactivity."""
     session.execute(text("SELECT 1"))
-    # فرصة يومية لصرف البنود اللي وصل موعدها (ما في مجدول مهام في الاستضافة المجانية)
+    # A regular chance to run due payouts (the free host has no task scheduler)
     from .domain.periods import local_date
     from .services.payouts import run_due_all
 
@@ -143,10 +143,10 @@ def login(
         )
     throttle.reset(ip, username)
     if not user.email_verified and not mailer.is_configured():
-        # سجّل قبل ما يتفعّل إرسال البريد: رابط التأكيد ما وصله أصلًا، فنفعّله بعد كلمة مرور صحيحة
+        # Registered before email sending was enabled: the confirmation link never arrived, so verify after a correct password
         user.email_verified = True
     if not user.email_verified:
-        # نكشف إن البريد ما تأكد بس بعد كلمة مرور صحيحة
+        # Only reveal that the email is unverified after a correct password
         return templates.TemplateResponse(
             request, "login.html", {"error": None, "unverified_email": user.email}, status_code=403
         )

@@ -1,4 +1,4 @@
-"""التقارير المالية الأسبوعية والشهرية والسنوية، والتصدير إلى Excel."""
+"""Weekly, monthly and yearly financial reports, and Excel export."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -23,7 +23,7 @@ class Report:
     entity: Entity
     kind: str
     snap: m.Snapshot
-    rows: list[dict]  # معاملة لكل صف مع توزيعها على البنود
+    rows: list[dict]  # one transaction per row with its split across items
     closures: list[dict]
 
     @property
@@ -98,7 +98,7 @@ def to_excel(report: Report) -> bytes:
     wb = Workbook()
     snap, entity = report.snap, report.entity
 
-    # --- الملخص
+    # --- summary
     ws = _sheet(wb, "الملخص", first=True)
     ws["A1"] = report.title
     ws["A1"].font = _TITLE
@@ -140,7 +140,7 @@ def to_excel(report: Report) -> bytes:
                 _money(cell)
     _widths(ws, [26, 26, 12, 14, 20, 14, 18, 16])
 
-    # --- المعاملات
+    # --- transactions
     ws = _sheet(wb, "المعاملات")
     buckets = snap.buckets
     _header(ws, 1, ["#", "تاريخ الإيداع", "النوع", "المبلغ", *[b.name for b in buckets], "الفائض", "ملاحظة"])
@@ -170,7 +170,7 @@ def to_excel(report: Report) -> bytes:
     _widths(ws, [8, 18, 16, 14, *[16] * len(buckets), 14, 30])
     ws.freeze_panes = "B2"
 
-    # --- إقفال الفترات
+    # --- period closures
     ws = _sheet(wb, "إقفال الفترات")
     _header(ws, 1, ["البند", "بداية الفترة", "الهدف", "المموّل", "العجز النهائي"])
     for r, item in enumerate(report.closures, 2):
