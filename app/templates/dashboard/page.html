@@ -95,56 +95,6 @@
   {% endfor %}
 </div>
 
-<section class="card" id="metrics">
-  <h2>المؤشرات المخصصة</h2>
-  <p class="muted">مؤشرات بمعادلات خاصة بالشركة، تُعرض بطاقةَ رقمٍ في اللوحة. القيم المعروضة هنا للشهر الحالي.</p>
-  {% if customs %}
-  <table class="table">
-    <thead><tr><th>المؤشر</th><th>المعادلة</th><th>القيمة</th><th></th></tr></thead>
-    <tbody>
-    {% for c, value in customs %}
-      <tr>
-        <td>{{ c.name }}</td>
-        <td><code>{{ c.formula }}</code></td>
-        <td class="num">{{ value }}</td>
-        <td>
-          {% if can_edit %}
-          <button type="button" class="btn-link" data-edit-metric='{{ {"id": c.id, "name": c.name, "formula": c.formula, "fmt": c.fmt} | tojson }}'>تعديل</button>
-          <form method="post" action="/metrics/{{ c.id }}/delete" class="inline" onsubmit="return confirm('هل تريد حذف المؤشر؟ ستُحذف العناصر التي تعرضه أيضًا')">
-            <button class="btn-link danger">حذف</button>
-          </form>
-          {% endif %}
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-
-  {% if can_edit %}
-  <form method="post" action="/entities/{{ entity.id }}/metrics" class="stack" id="metric-form">
-    <input type="hidden" name="metric_id" value="">
-    <div class="form-grid">
-      <label>اسم المؤشر *<input name="name" required placeholder="مثال: نسبة الفائض"></label>
-      <label>التنسيق
-        <select name="fmt">{% for k, label in FORMATS.items() %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select>
-      </label>
-    </div>
-    <label>المعادلة *
-      <input name="formula" required class="formula-input" placeholder="الفائض / الوارد * 100">
-    </label>
-    <div class="chips" aria-label="المؤشرات المتاحة">
-      <span class="muted small">اضغط لإضافة مؤشر:</span>
-      {% for name in variable_names %}<button type="button" class="chip" data-insert="{{ name }}">{{ name }}</button>{% endfor %}
-      {% for op in ['+', '-', '*', '/', '(', ')'] %}<button type="button" class="chip chip-op" data-insert=" {{ op }} ">{{ op }}</button>{% endfor %}
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-primary" type="submit">حفظ المؤشر</button>
-      <button class="btn" type="reset">جديد</button>
-    </div>
-  </form>
-  {% endif %}
-</section>
 
 {% if can_edit %}
 <dialog id="widget-dialog">

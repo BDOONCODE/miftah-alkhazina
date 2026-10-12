@@ -1,12 +1,6 @@
 {% extends "entity_base.html" %}
 {% block entity_content %}
 {% set can_edit = user.role.value in ("accountant", "admin") %}
-<ol class="steps">
-  <li class="done">بيانات الشركة</li>
-  <li class="current">الحسابات البنكية</li>
-  <li>سياسة التقسيم</li>
-  <li>الاعتماد</li>
-</ol>
 
 {% macro accounts_table(rows) %}
 <div class="table-scroll">
@@ -34,22 +28,14 @@
 </div>
 {% endmacro %}
 
+{% if can_edit %}
 <section class="card">
   <h2>حسابات الشركة (الدخل)</h2>
   <p class="muted">
     الحسابات التي <strong>تُودَع فيها المبالغ</strong>. اربط حسابات نقاط البيع ومدى والتوصيل كلًّا على حدة،
     أو أضف <strong>الحساب الرئيسي</strong> الذي تُودَع فيه جميع المبالغ. وما إن يصل مبلغ إلى أي منها حتى يُقسَّم وفق سياسة التقسيم.
   </p>
-  {% if income %}
-    {{ accounts_table(income) }}
-  {% else %}
-  <div class="alert alert-warning">لا توجد حسابات دخل حتى الآن. أضف حساب نقاط البيع أو الحساب الرئيسي أدناه.</div>
-  {% endif %}
-</section>
-
-{% if can_edit %}
-<section class="card">
-  <h2>إضافة حساب دخل</h2>
+  <h3>إضافة حساب دخل</h3>
   <form method="post" class="stack">
     <fieldset class="stack plain">
       <legend>نوع الحساب</legend>
@@ -78,6 +64,15 @@
   </form>
 </section>
 {% endif %}
+
+<section class="card">
+  <h2>حسابات الدخل المضافة</h2>
+  {% if income %}
+    {{ accounts_table(income) }}
+  {% else %}
+  <div class="alert alert-warning">لا توجد حسابات دخل حتى الآن. أضف حساب نقاط البيع أو الحساب الرئيسي أدناه.</div>
+  {% endif %}
+</section>
 
 <section class="card">
   <h2>المستفيدون (الخروج)</h2>
