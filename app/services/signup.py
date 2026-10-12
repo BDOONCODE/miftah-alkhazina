@@ -191,7 +191,9 @@ def send_invite(user: User, base_url: str, company: str) -> bool:
     )
 
 
-def accept_invite(session: Session, user: User, password: str) -> None:
+def accept_invite(session: Session, user: User, password: str, full_name: str = "") -> None:
+    if full_name.strip():
+        user.full_name = full_name.strip()
     try:
         user.password_hash = hash_password(password)
     except ValueError as exc:

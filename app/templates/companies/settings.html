@@ -62,13 +62,17 @@
   {% endif %}
 
   {% if can_edit %}
-  <details>
-    <summary>+ إضافة مراجع</summary>
-    <form method="post" action="/entities/{{ entity.id }}/reviewers" class="stack">
-      {{ reviewer_fields({}) }}
-      <div><button class="btn btn-primary" type="submit">إضافة</button></div>
-    </form>
-  </details>
+  <h3>دعوة مراجع</h3>
+  <p class="muted">اكتب اسم المراجع وبريده، ثم أنشئ رابط الدعوة وأرسله إليه. يفتح الرابط صفحة تسجيل باسمه وبريده، ويختار كلمة مروره بنفسه.</p>
+  <form method="post" action="/entities/{{ entity.id }}/reviewers" class="form-grid">
+    <label>اسم المراجع *
+      <input name="reviewer_full_name" required>
+    </label>
+    <label>بريد المراجع الإلكتروني *
+      <input name="reviewer_email" type="email" dir="ltr" required>
+    </label>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">إنشاء رابط دعوة</button></div>
+  </form>
   {% endif %}
 </section>
 {% endblock %}

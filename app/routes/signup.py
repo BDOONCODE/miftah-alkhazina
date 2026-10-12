@@ -141,7 +141,7 @@ async def accept_invite(request: Request, session: Session = Depends(get_session
     token = str(form.get("token", ""))
     try:
         invitee = svc.user_for_invite(session, token)
-        svc.accept_invite(session, invitee, str(form.get("password", "")))
+        svc.accept_invite(session, invitee, str(form.get("password", "")), str(form.get("full_name", "")))
     except svc.SignupError as exc:
         session.rollback()
         invitee = None

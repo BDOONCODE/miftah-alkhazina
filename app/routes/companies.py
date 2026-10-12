@@ -37,7 +37,7 @@ def _invite(request: Request, reviewer: User, entity) -> str:
     from ..services import signup
 
     sent = signup.send_invite(reviewer, _base_url(request), entity.name) if mailer.is_configured() else False
-    return "وأُرسل رابط الدعوة إلى بريده" if sent else "انسخ رابط الدعوة من «بيانات الشركة» وأرسله إليه"
+    return "وأُرسل إلى بريده أيضًا" if sent else "انسخه من قائمة المراجعين في «بيانات الشركة» وأرسله إليه"
 
 
 def _invite_links(request: Request, entity) -> dict[int, str]:
@@ -113,7 +113,7 @@ async def add_reviewer(
         flash(request, str(exc), "error")
         return redirect(f"/entities/{entity_id}/settings")
     session.commit()
-    flash(request, f"دُعي المراجع «{reviewer.full_name}»، {_invite(request, reviewer, entity)}")
+    flash(request, f"تم إنشاء رابط دعوة «{reviewer.full_name}». {_invite(request, reviewer, entity)}")
     return redirect(f"/entities/{entity_id}/settings")
 
 

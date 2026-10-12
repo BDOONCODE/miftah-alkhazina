@@ -83,7 +83,8 @@ def test_full_flow_accountant_builds_reviewer_approves(client, company, db):
     link = signup.invite_link(reviewer, "http://testserver")
     assert login(client, "sara@example.com", "Sara-new-pass1!").status_code != 303  # no password before the invite
     token = link.split("token=")[1]
-    assert "تفعيل الحساب" in client.get(f"/invite?token={token}").text
+    page = client.get(f"/invite?token={token}").text
+    assert "إنشاء حساب مراجع" in page and "sara@example.com" in page and "سارة المالك" in page
     assert client.post("/invite", data={"token": token, "password": "Sara-new-pass1!"}, follow_redirects=False).status_code == 303
     assert client.post("/invite", data={"token": token, "password": "Other-pass1!"}).status_code == 422  # works once
     assert login(client, "sara@example.com", "Sara-new-pass1!").status_code == 303
