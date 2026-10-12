@@ -22,11 +22,13 @@ from ..security import hash_password
 
 VERIFY_MAX_AGE = 48 * 3600
 RESET_MAX_AGE = 3600
+INVITE_MAX_AGE = 7 * 24 * 3600
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 ACCOUNT_TYPES = {"office": "مكتب محاسبة", "business": "صاحب شركة"}
 
 _verify = URLSafeTimedSerializer(SECRET_KEY, salt="verify-email")
 _reset = URLSafeTimedSerializer(SECRET_KEY, salt="reset-password")
+_invite = URLSafeTimedSerializer(SECRET_KEY, salt="invite")
 
 
 class SignupError(ValueError):
@@ -152,6 +154,51 @@ def user_for_reset(session: Session, token: str) -> User:
     if user is None or not user.is_active or data.get("fp") != _password_fingerprint(user):
         raise SignupError("الرابط مستخدم أو غير صالح. اطلب رابطًا جديدًا")
     return user
+
+
+# ------------------------------------------------------------------ invitations
+
+
+def invite_link(user: User, base_url: str) -> str:
+    """A link for an invited user to choose their own password: valid 7 days, works once
+    (it carries the current password fingerprint, which changes when they set a password)."""
+    token = _invite.dumps({"uid": user.id, "fp": _password_fingerprint(user)})
+    return f"{base_url.rstrip('/')}/invite?token={token}"
+
+
+def user_for_invite(session: Session, token: str) -> User:
+    try:
+        data = _invite.loads(token, max_age=INVITE_MAX_AGE)
+    except SignatureExpired as exc:
+        raise SignupError("انتهت صلاحية رابط الدعوة (٧ أيام). اطلب من المحاسب رابطًا جديدًا") from exc
+    except BadSignature as exc:
+        raise SignupError("رابط الدعوة غير صحيح") from exc
+    user = session.get(User, data.get("uid"))
+    if user is None or not user.is_active or data.get("fp") != _password_fingerprint(user):
+        raise SignupError("رابط الدعوة مستخدم أو غير صالح. اطلب من المحاسب رابطًا جديدًا")
+    return user
+
+
+def send_invite(user: User, base_url: str, company: str) -> bool:
+    link = invite_link(user, base_url)
+    body = (f"أهلًا {escape(user.full_name)}،<br>دُعيت مراجعًا لسياسات التقسيم في «{escape(company)}». "
+            "اختر كلمة مرورك من الرابط التالي لتفعيل حسابك. الرابط صالح لمدة ٧ أيام.")
+    return send_email(
+        user.email,
+        "دعوة إلى مفتاح الخزينة",
+        _email_html("دعوة مراجع", body, "تفعيل الحساب", link),
+        f"دُعيت مراجعًا في «{company}». فعّل حسابك من هذا الرابط (صالح ٧ أيام):\n{link}",
+    )
+
+
+def accept_invite(session: Session, user: User, password: str) -> None:
+    try:
+        user.password_hash = hash_password(password)
+    except ValueError as exc:
+        raise SignupError(str(exc)) from exc
+    user.must_change_password = False
+    user.email_verified = True
+    session.add(AuditLog(user_id=user.id, action="user.invite_accepted", details={"email": user.email}))
 
 
 def send_reset(user: User, base_url: str) -> bool:

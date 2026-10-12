@@ -23,12 +23,9 @@
   <label>اسم المراجع *
     <input name="reviewer_full_name" value="{{ v.reviewer_full_name or '' }}" required>
   </label>
-  <label>اسم المستخدم للدخول *
-    <input name="reviewer_username" value="{{ v.reviewer_username or '' }}" dir="ltr" required>
-  </label>
-  <label>كلمة مرور مؤقتة *
-    <input name="reviewer_password" type="password" minlength="8" dir="ltr" autocomplete="new-password" required data-rules>
-    <small class="muted">سيطلب منه النظام تغييرها عند أول دخول</small>
+  <label>بريد المراجع الإلكتروني *
+    <input name="reviewer_email" type="email" value="{{ v.reviewer_email or '' }}" dir="ltr" required>
+    <small class="muted">يصله رابط دعوة يختار منه كلمة مروره بنفسه، ويسجّل الدخول ببريده</small>
   </label>
 </div>
 {% endmacro %}

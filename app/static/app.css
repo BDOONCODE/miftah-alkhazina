@@ -275,3 +275,6 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 .surplus-card .js-surplus-summary { margin: 0; }
 .surplus-card { margin-block: 1rem; }
 .row-actions { display: flex; gap: 1rem; align-items: center; }
+/* Reviewer invite link to copy */
+.invite-link { display: flex; gap: .4rem; align-items: center; }
+.invite-link input { min-width: 0; flex: 1; font-size: .8rem; }

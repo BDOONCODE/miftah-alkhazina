@@ -4,6 +4,7 @@ import pytest
 from app import models
 from app.models import PolicyStatus, Role
 from app.services import policies as svc
+from app.services import signup
 
 
 def login(client, username, password="password123"):
@@ -16,8 +17,7 @@ def register(client, **overrides):
         "cr_number": "1010101010",
         "iban": "SA03 8000 0000 6080 1016 7519",
         "reviewer_full_name": "سارة المالك",
-        "reviewer_username": "sara",
-        "reviewer_password": "Temp-pass-1!",
+        "reviewer_email": "sara@example.com",
     } | overrides
     return client.post("/companies/new", data=data, follow_redirects=False)
 
@@ -51,15 +51,16 @@ def company(client, db, make_user):
 def test_registration_creates_company_reviewer_and_dashboard(company, db):
     pool = db.query(models.BankAccount).one()  # the registration IBAN became the pool account
     assert (pool.iban, pool.kind, pool.entity_id) == ("SA0380000000608010167519", models.AccountKind.POOL, company.id)
-    reviewer = db.query(models.User).filter_by(username="sara").one()
-    assert reviewer.role is Role.APPROVER and reviewer.must_change_password
-    assert {u.username for u in company.users} == {"acc", "sara"}
+    reviewer = db.query(models.User).filter_by(username="sara@example.com").one()
+    # invited by email: no password of anyone else's choosing; pending until they open the invite link
+    assert reviewer.role is Role.APPROVER and reviewer.email == "sara@example.com" and not reviewer.email_verified
+    assert {u.username for u in company.users} == {"acc", "sara@example.com"}
     assert db.query(models.Dashboard).filter_by(entity_id=company.id).count() == 1
 
 
 def test_registration_rejects_bad_iban_and_duplicate_username(client, company):
-    assert register(client, iban="12345", reviewer_username="x1").status_code == 422
-    assert register(client, reviewer_username="sara").status_code == 422
+    assert register(client, iban="12345", reviewer_email="x1@example.com").status_code == 422
+    assert register(client, reviewer_email="sara@example.com").status_code == 422  # already invited
 
 
 def test_full_flow_accountant_builds_reviewer_approves(client, company, db):
@@ -76,16 +77,21 @@ def test_full_flow_accountant_builds_reviewer_approves(client, company, db):
     db.refresh(draft)
     assert draft.status is PolicyStatus.PENDING
 
-    # The reviewer: the first login forces a password change
+    # The reviewer opens the invite link, chooses a password, and signs in with their email
     client.post("/logout")
-    assert login(client, "sara", "Temp-pass-1!").headers["location"] == "/account/password"
-    assert client.get("/", follow_redirects=False).headers["location"] == "/account/password"
-    client.post("/account/password", data={"current": "Temp-pass-1!", "new": "Sara-new-pass1!", "confirm": "Sara-new-pass1!"})
+    reviewer = db.query(models.User).filter_by(username="sara@example.com").one()
+    link = signup.invite_link(reviewer, "http://testserver")
+    assert login(client, "sara@example.com", "Sara-new-pass1!").status_code != 303  # no password before the invite
+    token = link.split("token=")[1]
+    assert "تفعيل الحساب" in client.get(f"/invite?token={token}").text
+    assert client.post("/invite", data={"token": token, "password": "Sara-new-pass1!"}, follow_redirects=False).status_code == 303
+    assert client.post("/invite", data={"token": token, "password": "Other-pass1!"}).status_code == 422  # works once
+    assert login(client, "sara@example.com", "Sara-new-pass1!").status_code == 303
 
     client.post(f"/policies/{draft.id}/approve", data={"note": "تمام"})
     db.refresh(draft)
     assert draft.status is PolicyStatus.ACTIVE
-    assert draft.decider.username == "sara"
+    assert draft.decider.username == "sara@example.com"
 
 
 def test_invalid_policy_cannot_be_submitted(client, company, db):
@@ -134,7 +140,7 @@ def _activate(db, entity, accountant, reviewer):
 
 def test_four_eyes_and_protected_bucket_justification(db, company):
     accountant = db.query(models.User).filter_by(username="acc").one()
-    reviewer = db.query(models.User).filter_by(username="sara").one()
+    reviewer = db.query(models.User).filter_by(username="sara@example.com").one()
     v1 = _activate(db, company, accountant, reviewer)
     tax_id = v1.buckets[0].bucket_id
 
@@ -169,7 +175,7 @@ def _make_self_approver(db, accountant):
 
 def test_removed_bucket_with_state_is_closed_on_approval(db, company):
     accountant = db.query(models.User).filter_by(username="acc").one()
-    reviewer = db.query(models.User).filter_by(username="sara").one()
+    reviewer = db.query(models.User).filter_by(username="sara@example.com").one()
     v1 = _activate(db, company, accountant, reviewer)
     profit_id = v1.buckets[1].bucket_id
     db.add(
@@ -192,7 +198,7 @@ def test_removed_bucket_with_state_is_closed_on_approval(db, company):
 
 def test_withdraw_pending_and_edit_after_rejection(db, company):
     accountant = db.query(models.User).filter_by(username="acc").one()
-    reviewer = db.query(models.User).filter_by(username="sara").one()
+    reviewer = db.query(models.User).filter_by(username="sara@example.com").one()
     tax = svc.BucketInput(None, "الضريبة", 1, models.CalcType.PERCENTAGE, 1500, models.Frequency.IMMEDIATE, None, "", True, new_destination_iban="SA1100000000000000000001")
 
     draft = svc.start_draft(db, company, accountant)
@@ -245,7 +251,7 @@ def test_self_approval_company_without_reviewer(client, db, make_user):
 def test_reviewer_mode_still_requires_reviewer(client, db, make_user):
     make_user("acc")
     login(client, "acc")
-    assert register(client, approval_mode="reviewer", reviewer_username="").status_code == 422
+    assert register(client, approval_mode="reviewer", reviewer_email="").status_code == 422
 
 
 def test_switching_to_self_unblocks_pending_policy(client, company, db):
@@ -264,3 +270,11 @@ def test_switching_to_self_unblocks_pending_policy(client, company, db):
     db.refresh(draft)
     assert draft.status is PolicyStatus.ACTIVE
     assert db.query(models.AuditLog).filter_by(action="company.approval_mode_changed").count() == 1
+
+
+def test_settings_page_shows_invite_link_until_accepted(client, company, db):
+    page = client.get(f"/entities/{company.id}/settings").text
+    assert "بانتظار قبول الدعوة" in page and "نسخ رابط الدعوة" in page and "/invite?token=" in page
+    client.post(f"/entities/{company.id}/reviewers", data={"reviewer_full_name": "خالد", "reviewer_email": "khalid@example.com"})
+    khalid = db.query(models.User).filter_by(email="khalid@example.com").one()
+    assert khalid in company.reviewers and not khalid.email_verified

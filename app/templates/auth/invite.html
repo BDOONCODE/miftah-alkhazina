@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}تفعيل الحساب — مفتاح الخزينة{% endblock %}
+{% block content %}
+<div class="login-card wide">
+  <h1>🔑 تفعيل الحساب</h1>
+  {% if invitee %}
+  <p class="muted">أهلًا {{ invitee.full_name }}. اختر كلمة مرور لحسابك، وستسجّل الدخول ببريدك <strong dir="ltr">{{ invitee.email }}</strong>.</p>
+  {% endif %}
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/invite" class="stack">
+    <input type="hidden" name="token" value="{{ token }}">
+    <label>كلمة المرور
+      <input name="password" type="password" minlength="8" dir="ltr" autocomplete="new-password" required data-rules>
+    </label>
+    <button class="btn btn-primary" type="submit">تفعيل الحساب</button>
+  </form>
+</div>
+{% endblock %}

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
+from .. import mailer
 from ..auth import current_user, get_entity_for, require_role
 from ..db import get_session
 from ..models import Role, User
@@ -26,9 +27,24 @@ def _company_input(form) -> svc.CompanyInput:
 def _reviewer_input(form) -> svc.ReviewerInput:
     return svc.ReviewerInput(
         full_name=str(form.get("reviewer_full_name", "")),
-        username=str(form.get("reviewer_username", "")),
-        password=str(form.get("reviewer_password", "")),
+        email=str(form.get("reviewer_email", "")),
     )
+
+
+def _invite(request: Request, reviewer: User, entity) -> str:
+    """Email the invite when email is set up; the link is also shown on the company page to copy."""
+    from ..routes.signup import _base_url
+    from ..services import signup
+
+    sent = signup.send_invite(reviewer, _base_url(request), entity.name) if mailer.is_configured() else False
+    return "وأُرسل رابط الدعوة إلى بريده" if sent else "انسخ رابط الدعوة من «بيانات الشركة» وأرسله إليه"
+
+
+def _invite_links(request: Request, entity) -> dict[int, str]:
+    from ..routes.signup import _base_url
+    from ..services import signup
+
+    return {r.id: signup.invite_link(r, _base_url(request)) for r in entity.reviewers if not r.email_verified}
 
 
 @router.get("/companies/new", response_class=HTMLResponse)
@@ -45,12 +61,14 @@ async def register_company(request: Request, user: User = Depends(accountant), s
         entity = svc.register_company(session, user, _company_input(form), reviewer, mode)
     except svc.CompanyError as exc:
         session.rollback()
-        values = {k: v for k, v in form.items() if k != "reviewer_password"}
+        values = dict(form.items())
         return templates.TemplateResponse(
             request, "companies/new.html", {"user": user, "form": values, "error": str(exc)}, status_code=422
         )
     session.commit()
-    flash(request, f"تم تسجيل «{entity.name}». الخطوة التالية: أضف حسابات الشركة البنكية، ثم سياسة التقسيم")
+    invited = next((r for r in entity.reviewers), None)
+    note = f" دُعي المراجع «{invited.full_name}»، {_invite(request, invited, entity)}." if invited else ""
+    flash(request, f"تم تسجيل «{entity.name}».{note} الخطوة التالية: أضف حسابات الشركة البنكية، ثم سياسة التقسيم")
     return redirect(f"/entities/{entity.id}/accounts")
 
 
@@ -60,7 +78,8 @@ def company_settings(
 ):
     entity = get_entity_for(user, entity_id, session)
     return templates.TemplateResponse(
-        request, "companies/settings.html", {"user": user, "entity": entity, "tab": "settings", "error": None}
+        request, "companies/settings.html",
+        {"user": user, "entity": entity, "tab": "settings", "error": None, "invite_links": _invite_links(request, entity)}
     )
 
 
@@ -94,7 +113,7 @@ async def add_reviewer(
         flash(request, str(exc), "error")
         return redirect(f"/entities/{entity_id}/settings")
     session.commit()
-    flash(request, f"أُضيف المراجع «{reviewer.full_name}». سلّمه اسم المستخدم وكلمة المرور المؤقتة")
+    flash(request, f"دُعي المراجع «{reviewer.full_name}»، {_invite(request, reviewer, entity)}")
     return redirect(f"/entities/{entity_id}/settings")
 
 

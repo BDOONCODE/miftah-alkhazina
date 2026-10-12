@@ -34,13 +34,25 @@
   <h2>المراجعون</h2>
   {% if entity.reviewers %}
   <table class="table">
-    <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الحالة</th></tr></thead>
+    <thead><tr><th>الاسم</th><th>البريد / اسم الدخول</th><th>الحالة</th><th></th></tr></thead>
     <tbody>
     {% for r in entity.reviewers %}
       <tr>
         <td>{{ r.full_name }}</td>
-        <td dir="ltr">{{ r.username }}</td>
-        <td>{{ 'بانتظار أول دخول' if r.must_change_password else ('نشط' if r.is_active else 'معطّل') }}</td>
+        <td dir="ltr">{{ r.email or r.username }}</td>
+        <td>
+          {% if r.id in invite_links %}<span class="pill pill-pending">بانتظار قبول الدعوة</span>
+          {% elif r.must_change_password %}بانتظار أول دخول
+          {% else %}{{ 'نشط' if r.is_active else 'معطّل' }}{% endif %}
+        </td>
+        <td>
+          {% if can_edit and r.id in invite_links %}
+          <div class="invite-link">
+            <input id="invite-{{ r.id }}" value="{{ invite_links[r.id] }}" dir="ltr" readonly aria-label="رابط الدعوة">
+            <button class="btn" type="button" data-copy="invite-{{ r.id }}">نسخ رابط الدعوة</button>
+          </div>
+          {% endif %}
+        </td>
       </tr>
     {% endfor %}
     </tbody>

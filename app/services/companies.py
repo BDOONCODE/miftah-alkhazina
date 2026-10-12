@@ -32,9 +32,13 @@ class CompanyInput:
 
 @dataclass
 class ReviewerInput:
+    """The UI invites a reviewer by email (they choose their own password). A username and password are
+    only given directly by the demo seed and tests."""
+
     full_name: str
-    username: str
-    password: str
+    username: str = ""
+    password: str = ""
+    email: str = ""
 
 
 def _validate_company(data: CompanyInput) -> None:
@@ -113,15 +117,7 @@ def register_company(
             raise CompanyError(str(exc)) from exc
     reviewer_user = None
     if reviewer is not None:
-        reviewer_user = create_user(
-            session,
-            full_name=reviewer.full_name,
-            username=reviewer.username,
-            password=reviewer.password,
-            role=Role.APPROVER,
-            actor=accountant,
-            enforce_rules=enforce_password_rules,
-        )
+        reviewer_user = _reviewer_user(session, reviewer, accountant, enforce_password_rules)
         entity.users.append(reviewer_user)
     dashboard = Dashboard(entity_id=entity.id, title=f"لوحة {entity.name}", updated_by=accountant.id)
     apply_default_layout(dashboard)
@@ -147,15 +143,44 @@ def update_company(session: Session, entity: Entity, data: CompanyInput, actor: 
     session.add(AuditLog(user_id=actor.id, entity_id=entity.id, action="company.updated", details={"name": entity.name}))
 
 
-def add_reviewer(session: Session, entity: Entity, reviewer: ReviewerInput, actor: User) -> User:
-    user = create_user(
-        session,
-        full_name=reviewer.full_name,
-        username=reviewer.username,
-        password=reviewer.password,
-        role=Role.APPROVER,
-        actor=actor,
+def invite_user(session: Session, *, full_name: str, email: str, role: Role, actor: User) -> User:
+    """An account that is activated by its invite link: nobody but the invitee ever knows its password."""
+    import secrets
+
+    from .signup import EMAIL_RE, normalize_email
+
+    email = normalize_email(email)
+    if not full_name.strip():
+        raise CompanyError("الاسم مطلوب")
+    if not EMAIL_RE.match(email):
+        raise CompanyError("البريد الإلكتروني غير صحيح")
+    if session.scalar(select(User).where((User.email == email) | (User.username == email))):
+        raise CompanyError(f"البريد «{email}» مسجل لمستخدم آخر")
+    user = User(
+        username=email,
+        email=email,
+        full_name=full_name.strip(),
+        password_hash=hash_password(secrets.token_urlsafe(32), enforce_rules=False),  # unusable until invited
+        role=role,
+        email_verified=False,  # = the invitation has not been accepted yet
     )
+    session.add(user)
+    session.flush()
+    session.add(AuditLog(user_id=actor.id, action="user.invited", details={"email": email, "role": role.value}))
+    return user
+
+
+def _reviewer_user(session: Session, reviewer: ReviewerInput, actor: User, enforce_rules: bool = True) -> User:
+    if reviewer.password:
+        return create_user(
+            session, full_name=reviewer.full_name, username=reviewer.username or reviewer.email,
+            password=reviewer.password, role=Role.APPROVER, actor=actor, enforce_rules=enforce_rules,
+        )
+    return invite_user(session, full_name=reviewer.full_name, email=reviewer.email, role=Role.APPROVER, actor=actor)
+
+
+def add_reviewer(session: Session, entity: Entity, reviewer: ReviewerInput, actor: User) -> User:
+    user = _reviewer_user(session, reviewer, actor)
     entity.users.append(user)
     session.add(
         AuditLog(user_id=actor.id, entity_id=entity.id, action="company.reviewer_added", details={"username": user.username})

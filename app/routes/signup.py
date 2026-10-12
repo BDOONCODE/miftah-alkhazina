@@ -126,6 +126,35 @@ async def forgot(request: Request, session: Session = Depends(get_session)):
     return _page(request, "forgot", {"sent": True})
 
 
+@router.get("/invite", response_class=HTMLResponse)
+def invite_form(request: Request, token: str = "", session: Session = Depends(get_session)):
+    try:
+        invitee = svc.user_for_invite(session, token)
+    except svc.SignupError as exc:
+        return _page(request, "message", {"title": "رابط الدعوة غير صالح", "message": str(exc)}, 400)
+    return _page(request, "invite", {"token": token, "invitee": invitee, "error": None})
+
+
+@router.post("/invite")
+async def accept_invite(request: Request, session: Session = Depends(get_session)):
+    form = await request.form()
+    token = str(form.get("token", ""))
+    try:
+        invitee = svc.user_for_invite(session, token)
+        svc.accept_invite(session, invitee, str(form.get("password", "")))
+    except svc.SignupError as exc:
+        session.rollback()
+        invitee = None
+        try:
+            invitee = svc.user_for_invite(session, token)
+        except svc.SignupError:
+            pass
+        return _page(request, "invite", {"token": token, "invitee": invitee, "error": str(exc)}, 422)
+    session.commit()
+    flash(request, "تم تفعيل حسابك. سجّل دخولك ببريدك الإلكتروني وكلمة المرور التي اخترتها")
+    return redirect("/login")
+
+
 @router.get("/reset-password", response_class=HTMLResponse)
 def reset_form(request: Request, token: str = "", session: Session = Depends(get_session)):
     try:
