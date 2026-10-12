@@ -185,7 +185,10 @@ def test_transaction_pages_and_roles(client, db, setup):
 
     client.post("/logout")
     login(client, "sara", "Password-123!")
-    assert "4,000.00" in client.get(f"/entities/{entity.id}/transactions").text  # the reviewer can see it
+    # Reviewers only review the policy: every other company page is closed to them
+    for page in ("transactions", "dashboard", "accounts", "balances", "reports", "audit", "settings"):
+        assert client.get(f"/entities/{entity.id}/{page}").status_code == 403, page
+    assert client.get(f"/entities/{entity.id}/policy").status_code == 200
     assert client.post(f"/entities/{entity.id}/transactions", data={"amount": "1", "occurred_at": "2026-09-02T10:00"}).status_code == 403
 
 

@@ -10,7 +10,7 @@
 {% if rows %}
 <div class="grid-cards">
   {% for r in rows %}
-  <a class="card card-link" href="/entities/{{ r.entity.id }}/{{ 'dashboard' if r.active else 'policy' }}">
+  <a class="card card-link" href="/entities/{{ r.entity.id }}/{{ 'dashboard' if r.active and user.role.value != 'approver' else 'policy' }}">
     <h3>{{ r.entity.name }}</h3>
     {% if r.active %}
       <span class="pill pill-active">سياسة نشطة · نسخة {{ r.active.version }}</span>

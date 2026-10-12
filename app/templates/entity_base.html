@@ -15,7 +15,9 @@
     ('audit', 'سجل التدقيق', 'audit'),
     ('settings', 'بيانات الشركة', 'settings'),
   ] %}
+  {% if user.role.value != 'approver' or key == 'policy' %}
   <a href="/entities/{{ entity.id }}/{{ url }}" class="{{ 'active' if tab == key }}">{{ label }}</a>
+  {% endif %}
   {% endfor %}
 </nav>
 {% block entity_content %}{% endblock %}

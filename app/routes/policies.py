@@ -25,7 +25,7 @@ def _policy_for(user: User, policy_id: int, session: Session) -> Policy:
     policy = session.get(Policy, policy_id)
     if policy is None:
         raise HTTPException(404, "السياسة غير موجودة")
-    get_entity_for(user, policy.entity_id, session)
+    get_entity_for(user, policy.entity_id, session, allow_reviewer=True)
     return policy
 
 
@@ -102,7 +102,7 @@ def _parse_rows(form) -> tuple[list[dict], list[svc.BucketInput], list[str]]:
 def policy_overview(
     request: Request, entity_id: int, user: User = Depends(current_user), session: Session = Depends(get_session)
 ):
-    entity = get_entity_for(user, entity_id, session)
+    entity = get_entity_for(user, entity_id, session, allow_reviewer=True)
     open_ = svc.open_policy(session, entity_id)
     return templates.TemplateResponse(
         request,
@@ -122,7 +122,7 @@ def policy_overview(
 
 @router.post("/entities/{entity_id}/policy/draft")
 def new_draft(request: Request, entity_id: int, user: User = Depends(editor), session: Session = Depends(get_session)):
-    entity = get_entity_for(user, entity_id, session)
+    entity = get_entity_for(user, entity_id, session, allow_reviewer=True)
     try:
         draft = svc.start_draft(session, entity, user)
     except svc.PolicyError as exc:
@@ -138,7 +138,7 @@ def _render_editor(request, user, policy, session, rows, errors, notes, status_c
         "policy/edit.html",
         {
             "user": user,
-            "entity": get_entity_for(user, policy.entity_id, session),
+            "entity": get_entity_for(user, policy.entity_id, session, allow_reviewer=True),
             "tab": "policy",
             "policy": policy,
             "rows": rows,
@@ -232,7 +232,7 @@ def view_policy(request: Request, policy_id: int, user: User = Depends(current_u
         "policy/view.html",
         {
             "user": user,
-            "entity": get_entity_for(user, policy.entity_id, session),
+            "entity": get_entity_for(user, policy.entity_id, session, allow_reviewer=True),
             "tab": "policy",
             "policy": policy,
             "protected_changes": svc.protected_changes_for(session, policy)

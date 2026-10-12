@@ -48,9 +48,14 @@ def accessible_entities(user: User, session: Session) -> list[Entity]:
     return sorted(user.entities, key=lambda e: e.name)
 
 
-def get_entity_for(user: User, entity_id: int, session: Session) -> Entity:
-    """Return the entity if the user may access it, otherwise 404 (we do not reveal that it exists)."""
+def get_entity_for(user: User, entity_id: int, session: Session, *, allow_reviewer: bool = False) -> Entity:
+    """Return the entity if the user may access it, otherwise 404 (we do not reveal that it exists).
+
+    Reviewers only review policies: every company page refuses them unless it opts in with allow_reviewer
+    (only the policy pages do), so a new page is closed to reviewers by default."""
     entity = session.get(Entity, entity_id)
     if entity is None or (user.role is not Role.ADMIN and entity not in user.entities):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "الشركة غير موجودة")
+    if user.role is Role.APPROVER and not allow_reviewer:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "دور المراجع مقتصر على مراجعة سياسة التقسيم واعتمادها")
     return entity
