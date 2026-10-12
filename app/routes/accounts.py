@@ -63,6 +63,24 @@ async def add_account(request: Request, entity_id: int, user: User = Depends(edi
     return redirect(f"/entities/{entity_id}/accounts")
 
 
+@router.post("/accounts/{account_id}/delete")
+def delete_account(request: Request, account_id: int, user: User = Depends(editor), session: Session = Depends(get_session)):
+    account = session.get(BankAccount, account_id)
+    if account is None:
+        raise HTTPException(404, "الحساب غير موجود")
+    get_entity_for(user, account.entity_id, session)
+    entity_id, name = account.entity_id, account.name
+    try:
+        svc.delete_account(session, account, user)
+    except svc.AccountError as exc:
+        session.rollback()
+        flash(request, str(exc), "error")
+        return redirect(f"/entities/{entity_id}/accounts")
+    session.commit()
+    flash(request, f"تم حذف الحساب «{name}»")
+    return redirect(f"/entities/{entity_id}/accounts")
+
+
 @router.post("/accounts/{account_id}/toggle")
 def toggle_account(request: Request, account_id: int, user: User = Depends(editor), session: Session = Depends(get_session)):
     account = session.get(BankAccount, account_id)

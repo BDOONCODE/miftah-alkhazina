@@ -98,6 +98,28 @@ def toggle_account(session: Session, account: BankAccount, user: User) -> None:
     )
 
 
+def delete_account(session: Session, account: BankAccount, user: User) -> None:
+    """Delete an income account that was never used. Once money came in through it, it is kept so the
+    transactions keep their source (it can be deactivated instead)."""
+    from ..models import Transaction
+
+    if account.kind not in INCOME_KINDS:
+        raise AccountError("الحذف متاح لحسابات الدخل فقط")
+    if session.scalar(select(Transaction.id).where(Transaction.source_account_id == account.id).limit(1)):
+        raise AccountError(
+            f"لا يمكن حذف «{account.name}» لأن معاملات وصلت من خلاله، والحذف يفقدها مصدرها. عطّله بدلًا من ذلك"
+        )
+    session.add(
+        AuditLog(
+            user_id=user.id,
+            entity_id=account.entity_id,
+            action="account.deleted",
+            details={"name": account.name, "kind": account.kind.value, "iban": account.iban[-4:]},
+        )
+    )
+    session.delete(account)
+
+
 def find_by_iban(session: Session, iban: str) -> BankAccount | None:
     """The account the money arrived in (for bank notifications): a revenue source or the pool only."""
     return session.scalar(

@@ -2,7 +2,7 @@
 {% block entity_content %}
 {% set can_edit = user.role.value in ("accountant", "admin") %}
 
-{% macro accounts_table(rows) %}
+{% macro accounts_table(rows, deletable=false) %}
 <div class="table-scroll">
 <table class="table">
   <thead><tr><th>الحساب</th><th>النوع</th><th>البنك</th><th>الآيبان</th><th>الحالة</th><th></th></tr></thead>
@@ -16,9 +16,16 @@
       <td>{{ 'نشط' if a.is_active else 'معطّل' }}</td>
       <td>
         {% if can_edit %}
-        <form method="post" action="/accounts/{{ a.id }}/toggle">
-          <button class="btn-link" type="submit">{{ 'تعطيل' if a.is_active else 'تفعيل' }}</button>
-        </form>
+        <div class="row-actions">
+          <form method="post" action="/accounts/{{ a.id }}/toggle">
+            <button class="btn-link" type="submit">{{ 'تعطيل' if a.is_active else 'تفعيل' }}</button>
+          </form>
+          {% if deletable %}
+          <form method="post" action="/accounts/{{ a.id }}/delete" onsubmit="return confirm('هل تريد حذف الحساب «{{ a.name }}»؟')">
+            <button class="btn-link danger" type="submit">حذف</button>
+          </form>
+          {% endif %}
+        </div>
         {% endif %}
       </td>
     </tr>
@@ -68,7 +75,7 @@
 <section class="card">
   <h2>حسابات الدخل المضافة</h2>
   {% if income %}
-    {{ accounts_table(income) }}
+    {{ accounts_table(income, deletable=true) }}
   {% else %}
   <div class="alert alert-warning">لا توجد حسابات دخل حتى الآن. أضف حساب نقاط البيع أو الحساب الرئيسي أدناه.</div>
   {% endif %}

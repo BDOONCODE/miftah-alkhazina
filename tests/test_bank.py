@@ -250,3 +250,23 @@ def test_semiannual_item_needs_and_saves_due_date(client, db, company):
     db.refresh(draft)
     assert draft.status is models.PolicyStatus.ACTIVE
     assert str(draft.buckets[0].due_date) == "2027-03-01"
+
+
+def test_unused_income_account_can_be_deleted(client, db, company):
+    add(client, company, "نقاط البيع", POS, "source")
+    account = db.query(models.BankAccount).filter_by(iban=POS).one()
+    assert client.post(f"/accounts/{account.id}/delete", follow_redirects=False).status_code == 303
+    assert db.query(models.BankAccount).filter_by(iban=POS).count() == 0
+
+
+def test_income_account_with_transactions_is_kept(client, db, company, accounts):
+    activate_policy(client, db, company, accounts)
+    pos = accounts["نقاط البيع"]
+    client.post(f"/entities/{company.id}/transactions",
+                data={"amount": "1000", "occurred_at": "2026-09-02T10:00", "source_account_id": str(pos.id)})
+    client.post(f"/accounts/{pos.id}/delete")
+    db.expire_all()
+    assert db.get(models.BankAccount, pos.id) is not None  # money came in through it: deactivate instead
+    client.post(f"/accounts/{accounts['المؤجر'].id}/delete")
+    db.expire_all()
+    assert db.get(models.BankAccount, accounts["المؤجر"].id) is not None  # beneficiaries are not deleted here
