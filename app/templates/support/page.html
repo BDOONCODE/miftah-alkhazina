@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1>الدعم والتكامل</h1>
+  <a href="/admin/users" class="btn">المستخدمون وكلمات المرور</a>
+</div>
+<p class="muted">متابعة الربط البنكي والتحويلات المتعثرة وطلبات العكس. لا تظهر هنا بيانات الشركات ولا أرقام الحسابات ولا المبالغ.</p>
+
+<section class="card" id="issues">
+  <h2>التحويلات الفاشلة</h2>
+  {% if issues %}
+  <table class="table">
+    <thead><tr><th>الشركة</th><th>المرحلة</th><th>الحساب الموجَّه إليه</th><th>الرقم المرجعي</th><th>الوقت</th><th>سبب البنك</th><th></th></tr></thead>
+    <tbody>
+    {% for i in issues %}
+      <tr>
+        <td>{{ i.entity_name }}</td>
+        <td>{{ LEG_LABELS.get(i.leg, i.leg) }}</td>
+        <td>{{ i.destination }}</td>
+        <td class="num" dir="ltr">{{ i.reference }}</td>
+        <td>{{ i.created_at | riyadh }}</td>
+        <td class="muted small">{{ i.error }}</td>
+        <td>
+          {% if i.resolved %}
+            <span class="pill pill-active">تمت المعالجة</span>
+            {% if i.note %}<div class="muted small">{{ i.note }}</div>{% endif %}
+          {% else %}
+          <form method="post" action="/admin/issues/{{ i.id }}/resolve" class="inline-form">
+            <input name="note" placeholder="ملاحظة (اختيارية)">
+            <button class="btn btn-primary" type="submit">تمت المعالجة</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">لا توجد تحويلات فاشلة.</p>
+  {% endif %}
+</section>
+
+<section class="card" id="requests">
+  <h2>طلبات التحويل العكسي</h2>
+  <p class="muted">يرفعها المحاسب عندما لا يمكن عكس المعاملة داخل النظام لأن المال حُوِّل إلى المستفيد. تابعها مع نيوتك وحدّث حالتها.</p>
+  {% if requests %}
+  <table class="table">
+    <thead><tr><th>#</th><th>الشركة</th><th>المعاملة</th><th>السبب</th><th>رفعه</th><th>الحالة</th></tr></thead>
+    <tbody>
+    {% for r in requests %}
+      <tr>
+        <td class="num">{{ r.id }}</td>
+        <td>{{ r.entity_name }}</td>
+        <td class="num" dir="ltr">#{{ r.transaction_id }}{% if r.external_ref %} · {{ r.external_ref }}{% endif %}</td>
+        <td>{{ r.reason }}</td>
+        <td>{{ r.requester.full_name }} · {{ r.created_at | riyadh }}</td>
+        <td>
+          <form method="post" action="/admin/reversal-requests/{{ r.id }}" class="inline-form">
+            <select name="status">
+              {% for key, label in REQUEST_STATUS.items() %}
+              <option value="{{ key }}" {{ 'selected' if key == r.status }}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <input name="note" value="{{ r.note }}" placeholder="ملاحظة للمحاسب">
+            <button class="btn btn-primary" type="submit">حفظ</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">لا توجد طلبات عكس.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>حالة الربط البنكي</h2>
+  <table class="table">
+    <thead><tr><th>الشركة</th><th>آخر إشعار من البنك</th><th>المعاملات</th><th>التحويلات المنفّذة</th><th>تحويلات فاشلة مفتوحة</th></tr></thead>
+    <tbody>
+    {% for c in companies %}
+      <tr>
+        <td>{{ c.entity.name }}</td>
+        <td>{{ c.last_bank_notice | riyadh if c.last_bank_notice else '—' }}</td>
+        <td class="num">{{ c.transactions }}</td>
+        <td class="num">{{ c.transfers_sent }}</td>
+        <td class="num {{ 'negative' if c.open_issues }}">{{ c.open_issues }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">لا توجد شركات بعد.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

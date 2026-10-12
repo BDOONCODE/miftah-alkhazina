@@ -15,7 +15,7 @@ from ..templating import templates
 from ..web import flash, redirect
 
 router = APIRouter()
-accountant = require_role(Role.ACCOUNTANT, Role.ADMIN)
+accountant = require_role(Role.ACCOUNTANT)
 
 COMPANY_FIELDS = ["name", "cr_number", "vat_number", "bank_name", "iban", "contact_name", "contact_phone"]
 

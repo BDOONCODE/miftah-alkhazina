@@ -12,7 +12,7 @@ from ..templating import templates
 from ..web import flash, redirect
 
 router = APIRouter()
-editor = require_role(Role.ACCOUNTANT, Role.ADMIN)
+editor = require_role(Role.ACCOUNTANT)
 
 
 @router.get("/entities/{entity_id}/accounts", response_class=HTMLResponse)

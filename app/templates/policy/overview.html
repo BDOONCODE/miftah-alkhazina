@@ -1,7 +1,7 @@
 {% extends "entity_base.html" %}
 {% from "policy/_table.html" import buckets_table, policy_meta, decision_forms %}
 {% block entity_content %}
-{% set can_edit = user.role.value in ("accountant", "admin") %}
+{% set can_edit = user.role.value == "accountant" %}
 
 {% if open %}
 <section class="card card-highlight">
@@ -15,7 +15,7 @@
       </form>
     {% endif %}
   </div>
-  {% if open.buckets %}{{ buckets_table(open) }}{% else %}<p class="muted">المسودة فارغة.</p>{% endif %}
+  {% if open.buckets %}{{ buckets_table(open, diff, accounts) }}{% else %}<p class="muted">المسودة فارغة.</p>{% endif %}
   {% if open_changes %}
   <div class="alert alert-warning">تعديلات على بنود محمية: {{ open_changes | join('، ') }}</div>
   {% endif %}
@@ -59,7 +59,7 @@
   </div>
   {% if active %}
     <p class="muted">نسخة {{ active.version }} — يُقسَّم أي مبلغ يصل إلى حسابات الشركة وفق هذه البنود بالترتيب.</p>
-    {{ buckets_table(active) }}
+    {{ buckets_table(active, none, accounts) }}
     {{ policy_meta(active) }}
   {% else %}
     <p class="muted">لا توجد سياسة نشطة. لا تُقسَّم المبالغ الواردة إلا بعد اعتماد السياسة.</p>

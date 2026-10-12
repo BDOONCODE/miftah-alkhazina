@@ -70,13 +70,42 @@
     {% if reversal %}<div><dt>عُكست بـ</dt><dd><a href="/transactions/{{ reversal.id }}">قيد #{{ reversal.id }}</a></dd></div>{% endif %}
   </dl>
 
-  {% if can_reverse and user.role.value in ("accountant", "admin") %}
+  {% if can_reverse and user.role.value == "accountant" %}
   <details>
     <summary>تصحيح: عكس هذه المعاملة</summary>
     <form method="post" action="/transactions/{{ txn.id }}/reverse" class="stack">
       <p class="muted">يعيد أرصدة البنود إلى ما كانت عليه قبل المعاملة، ويبقى الأصل والقيد العكسي في السجل.</p>
       <label>سبب التصحيح *<input name="reason" required placeholder="مثال: أُدخل المبلغ بالخطأ"></label>
       <div><button class="btn btn-danger" type="submit">عكس المعاملة</button></div>
+    </form>
+  </details>
+  {% endif %}
+
+  {% if reversal_requests %}
+  <h3>طلبات العكس عبر الدعم</h3>
+  <table class="table">
+    <thead><tr><th>#</th><th>السبب</th><th>الحالة</th><th>ملاحظة الدعم</th></tr></thead>
+    <tbody>
+    {% for r in reversal_requests %}
+      <tr>
+        <td class="num">{{ r.id }}</td>
+        <td>{{ r.reason }}</td>
+        <td><span class="pill pill-{{ 'active' if r.status == 'done' else 'rejected' if r.status == 'rejected' else 'pending' }}">{{ REQUEST_STATUS[r.status] }}</span></td>
+        <td>{{ r.note or '—' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if user.role.value == "accountant" and not txn.reversal_of and not reversal
+        and not (reversal_requests | selectattr('status', 'in', ['open', 'in_progress']) | list) %}
+  <details>
+    <summary>طلب عكس عبر الدعم</summary>
+    <form method="post" action="/transactions/{{ txn.id }}/reversal-request" class="stack">
+      <p class="muted">إذا تعذّر العكس داخل النظام لأن المال حُوِّل إلى المستفيد، يتابع الدعم العكس مع البنك ويحدّث حالة الطلب هنا.</p>
+      <label>سبب الطلب *<input name="reason" required placeholder="مثال: حُوِّل المبلغ إلى مستفيد خاطئ"></label>
+      <div><button class="btn" type="submit">رفع الطلب</button></div>
     </form>
   </details>
   {% endif %}

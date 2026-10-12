@@ -1,6 +1,6 @@
 {% extends "entity_base.html" %}
 {% block entity_content %}
-{% set can_edit = user.role.value in ("accountant", "admin") %}
+{% set can_edit = user.role.value == "accountant" %}
 
 {% if can_edit %}
   {% if not policy %}

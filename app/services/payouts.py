@@ -37,6 +37,7 @@ from ..models import (
     PolicyBucket,
     PoolMove,
     Transaction,
+    TransferIssue,
 )
 from .accounts import DESTINATION_KINDS
 from .banking import BankingError, provider
@@ -46,7 +47,32 @@ SURPLUS_NAME = "الفائض"
 
 
 class PayoutError(RuntimeError):
-    """A money movement at the banking provider failed."""
+    """A money movement at the banking provider failed. `issue` describes the failed leg for the support page;
+    the caller rolls the work back, then calls record_failure so the issue survives the rollback."""
+
+    def __init__(self, message: str, issue: dict | None = None):
+        super().__init__(message)
+        self.issue = issue
+
+
+def record_failure(session: Session, exc: BaseException) -> None:
+    """After a rollback: keep the failed leg (if any) on the support page."""
+    while exc is not None:
+        issue = getattr(exc, "issue", None)
+        if issue:
+            session.add(TransferIssue(**issue))
+            session.commit()
+            return
+        exc = exc.__cause__
+
+
+def _bucket_name(session: Session, bucket: Bucket) -> str:
+    if bucket.system_name:
+        return bucket.system_name
+    name = session.scalar(
+        select(PolicyBucket.name).where(PolicyBucket.bucket_id == bucket.id).order_by(PolicyBucket.id.desc()).limit(1)
+    )
+    return name or f"بند #{bucket.id}"
 
 
 def _lock_entity(session: Session, entity_id: int) -> None:
@@ -72,39 +98,48 @@ def fund_items(session: Session, entity_id: int, txn: Transaction, source: BankA
     so the bank can resend the notification and nothing is half-split.
     """
     pool = ensure_pool(session, entity_id)
+    leg = {"leg": "sweep", "destination": "الحساب المجمّع", "reference": f"TX-{txn.id}-sweep"}
     try:
         if source is not None:
             txn.sweep_ref = provider().sweep(
-                from_iban=source.iban, to_ref=pool, amount=txn.amount, reference=f"TX-{txn.id}-sweep"
+                from_iban=source.iban, to_ref=pool, amount=txn.amount, reference=leg["reference"]
             )
         events = [e for e in txn.events if e.allocated > 0]
         ensure_virtual_accounts(session, entity_id, [e.bucket_id for e in events])
         for event in events:
             bucket = session.get(Bucket, event.bucket_id)
+            leg = {"leg": "move", "destination": _bucket_name(session, bucket), "reference": f"TX-{txn.id}-B{bucket.id}"}
             event.move_ref = provider().move(
-                from_ref=pool, to_ref=bucket.virtual_ref, amount=event.allocated, reference=f"TX-{txn.id}-B{bucket.id}"
+                from_ref=pool, to_ref=bucket.virtual_ref, amount=event.allocated, reference=leg["reference"]
             )
     except BankingError as exc:
-        raise PayoutError(f"تعذّر تنفيذ العملية لدى البنك: {exc}") from exc
+        raise PayoutError(
+            f"تعذّر تنفيذ العملية لدى البنك: {exc}", {"entity_id": entity_id, "error": str(exc), **leg}
+        ) from exc
 
 
 def unwind_items(session: Session, original: Transaction, reversal: Transaction, source: BankAccount | None) -> None:
     """Reverse the provider moves of a transaction: item accounts -> pool -> back to the company account."""
     pool = ensure_pool(session, original.entity_id)
+    leg: dict = {}
     try:
         for event in original.events:
             if event.allocated > 0 and event.move_ref:
                 bucket = session.get(Bucket, event.bucket_id)
+                leg = {"destination": "الحساب المجمّع", "reference": f"TX-{reversal.id}-B{bucket.id}"}
                 provider().move(
-                    from_ref=bucket.virtual_ref, to_ref=pool, amount=event.allocated,
-                    reference=f"TX-{reversal.id}-B{bucket.id}",
+                    from_ref=bucket.virtual_ref, to_ref=pool, amount=event.allocated, reference=leg["reference"]
                 )
         if original.sweep_ref and source is not None:
+            leg = {"destination": source.name, "reference": f"TX-{reversal.id}-sweep"}
             reversal.sweep_ref = provider().transfer(
-                from_ref=pool, to_iban=source.iban, amount=original.amount, reference=f"TX-{reversal.id}-sweep"
+                from_ref=pool, to_iban=source.iban, amount=original.amount, reference=leg["reference"]
             )
     except BankingError as exc:
-        raise PayoutError(f"تعذّر تنفيذ العكس لدى البنك: {exc}") from exc
+        raise PayoutError(
+            f"تعذّر تنفيذ العكس لدى البنك: {exc}",
+            {"entity_id": original.entity_id, "leg": "unwind", "error": str(exc), **leg},
+        ) from exc
 
 
 def _sum(session: Session, stmt) -> int:
@@ -158,7 +193,10 @@ def _move_from_pool(
             from_ref=ensure_pool(session, entity_id), to_ref=bucket.virtual_ref, amount=amount, reference=f"PM-{move.id}"
         )
     except BankingError as exc:
-        raise PayoutError(f"تعذّر تنفيذ العملية لدى البنك: {exc}") from exc
+        raise PayoutError(f"تعذّر تنفيذ العملية لدى البنك: {exc}", {
+            "entity_id": entity_id, "leg": "move", "destination": _bucket_name(session, bucket),
+            "reference": f"PM-{move.id}", "error": str(exc),
+        }) from exc
     session.add(AuditLog(entity_id=entity_id, action=f"pool.{kind}",
                          details={"bucket_id": bucket.id, "amount": amount, "period": period}))
     return move
@@ -315,6 +353,8 @@ def _send(
         payout.status = PayoutStatus.SENT
     except BankingError as exc:
         payout.status, payout.error = PayoutStatus.FAILED, str(exc)
+        session.add(TransferIssue(entity_id=entity_id, leg="payout", destination=beneficiary.name,
+                                  reference=payout.reference, error=str(exc)))
     session.add(payout)
     session.flush()
     session.add(

@@ -278,3 +278,12 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 /* Reviewer invite link to copy */
 .invite-link { display: flex; gap: .4rem; align-items: center; }
 .invite-link input { min-width: 0; flex: 1; font-size: .8rem; }
+/* Policy review: what changed against the active policy */
+.row-new td { background: #eaf6ef; }
+.row-changed td { background: #fff8e6; }
+.row-removed td { background: #fdf0ee; color: var(--muted); text-decoration: line-through; }
+.row-removed td .pill { text-decoration: none; }
+.pill-new { background: #d7f0e1; color: var(--positive); }
+.was { font-size: .8rem; color: var(--muted); }
+.was .muted { display: none; }
+.changes-summary { margin-bottom: .75rem; }

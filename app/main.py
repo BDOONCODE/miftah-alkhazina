@@ -15,8 +15,10 @@ from . import mailer, throttle
 from .auth import LoginRequired, PasswordChangeRequired, accessible_entities, current_user
 from .config import BASE_DIR, HTTPS_ONLY_COOKIES, SECRET_KEY
 from .db import get_session
-from .models import AuditLog, User, utcnow
-from .routes import account, accounts, bank, companies, dashboard, payouts, policies, reports, signup, transactions
+from .models import AuditLog, Role, User, utcnow
+from .routes import (
+    account, accounts, bank, companies, dashboard, payouts, policies, reports, signup, support, transactions,
+)
 from .security import verify_password
 from .services.policies import active_policy, open_policy
 from .services.signup import find_by_login
@@ -68,6 +70,7 @@ app.include_router(transactions.router)
 app.include_router(payouts.router)
 app.include_router(dashboard.router)
 app.include_router(reports.router)
+app.include_router(support.router)
 
 
 class _HideHealthChecks(logging.Filter):
@@ -165,6 +168,8 @@ def logout(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request, user: User = Depends(current_user), session: Session = Depends(get_session)):
+    if user.role is Role.ADMIN:
+        return redirect("/admin/support")
     rows = [
         {"entity": e, "active": active_policy(session, e.id), "open": open_policy(session, e.id)}
         for e in accessible_entities(user, session)

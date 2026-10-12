@@ -14,6 +14,8 @@ from ..db import get_session
 from ..domain.money import parse_amount
 from ..domain.periods import RIYADH
 from ..models import AccountKind, BankAccount, Payout, PoolMove, PolicyBucket, Role, Transaction, User, utcnow
+from ..services import payouts as payout_svc
+from ..services import support
 from ..services import transactions as svc
 from ..services.accounts import accounts_for
 from ..services.policies import active_policy
@@ -22,7 +24,7 @@ from ..web import flash, redirect
 
 router = APIRouter()
 INCOMING_KINDS = (AccountKind.SOURCE, AccountKind.POOL)
-editor = require_role(Role.ACCOUNTANT, Role.ADMIN)
+editor = require_role(Role.ACCOUNTANT)
 PAGE_SIZE = 50
 
 
@@ -95,6 +97,7 @@ async def add_transaction(
         )
     except svc.TransactionError as exc:
         session.rollback()
+        payout_svc.record_failure(session, exc)
         flash(request, str(exc), "error")
         return redirect(f"/entities/{entity_id}/transactions")
     session.commit()
@@ -166,6 +169,8 @@ def transaction_detail(
             "original": session.get(Transaction, txn.reversal_of) if txn.reversal_of else None,
             "source_account": session.get(BankAccount, txn.source_account_id) if txn.source_account_id else None,
             "payouts": list(session.scalars(select(Payout).where(Payout.transaction_id == txn.id).order_by(Payout.id))),
+            "reversal_requests": support.requests_for(session, txn.id),
+            "REQUEST_STATUS": support.REQUEST_STATUS,
             "covers": list(session.scalars(
                 select(PoolMove).where(PoolMove.transaction_id == txn.id, PoolMove.kind == "cover").order_by(PoolMove.id)
             )),
@@ -181,8 +186,26 @@ async def reverse(request: Request, txn_id: int, user: User = Depends(editor), s
         reversal = svc.reverse_transaction(session, txn, user, str(form.get("reason", "")))
     except svc.TransactionError as exc:
         session.rollback()
+        payout_svc.record_failure(session, exc)
         flash(request, str(exc), "error")
         return redirect(f"/transactions/{txn_id}")
     session.commit()
     flash(request, "عُكست المعاملة وأُعيدت أرصدة البنود إلى ما كانت عليه قبلها")
     return redirect(f"/transactions/{reversal.id}")
+
+
+@router.post("/transactions/{txn_id}/reversal-request")
+async def request_reversal(
+    request: Request, txn_id: int, user: User = Depends(editor), session: Session = Depends(get_session)
+):
+    """Money already left to a beneficiary: the accountant asks support to reverse it with the bank."""
+    txn = _txn_for(user, txn_id, session)
+    form = await request.form()
+    try:
+        support.request_reversal(session, txn, user, str(form.get("reason", "")))
+    except support.SupportError as exc:
+        flash(request, str(exc), "error")
+        return redirect(f"/transactions/{txn_id}")
+    session.commit()
+    flash(request, "رُفع طلب العكس إلى الدعم، وستظهر حالته هنا")
+    return redirect(f"/transactions/{txn_id}")

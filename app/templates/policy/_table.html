@@ -1,20 +1,60 @@
-{% macro buckets_table(policy) %}
+{% macro value_text(b) %}{{ b.value | pct if b.calc_type.is_rate else (b.value | sar) ~ ' ر.س' }}{% endmacro %}
+{% macro due_text(b) %}{{ FREQ_LABELS[b.frequency.value] }}{% if b.settlement_day %} ({{ b.settlement_day }}){% endif %}{% if b.due_date %} · يستحق <span class="num">{{ b.due_date }}</span>{% endif %}{% endmacro %}
+{% macro beneficiary(b, accounts) %}
+  {% set a = accounts.get(b.destination_account_id) if accounts else none %}
+  {% if a %}{{ a.name }}<div class="muted small">{{ KIND_LABELS[a.kind.value] }} · <span dir="ltr">••{{ a.iban[-4:] }}</span></div>
+  {% else %}{{ b.destination or '—' }}{% endif %}
+{% endmacro %}
+
+{# diff: changes against the active policy (pending versions only), so the reviewer sees what is new or edited #}
+{% macro buckets_table(policy, diff=none, accounts=none) %}
+{% if diff and not diff.first %}
+  {% if diff.any %}
+  <div class="alert alert-warning changes-summary">
+    <strong>التغييرات عن السياسة النشطة:</strong>
+    {% set parts = [] %}
+    {% if diff.new %}{% set _ = parts.append(diff.new | length ~ ' بند جديد') %}{% endif %}
+    {% if diff.changed %}{% set _ = parts.append(diff.changed | length ~ ' بند معدَّل') %}{% endif %}
+    {% if diff.removed %}{% set _ = parts.append(diff.removed | length ~ ' بند محذوف') %}{% endif %}
+    {% if diff.surplus_changed %}{% set _ = parts.append('إعدادات الفائض') %}{% endif %}
+    {{ parts | join('، ') }}. البنود المظللة هي ما يحتاج إلى مراجعتك.
+  </div>
+  {% else %}
+  <div class="alert">لا تغيير في البنود عن السياسة النشطة.</div>
+  {% endif %}
+{% endif %}
 <table class="table">
   <thead>
     <tr><th>الأولوية</th><th>البند</th><th>النوع</th><th>القيمة</th><th>الاستحقاق (موعد التحويل)</th><th>المستفيد</th><th></th></tr>
   </thead>
   <tbody>
   {% for b in policy.buckets %}
-    <tr>
-      <td class="num">{{ b.priority }}</td>
-      <td>{{ b.name }}</td>
-      <td>{{ CALC_LABELS[b.calc_type.value] }}</td>
-      <td class="num">{{ b.value | pct if b.calc_type.is_rate else (b.value | sar) ~ ' ر.س' }}</td>
-      <td>{{ FREQ_LABELS[b.frequency.value] }}{% if b.settlement_day %} ({{ b.settlement_day }}){% endif %}{% if b.due_date %} · يستحق <span class="num">{{ b.due_date }}</span>{% endif %}</td>
-      <td>{{ b.destination or '—' }}</td>
+    {% set is_new = diff and not diff.first and b.bucket_id in diff.new %}
+    {% set prev, fields = diff.changed.get(b.bucket_id, (none, [])) if diff else (none, []) %}
+    <tr class="{{ 'row-new' if is_new else 'row-changed' if fields }}">
+      <td class="num">{{ b.priority }}{% if 'priority' in fields %}<div class="was" dir="rtl">كان {{ prev.priority }}</div>{% endif %}</td>
+      <td>{{ b.name }}
+        {% if is_new %}<span class="pill pill-new">جديد</span>{% elif fields %}<span class="pill pill-pending">معدَّل</span>{% endif %}
+        {% if 'name' in fields %}<div class="was">كان «{{ prev.name }}»</div>{% endif %}
+      </td>
+      <td>{{ CALC_LABELS[b.calc_type.value] }}{% if 'calc_type' in fields %}<div class="was">كان {{ CALC_LABELS[prev.calc_type.value] }}</div>{% endif %}</td>
+      <td class="num">{{ value_text(b) }}{% if 'value' in fields or 'calc_type' in fields %}<div class="was" dir="rtl">كان <bdi>{{ value_text(prev) }}</bdi></div>{% endif %}</td>
+      <td>{{ due_text(b) }}{% if fields | select('in', ['frequency', 'settlement_day', 'due_date']) | list %}<div class="was">كان {{ due_text(prev) }}</div>{% endif %}</td>
+      <td>{{ beneficiary(b, accounts) }}{% if 'destination_account_id' in fields %}<div class="was">كان {{ beneficiary(prev, accounts) }}</div>{% endif %}</td>
       <td>{% if b.protected %}<span class="pill pill-protected" title="أي تعديل عليه بعد التمويل يتطلب تبريرًا">🔒 محمي</span>{% endif %}</td>
     </tr>
   {% endfor %}
+  {% if diff %}{% for b in diff.removed %}
+    <tr class="row-removed">
+      <td class="num">{{ b.priority }}</td>
+      <td>{{ b.name }} <span class="pill pill-rejected">محذوف</span></td>
+      <td>{{ CALC_LABELS[b.calc_type.value] }}</td>
+      <td class="num">{{ value_text(b) }}</td>
+      <td>{{ due_text(b) }}</td>
+      <td>{{ beneficiary(b, accounts) }}</td>
+      <td></td>
+    </tr>
+  {% endfor %}{% endif %}
   </tbody>
 </table>
 {% endmacro %}

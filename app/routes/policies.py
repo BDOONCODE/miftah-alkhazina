@@ -18,7 +18,7 @@ from ..templating import templates
 from ..web import flash, redirect
 
 router = APIRouter()
-editor = require_role(Role.ACCOUNTANT, Role.ADMIN)
+editor = require_role(Role.ACCOUNTANT)
 
 
 def _policy_for(user: User, policy_id: int, session: Session) -> Policy:
@@ -114,6 +114,8 @@ def policy_overview(
             "active": svc.active_policy(session, entity_id),
             "open": open_,
             "open_changes": svc.protected_changes_for(session, open_) if open_ else [],
+            "diff": svc.changes_from_active(session, open_) if open_ else None,
+            "accounts": svc.beneficiaries(session, entity_id),
             "can_decide": bool(open_) and svc.can_decide(session, open_, user),
             "history": svc.history(session, entity_id),
         },
@@ -239,6 +241,8 @@ def view_policy(request: Request, policy_id: int, user: User = Depends(current_u
             if policy.status in svc.OPEN_STATUSES
             else [],
             "can_decide": svc.can_decide(session, policy, user),
+            "diff": svc.changes_from_active(session, policy) if policy.status in svc.OPEN_STATUSES else None,
+            "accounts": svc.beneficiaries(session, policy.entity_id),
         },
     )
 

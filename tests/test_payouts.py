@@ -283,3 +283,72 @@ def test_surplus_schedule_needs_its_day(db, setup):
     draft = pol.start_draft(db, entity, user)
     draft.surplus_frequency, draft.surplus_settlement_day = Frequency.DAY_OF_MONTH, None
     assert any("يوم عزل الفائض" in e for e in pol.destination_errors(draft))
+
+
+
+def _login(client, username):
+    client.post("/logout")
+    client.post("/login", data={"username": username, "password": "password123"})
+
+
+def test_failed_transfer_reaches_support_without_amount(client, db, setup, make_user, monkeypatch):
+    from app.services import banking
+
+    def refuse(**_):
+        raise banking.BankingError("البنك ما رد")
+
+    monkeypatch.setattr(banking._provider, "transfer", refuse)
+    entity, user, *_ = setup
+    deposit(db, entity, user, 10_000 * SAR, 10)
+    issue = db.query(models.TransferIssue).one()
+    assert (issue.leg, issue.destination, issue.resolved) == ("payout", "مانح الامتياز", False)
+
+    make_user("boss", role=models.Role.ADMIN)
+    _login(client, "boss")
+    page = client.get("/admin/support").text
+    assert "مزاج" in page and "مانح الامتياز" in page and issue.reference in page and "← المستفيد" in page
+    assert "600.00" not in page and ROYALTY_IBAN not in page and "10,000" not in page
+    client.post(f"/admin/issues/{issue.id}/resolve", data={"note": "أعيد التحويل مع نيوتك"})
+    db.refresh(issue)
+    assert issue.resolved and issue.note == "أعيد التحويل مع نيوتك"
+
+
+def test_failed_sweep_is_kept_after_the_rollback(client, db, setup, monkeypatch):
+    from app.services import banking
+
+    def refuse(**_):
+        raise banking.BankingError("الحساب موقوف")
+
+    source = acc.add_account(db, setup[0], setup[1], name="نقاط البيع", bank_name="", iban="SA1110000000000000000011",
+                             kind="source")
+    db.commit()
+    monkeypatch.setattr(banking._provider, "sweep", refuse)
+    _login(client, "acc")
+    client.post(f"/entities/{setup[0].id}/transactions", data={
+        "amount": "1000", "occurred_at": "2026-09-10T10:00", "source_account_id": str(source.id),
+    })
+    assert db.query(models.Transaction).count() == 0  # nothing half-split
+    issue = db.query(models.TransferIssue).one()
+    assert (issue.leg, issue.destination) == ("sweep", "الحساب المجمّع")
+
+
+def test_reversal_request_goes_to_support_and_back(client, db, setup, make_user):
+    entity, user, *_ = setup
+    txn = deposit(db, entity, user, 10_000 * SAR, 10)
+    _login(client, "acc")
+    assert "طلب عكس عبر الدعم" in client.get(f"/transactions/{txn.id}").text
+    client.post(f"/transactions/{txn.id}/reversal-request", data={"reason": "حُوِّل إلى مستفيد خاطئ"})
+    client.post(f"/transactions/{txn.id}/reversal-request", data={"reason": "مرة ثانية"})
+    row = db.query(models.ReversalRequest).one()  # one open request per transaction
+    assert row.status == "open"
+
+    make_user("boss", role=models.Role.ADMIN)
+    _login(client, "boss")
+    assert "حُوِّل إلى مستفيد خاطئ" in client.get("/admin/support").text
+    client.post(f"/admin/reversal-requests/{row.id}", data={"status": "done", "note": "عُكس مع البنك"})
+    db.refresh(row)
+    assert row.status == "done"
+
+    _login(client, "acc")
+    page = client.get(f"/transactions/{txn.id}").text
+    assert "عُكس مع البنك" in page and ">تم<" in page

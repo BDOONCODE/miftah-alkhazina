@@ -1,7 +1,7 @@
 {% extends "entity_base.html" %}
 {% from "companies/_fields.html" import company_fields, reviewer_fields %}
 {% block entity_content %}
-{% set can_edit = user.role.value in ("accountant", "admin") %}
+{% set can_edit = user.role.value == "accountant" %}
 <form method="post" class="stack">
   <section class="card">
     <h2>بيانات الشركة</h2>

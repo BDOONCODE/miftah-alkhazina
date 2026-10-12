@@ -2,7 +2,7 @@
 {% block content %}
 <div class="page-head">
   <h1>الشركات</h1>
-  {% if user.role.value in ("accountant", "admin") %}
+  {% if user.role.value == "accountant" %}
   <a href="/companies/new" class="btn btn-primary">+ تسجيل شركة</a>
   {% endif %}
 </div>
@@ -25,7 +25,7 @@
 </div>
 {% else %}
 <div class="card empty">
-  {% if user.role.value in ("accountant", "admin") %}
+  {% if user.role.value == "accountant" %}
     لم تسجّل أي شركة بعد. <a href="/companies/new">سجّل أول شركة</a>
   {% else %}
     لا توجد شركات مرتبطة بحسابك بعد.

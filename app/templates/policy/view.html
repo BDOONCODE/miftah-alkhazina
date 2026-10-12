@@ -6,7 +6,7 @@
     <h2>نسخة {{ policy.version }} <span class="pill pill-{{ policy.status.value }}">{{ POLICY_STATUS_LABELS[policy.status.value] }}</span></h2>
     <a href="/entities/{{ entity.id }}/policy">← كل النسخ</a>
   </div>
-  {{ buckets_table(policy) }}
+  {{ buckets_table(policy, diff, accounts) }}
   {% if protected_changes %}
   <div class="alert alert-warning">تعديلات على بنود محمية: {{ protected_changes | join('، ') }}</div>
   {% endif %}

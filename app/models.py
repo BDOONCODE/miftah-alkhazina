@@ -353,6 +353,48 @@ class Payout(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
 
 
+# ---------------------------------------------------------------- support
+
+
+class TransferIssue(Base):
+    """A money movement the banking provider refused, for the support team. Holds no amount or IBAN.
+
+    leg: sweep  (company account -> pool), move (pool -> an item's virtual account),
+         payout (item's virtual account -> beneficiary), unwind (a reversal back to the company account)
+    """
+
+    __tablename__ = "transfer_issues"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
+    leg: Mapped[str] = mapped_column(String(16))
+    destination: Mapped[str] = mapped_column(String(128))  # name of the receiving account
+    reference: Mapped[str] = mapped_column(String(64))
+    error: Mapped[str] = mapped_column(Text, default="")
+    resolved: Mapped[bool] = mapped_column(Boolean, default=False)
+    note: Mapped[str] = mapped_column(Text, default="")
+    resolved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+
+
+class ReversalRequest(Base):
+    """The accountant asks support to reverse a transaction that can no longer be reversed in the system
+    (money already left to a beneficiary). Support follows it up with the bank and sets the status."""
+
+    __tablename__ = "reversal_requests"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
+    transaction_id: Mapped[int] = mapped_column(ForeignKey("transactions.id"), index=True)
+    reason: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="open")  # open | in_progress | done | rejected
+    note: Mapped[str] = mapped_column(Text, default="")
+    requested_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    handled_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
+
+    requester: Mapped[User] = relationship(foreign_keys=[requested_by])
+
+
 # ---------------------------------------------------------------- dashboard
 
 

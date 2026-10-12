@@ -104,8 +104,7 @@ def register_company(
     session.add(entity)
     session.flush()
 
-    if accountant.role is not Role.ADMIN:  # admins already see every company
-        entity.users.append(accountant)
+    entity.users.append(accountant)
     if company.iban.strip():
         # The registration IBAN is the pool account where revenue collects
         try:

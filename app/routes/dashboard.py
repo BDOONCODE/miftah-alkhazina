@@ -15,7 +15,7 @@ from ..templating import templates
 from ..web import flash, redirect
 
 router = APIRouter()
-editor = require_role(Role.ACCOUNTANT, Role.ADMIN)
+editor = require_role(Role.ACCOUNTANT)
 
 
 @router.get("/entities/{entity_id}/dashboard", response_class=HTMLResponse)
@@ -37,7 +37,7 @@ def dashboard_page(
             "tab": "dashboard",
             "dashboard": dashboard,
             "views": svc.widget_views(session, dashboard),
-            "can_edit": user.role in (Role.ACCOUNTANT, Role.ADMIN),
+            "can_edit": user.role is Role.ACCOUNTANT,
             "catalog": m.metric_catalog(snap, customs),
             "customs": [
                 (c, m.format_value(_safe_eval(c.formula, values), c.fmt)) for c in customs

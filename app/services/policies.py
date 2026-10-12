@@ -290,6 +290,58 @@ def submit(session: Session, policy: Policy, user: User, justification: str) -> 
     _audit(session, user, policy, "policy.submitted", protected_changes=changes)
 
 
+CHANGE_FIELDS = {
+    "name": "الاسم",
+    "priority": "الأولوية",
+    "calc_type": "النوع",
+    "value": "القيمة",
+    "frequency": "الاستحقاق",
+    "settlement_day": "يوم التحويل",
+    "due_date": "تاريخ الاستحقاق",
+    "destination_account_id": "المستفيد",
+    "protected": "الحماية",
+}
+SURPLUS_FIELDS = ("surplus_account_id", "surplus_frequency", "surplus_settlement_day", "surplus_due_date")
+
+
+@dataclass
+class PolicyChanges:
+    """What an open version changes against the active one, so the reviewer only looks at what to decide on."""
+
+    first: bool  # no active policy yet: everything is new
+    new: set[int]  # bucket ids added in this version
+    changed: dict[int, tuple[PolicyBucket, list[str]]]  # bucket id -> (the active row, changed field names)
+    removed: list[PolicyBucket]  # active rows dropped from this version
+    surplus_changed: bool
+
+    @property
+    def any(self) -> bool:
+        return bool(self.first or self.new or self.changed or self.removed or self.surplus_changed)
+
+
+def changes_from_active(session: Session, policy: Policy) -> PolicyChanges:
+    current = active_policy(session, policy.entity_id)
+    if current is None or current.id == policy.id:
+        first = current is None
+        return PolicyChanges(first, {b.bucket_id for b in policy.buckets} if first else set(), {}, [], False)
+    old = {b.bucket_id: b for b in current.buckets}
+    new, changed = set(), {}
+    for b in policy.buckets:
+        prev = old.pop(b.bucket_id, None)
+        if prev is None:
+            new.add(b.bucket_id)
+        elif fields := [f for f in CHANGE_FIELDS if getattr(prev, f) != getattr(b, f)]:
+            changed[b.bucket_id] = (prev, fields)
+    surplus = any(getattr(current, f) != getattr(policy, f) for f in SURPLUS_FIELDS)
+    return PolicyChanges(False, new, changed, list(old.values()), surplus)
+
+
+def beneficiaries(session: Session, entity_id: int) -> dict[int, BankAccount]:
+    """The company's accounts by id, so the policy shows each beneficiary's name, kind and last digits
+    (the reviewer has no access to the bank accounts page)."""
+    return {a.id: a for a in session.scalars(select(BankAccount).where(BankAccount.entity_id == entity_id))}
+
+
 SELF_APPROVAL = "self"
 REVIEWER_APPROVAL = "reviewer"
 APPROVAL_MODES = {SELF_APPROVAL: "أنا أعتمد السياسات بنفسي", REVIEWER_APPROVAL: "مراجع مستقل يعتمدها"}
@@ -303,9 +355,10 @@ def is_self_approval(session: Session, policy: Policy) -> bool:
 def can_decide(session: Session, policy: Policy, user: User) -> bool:
     """Can this user approve or reject the policy?"""
     if is_self_approval(session, policy):
-        # The company chose self-approval: the accountant/admin approves even as the creator
-        return user.role in (Role.ACCOUNTANT, Role.ADMIN, Role.APPROVER)
-    return user.role in (Role.APPROVER, Role.ADMIN) and policy.created_by != user.id
+        # The company chose self-approval: the accountant approves even as the creator
+        return user.role in (Role.ACCOUNTANT, Role.APPROVER)
+    # Reviewer approval: only the reviewer, never the policy's creator. The general admin never approves
+    return user.role is Role.APPROVER and policy.created_by != user.id
 
 
 def _check_decider(session: Session, policy: Policy, user: User) -> None:

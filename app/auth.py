@@ -43,8 +43,8 @@ def require_role(*roles: Role):
 
 
 def accessible_entities(user: User, session: Session) -> list[Entity]:
-    if user.role is Role.ADMIN:
-        return list(session.scalars(select(Entity).order_by(Entity.name)))
+    """Only the companies the user is linked to. The general admin is linked to none: support works from
+    its own page and never sees company data."""
     return sorted(user.entities, key=lambda e: e.name)
 
 
@@ -54,7 +54,7 @@ def get_entity_for(user: User, entity_id: int, session: Session, *, allow_review
     Reviewers only review policies: every company page refuses them unless it opts in with allow_reviewer
     (only the policy pages do), so a new page is closed to reviewers by default."""
     entity = session.get(Entity, entity_id)
-    if entity is None or (user.role is not Role.ADMIN and entity not in user.entities):
+    if entity is None or entity not in user.entities:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "الشركة غير موجودة")
     if user.role is Role.APPROVER and not allow_reviewer:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "دور المراجع مقتصر على مراجعة سياسة التقسيم واعتمادها")

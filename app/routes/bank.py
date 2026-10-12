@@ -21,6 +21,7 @@ from ..db import get_session
 from ..domain.money import parse_amount
 from ..domain.periods import RIYADH
 from ..models import utcnow
+from ..services.payouts import record_failure
 from ..services.transactions import TransactionError, ingest_bank_credit
 
 router = APIRouter()
@@ -51,6 +52,7 @@ async def bank_incoming(request: Request, session: Session = Depends(get_session
         txn = ingest_bank_credit(session, str(data["iban"]), amount, occurred_at, str(data["reference"]))
     except TransactionError as exc:  # before ValueError because it is a subclass
         session.rollback()
+        record_failure(session, exc)
         return JSONResponse({"error": str(exc)}, status_code=422)
     except (KeyError, ValueError, TypeError) as exc:
         session.rollback()

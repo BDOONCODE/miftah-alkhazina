@@ -279,3 +279,52 @@ def test_settings_page_shows_invite_link_until_accepted(client, company, db):
     client.post(f"/entities/{company.id}/reviewers", data={"reviewer_full_name": "خالد", "reviewer_email": "khalid@example.com"})
     khalid = db.query(models.User).filter_by(email="khalid@example.com").one()
     assert khalid in company.reviewers and not khalid.email_verified
+
+
+
+def test_general_admin_cannot_approve(client, company, db, make_user):
+    client.post(f"/entities/{company.id}/policy/draft")
+    draft = svc.open_policy(db, company.id)
+    client.post(f"/policies/{draft.id}/edit", data=POLICY_FORM | {"intent": "submit"})
+    client.post("/logout")
+    boss = make_user("boss", role=Role.ADMIN)
+    login(client, "boss")
+    assert client.post(f"/policies/{draft.id}/approve").status_code == 404
+    db.refresh(draft)
+    assert draft.status is PolicyStatus.PENDING and not svc.can_decide(db, draft, boss)
+
+
+def test_review_shows_what_changed_and_who_gets_paid(client, company, db):
+    client.post(f"/entities/{company.id}/approval-mode", data={"approval_mode": "self"})
+    client.post(f"/entities/{company.id}/policy/draft")
+    first = svc.open_policy(db, company.id)
+    client.post(f"/policies/{first.id}/edit", data=POLICY_FORM | {"intent": "submit"})
+    client.post(f"/policies/{first.id}/approve")
+    db.refresh(first)
+    assert first.status is PolicyStatus.ACTIVE
+    page = client.get(f"/entities/{company.id}/policy").text
+    assert "التغييرات عن السياسة النشطة" not in page  # nothing pending
+    client.post(f"/entities/{company.id}/approval-mode", data={"approval_mode": "reviewer"})
+
+    client.post(f"/entities/{company.id}/policy/draft")
+    second = svc.open_policy(db, company.id)
+    rows = sorted(first.buckets, key=lambda b: b.priority)
+    client.post(f"/policies/{second.id}/edit", data=POLICY_FORM | {
+        "bucket_id": [str(b.bucket_id) for b in rows] + [""],
+        "name": ["الضريبة", "الإيجار", "الأرباح", "التسويق"],
+        "priority": ["1", "2", "3", "4"],
+        "calc_type": ["percentage", "fixed_amount", "percentage", "percentage"],
+        "value": ["15", "10,000", "7", "2"],
+        "frequency": ["immediate", "monthly", "monthly", "monthly"],
+        "settlement_day": ["", "", "", ""],
+        "destination": [str(b.destination_account_id) for b in rows] + [str(rows[2].destination_account_id)],
+        "dest_iban": ["", "", "", ""],
+        "dest_kind": ["sub", "sub", "sub", "sub"],
+        "protected": ["1", "0", "0", "0"],
+        "intent": "submit",
+    })
+    db.refresh(second)
+    assert second.status is PolicyStatus.PENDING
+    page = client.get(f"/entities/{company.id}/policy").text
+    assert "1 بند جديد" in page and "1 بند معدَّل" in page and "كان <bdi>5%</bdi>" in page
+    assert "جهة خارجية" in page and "••0003" in page  # the beneficiary's kind and last digits, not just a name

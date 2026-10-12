@@ -1,6 +1,6 @@
 {% extends "entity_base.html" %}
 {% block entity_content %}
-{% set can_edit = user.role.value in ("accountant", "admin") %}
+{% set can_edit = user.role.value == "accountant" %}
 
 {% macro accounts_table(rows, deletable=false) %}
 <div class="table-scroll">

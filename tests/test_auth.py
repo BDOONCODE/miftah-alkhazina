@@ -28,13 +28,25 @@ def test_login_shows_only_assigned_entities(client, db, make_user):
     assert "شركة أخرى" not in page
 
 
-def test_admin_sees_all_entities(client, db, make_user):
-    db.add_all([models.Entity(name="أ"), models.Entity(name="ب")])
+def test_admin_gets_support_page_not_company_pages(client, db, make_user):
+    """The general admin supports subscribers: no company data, IBANs or amounts."""
+    entity = models.Entity(name="مؤسسة أ")
+    db.add(entity)
     db.commit()
     make_user("boss", role=models.Role.ADMIN)
     login(client, "boss")
-    page = client.get("/").text
-    assert "<h3>أ</h3>" in page and "<h3>ب</h3>" in page
+    assert client.get("/", follow_redirects=False).headers["location"] == "/admin/support"
+    page = client.get("/admin/support").text
+    assert "الدعم والتكامل" in page and "مؤسسة أ" in page
+    for path in ("dashboard", "policy", "accounts", "transactions", "balances", "settings"):
+        assert client.get(f"/entities/{entity.id}/{path}").status_code == 404, path
+    assert client.get("/companies/new").status_code == 403
+
+
+def test_support_page_is_admin_only(client, make_user):
+    make_user("acc")
+    login(client, "acc")
+    assert client.get("/admin/support").status_code == 403
 
 
 def test_inactive_user_cannot_login(client, db, make_user):

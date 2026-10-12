@@ -14,8 +14,12 @@
   <header class="topbar">
     <a href="/" class="brand">🔑 مفتاح الخزينة</a>
     <nav class="topnav">
+      {% if user.role.value == "admin" %}
+      <a href="/admin/support">الدعم والتكامل</a>
+      <a href="/admin/users">المستخدمون</a>
+      {% else %}
       <a href="/">الشركات</a>
-      {% if user.role.value == "admin" %}<a href="/admin/users">المستخدمون</a>{% endif %}
+      {% endif %}
     </nav>
     <div class="who">
       <a href="/account/password" class="muted" title="تغيير كلمة المرور">{{ user.full_name }}</a>
