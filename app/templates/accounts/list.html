@@ -71,7 +71,7 @@
         <input name="bank_name" placeholder="مثال: الراجحي">
       </label>
       <label>الآيبان *
-        <input name="iban" required dir="ltr" placeholder="SA…">
+        <input name="iban" required dir="ltr" placeholder="SA…" maxlength="24" pattern="SA[0-9]{22}" title="يبدأ الآيبان السعودي بـSA ويليه 22 رقمًا" data-iban>
       </label>
     </div>
     <div><button class="btn btn-primary" type="submit">إضافة الحساب</button></div>
@@ -116,7 +116,7 @@
         <input name="bank_name" placeholder="مثال: الأهلي">
       </label>
       <label>الآيبان *
-        <input name="iban" required dir="ltr" placeholder="SA…">
+        <input name="iban" required dir="ltr" placeholder="SA…" maxlength="24" pattern="SA[0-9]{22}" title="يبدأ الآيبان السعودي بـSA ويليه 22 رقمًا" data-iban>
       </label>
     </div>
     <div><button class="btn btn-primary" type="submit">إضافة المستفيد</button></div>

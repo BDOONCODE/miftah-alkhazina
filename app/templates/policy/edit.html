@@ -53,7 +53,7 @@
     </label>
     <div class="dest-new js-new-dest" {{ 'hidden' if dest != 'new' }}>
       <label>الآيبان
-        <input name="dest_iban" value="{{ r.dest_iban or '' }}" dir="ltr" placeholder="SA…">
+        <input name="dest_iban" value="{{ r.dest_iban or '' }}" dir="ltr" placeholder="SA…" maxlength="24" pattern="SA[0-9]{22}" title="يبدأ الآيبان السعودي بـSA ويليه 22 رقمًا" data-iban>
       </label>
       <label>نوع الحساب
         <select name="dest_kind">
