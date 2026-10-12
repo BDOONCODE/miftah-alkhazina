@@ -11,15 +11,19 @@ from ..models import AccountKind, AuditLog, BankAccount, Entity, User
 KIND_LABELS = {
     AccountKind.SOURCE.value: "مصدر إيراد",
     AccountKind.POOL.value: "مجمّع",
-    AccountKind.SUB.value: "حساب آخر للشركة",
-    AccountKind.EXTERNAL.value: "خارجي (جهة ثانية)",
+    AccountKind.SUB.value: "حساب للمالك أو الشركة",
+    AccountKind.EXTERNAL.value: "جهة خارجية",
 }
 KIND_HINTS = {
-    AccountKind.SOURCE.value: "تدخل فيه إيرادات الشركة: نقاط البيع، مدى/فيزا، تطبيقات التوصيل",
-    AccountKind.POOL.value: "تتجمع فيه كل الإيرادات، ومنه يتقسّم المبلغ. حساب واحد لكل شركة",
+    AccountKind.SOURCE.value: "حساب تنزل فيه المبيعات مباشرة: نقاط البيع، مدى/فيزا، تطبيقات التوصيل. تقدر تضيف أكثر من واحد",
+    AccountKind.POOL.value: "حساب رئيسي تنزل فيه كل المبالغ. اختره لو ما تبي تربط حسابات نقاط البيع واحد واحد. حساب واحد لكل شركة",
     AccountKind.SUB.value: "حساب ثاني تملكه الشركة، مثل حساب أرباح المالك أو حساب الرواتب",
     AccountKind.EXTERNAL.value: "حساب جهة تتحوّل لها فلوس: مانح الامتياز، المؤجر، مورد",
 }
+# Income accounts: where money comes in (managed on the bank accounts page)
+INCOME_KINDS = (AccountKind.SOURCE, AccountKind.POOL)
+# Beneficiary accounts: where money goes out to (added from the policy page)
+BENEFICIARY_KINDS = (AccountKind.SUB, AccountKind.EXTERNAL)
 # Account kinds that can be an item's beneficiary
 DESTINATION_KINDS = (AccountKind.POOL, AccountKind.SUB, AccountKind.EXTERNAL)
 IBAN_RE = re.compile(r"^SA\d{22}$")

@@ -33,8 +33,11 @@ def add(client, entity, name, iban, kind):
 def accounts(client, db, company):
     add(client, company, "المجمّع", POOL, "pool")
     add(client, company, "نقاط البيع", POS, "source")
-    add(client, company, "حساب الضريبة", TAX, "sub")
-    add(client, company, "المؤجر", LANDLORD, "external")
+    # Beneficiaries are added from the policy page, not the bank accounts page
+    user = db.query(models.User).filter_by(username="acc").one()
+    acc.add_account(db, company, user, name="حساب الضريبة", bank_name="", iban=TAX, kind="sub")
+    acc.add_account(db, company, user, name="المؤجر", bank_name="", iban=LANDLORD, kind="external")
+    db.commit()
     return {a.name: a for a in db.query(models.BankAccount).all()}
 
 
@@ -68,6 +71,14 @@ def test_accounts_validation(client, db, company):
     add(client, company, "غلط", "12345", "source")
     assert db.query(models.BankAccount).count() == 1
     assert "مجمّع" in client.get(f"/entities/{company.id}/accounts").text
+
+
+def test_accounts_page_only_adds_income_accounts(client, db, company):
+    assert add(client, company, "المؤجر", LANDLORD, "external").status_code == 303
+    assert add(client, company, "حساب الضريبة", TAX, "sub").status_code == 303
+    assert db.query(models.BankAccount).count() == 0
+    page = client.get(f"/entities/{company.id}/accounts").text
+    assert "حسابات الشركة (الدخل)" in page and "المستفيدون (الخروج)" in page
 
 
 def test_policy_destination_is_an_account(client, db, company, accounts):

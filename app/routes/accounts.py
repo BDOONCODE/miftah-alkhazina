@@ -20,6 +20,7 @@ def accounts_page(
     request: Request, entity_id: int, user: User = Depends(current_user), session: Session = Depends(get_session)
 ):
     entity = get_entity_for(user, entity_id, session)
+    accounts = svc.accounts_for(session, entity_id)
     return templates.TemplateResponse(
         request,
         "accounts/list.html",
@@ -27,8 +28,10 @@ def accounts_page(
             "user": user,
             "entity": entity,
             "tab": "accounts",
-            "accounts": svc.accounts_for(session, entity_id),
+            "income": [a for a in accounts if a.kind in svc.INCOME_KINDS],
+            "beneficiaries": [a for a in accounts if a.kind in svc.BENEFICIARY_KINDS],
             "has_pool": svc.pool_account(session, entity_id) is not None,
+            "INCOME_KINDS": [k.value for k in svc.INCOME_KINDS],
             "KINDS": svc.KIND_LABELS,
             "HINTS": svc.KIND_HINTS,
         },
@@ -39,6 +42,11 @@ def accounts_page(
 async def add_account(request: Request, entity_id: int, user: User = Depends(editor), session: Session = Depends(get_session)):
     entity = get_entity_for(user, entity_id, session)
     form = await request.form()
+    kind = str(form.get("kind", ""))
+    if kind not in [k.value for k in svc.INCOME_KINDS]:
+        # Beneficiaries are added with their items on the policy page
+        flash(request, "هنا تنضاف حسابات الدخل بس. المستفيدين ينضافون من صفحة سياسة التقسيم مع بنودهم", "error")
+        return redirect(f"/entities/{entity_id}/accounts")
     try:
         account = svc.add_account(
             session,
@@ -47,7 +55,7 @@ async def add_account(request: Request, entity_id: int, user: User = Depends(edi
             name=str(form.get("name", "")),
             bank_name=str(form.get("bank_name", "")),
             iban=str(form.get("iban", "")),
-            kind=str(form.get("kind", "")),
+            kind=kind,
         )
     except svc.AccountError as exc:
         session.rollback()

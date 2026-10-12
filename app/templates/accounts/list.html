@@ -8,57 +8,57 @@
   <li>الاعتماد</li>
 </ol>
 
-<section class="card">
-  <h2>الحسابات البنكية</h2>
-  <p class="muted">
-    الإيرادات تدخل من <strong>حسابات المصادر</strong> وتتجمع في <strong>الحساب المجمّع</strong>،
-    ومنه تتقسّم حسب سياسة التقسيم، ونصيب كل بند يتحوّل <strong>للمستفيد</strong> حسب موعد استحقاقه:
-    جهة خارجية مثل مانح الامتياز والمؤجر، أو حساب آخر للشركة مثل الاحتياطي.
-  </p>
-  {% if not has_pool %}
-  <div class="alert alert-warning">ما في حساب مجمّع للحين. أضف واحد عشان تتجمع فيه الإيرادات.</div>
-  {% endif %}
+{% macro accounts_table(rows) %}
+<div class="table-scroll">
+<table class="table">
+  <thead><tr><th>الحساب</th><th>النوع</th><th>البنك</th><th>الآيبان</th><th>الحالة</th><th></th></tr></thead>
+  <tbody>
+  {% for a in rows %}
+    <tr class="{{ 'row-muted' if not a.is_active }}">
+      <td>{{ a.name }}</td>
+      <td><span class="pill kind-{{ a.kind.value }}">{{ KINDS[a.kind.value] }}</span></td>
+      <td>{{ a.bank_name or '—' }}</td>
+      <td class="num">{{ a.iban }}</td>
+      <td>{{ 'نشط' if a.is_active else 'معطّل' }}</td>
+      <td>
+        {% if can_edit %}
+        <form method="post" action="/accounts/{{ a.id }}/toggle">
+          <button class="btn-link" type="submit">{{ 'تعطيل' if a.is_active else 'تفعيل' }}</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endmacro %}
 
-  {% if accounts %}
-  <div class="table-scroll">
-  <table class="table">
-    <thead><tr><th>الحساب</th><th>النوع</th><th>البنك</th><th>الآيبان</th><th>الحالة</th><th></th></tr></thead>
-    <tbody>
-    {% for a in accounts %}
-      <tr class="{{ 'row-muted' if not a.is_active }}">
-        <td>{{ a.name }}</td>
-        <td><span class="pill kind-{{ a.kind.value }}">{{ KINDS[a.kind.value] }}</span></td>
-        <td>{{ a.bank_name or '—' }}</td>
-        <td class="num">{{ a.iban }}</td>
-        <td>{{ 'نشط' if a.is_active else 'معطّل' }}</td>
-        <td>
-          {% if can_edit %}
-          <form method="post" action="/accounts/{{ a.id }}/toggle">
-            <button class="btn-link" type="submit">{{ 'تعطيل' if a.is_active else 'تفعيل' }}</button>
-          </form>
-          {% endif %}
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  </div>
+<section class="card">
+  <h2>حسابات الشركة (الدخل)</h2>
+  <p class="muted">
+    الحسابات اللي <strong>تدخل فيها الفلوس</strong>. اربط حسابات نقاط البيع ومدى والتوصيل كل واحد لحاله،
+    أو أضف <strong>الحساب الرئيسي</strong> اللي تنزل فيه كل المبالغ. أول ما يوصل مبلغ لأي حساب منها، يتقسّم حسب سياسة التقسيم.
+  </p>
+  {% if income %}
+    {{ accounts_table(income) }}
   {% else %}
-  <p class="muted">ما في حسابات بنكية مسجّلة للحين.</p>
+  <div class="alert alert-warning">ما في حسابات دخل للحين. أضف حساب نقاط البيع أو الحساب الرئيسي تحت.</div>
   {% endif %}
 </section>
 
 {% if can_edit %}
 <section class="card">
-  <h2>إضافة حساب</h2>
+  <h2>إضافة حساب دخل</h2>
   <form method="post" class="stack">
     <fieldset class="stack plain">
       <legend>نوع الحساب</legend>
       <div class="kind-grid">
-        {% for key, label in KINDS.items() %}
+        {% for key in INCOME_KINDS %}
         <label class="radio">
-          <input type="radio" name="kind" value="{{ key }}" required {{ 'checked' if (key == 'pool' and not has_pool) or (key == 'source' and has_pool) }}>
-          <span><strong>{{ label }}</strong><br><small class="muted">{{ HINTS[key] }}</small></span>
+          <input type="radio" name="kind" value="{{ key }}" required {{ 'checked' if key == 'source' }} {{ 'disabled' if key == 'pool' and has_pool }}>
+          <span><strong>{{ KINDS[key] }}</strong>{% if key == 'pool' and has_pool %} <small class="muted">(مضاف)</small>{% endif %}<br>
+            <small class="muted">{{ HINTS[key] }}</small></span>
         </label>
         {% endfor %}
       </div>
@@ -79,8 +79,22 @@
 </section>
 {% endif %}
 
+<section class="card">
+  <h2>المستفيدون (الخروج)</h2>
+  <p class="muted">
+    الحسابات اللي <strong>تطلع لها الفلوس</strong> بعد التقسيم: جهات خارجية مثل مانح الامتياز والمؤجر والزكاة والدخل،
+    أو حسابات للمالك أو الشركة مثل الأرباح والاحتياطي. تنضاف من صفحة
+    <a href="/entities/{{ entity.id }}/policy">سياسة التقسيم</a> مع كل بند، وهنا تقدر تشوفها وتعطّلها.
+  </p>
+  {% if beneficiaries %}
+    {{ accounts_table(beneficiaries) }}
+  {% else %}
+  <p class="muted">ما في مستفيدين للحين. تنضاف لما تحدد مستفيد لكل بند في سياسة التقسيم.</p>
+  {% endif %}
+</section>
+
 <div class="next-step">
-  <span class="muted">حسابات المستفيدين (الجهات الخارجية وحسابات الشركة الثانية) تقدر تضيفها هنا أو مباشرة من صفحة السياسة.</span>
+  <span class="muted">الخطوة الجاية: بنود التقسيم ومستفيد كل بند.</span>
   <a class="btn btn-primary" href="/entities/{{ entity.id }}/policy">التالي: سياسة التقسيم ←</a>
 </div>
 {% endblock %}

@@ -13,7 +13,7 @@ from ..domain.policy_rules import effective_rate, validate_policy
 from ..domain.types import BASIS_POINTS_FULL, CalcType, Frequency
 from ..models import Policy, PolicyStatus, Role, User
 from ..services import policies as svc
-from ..services.accounts import DESTINATION_KINDS, accounts_for, pool_account
+from ..services.accounts import DESTINATION_KINDS, INCOME_KINDS, accounts_for
 from ..templating import templates
 from ..web import flash, redirect
 
@@ -150,7 +150,7 @@ def _render_editor(request, user, policy, session, rows, errors, notes, status_c
             "destinations": [
                 a for a in accounts_for(session, policy.entity_id, active_only=True) if a.kind in DESTINATION_KINDS
             ],
-            "has_pool": pool_account(session, policy.entity_id) is not None,
+            "has_income": any(a.kind in INCOME_KINDS for a in accounts_for(session, policy.entity_id, active_only=True)),
             "pct_total": sum(effective_rate(b) for b in svc.specs(policy) if b.calc_type.is_rate)
             / (BASIS_POINTS_FULL / 100),
         },
