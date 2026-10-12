@@ -118,6 +118,9 @@ def start_draft(session: Session, entity: Entity, user: User) -> Policy:
     if current := _draft_base(session, entity.id):
         draft.notes = current.notes if current.status is PolicyStatus.REJECTED else ""
         draft.surplus_account_id = current.surplus_account_id
+        draft.surplus_frequency = current.surplus_frequency
+        draft.surplus_settlement_day = current.surplus_settlement_day
+        draft.surplus_due_date = current.surplus_due_date
         draft.buckets = [
             PolicyBucket(
                 bucket_id=pb.bucket_id,
@@ -143,6 +146,9 @@ def start_draft(session: Session, entity: Entity, user: User) -> Policy:
 def save_draft(
     session: Session, policy: Policy, rows: list[BucketInput], notes: str, user: User,
     surplus_account_id: int | None = None,
+    surplus_frequency: Frequency = Frequency.MONTHLY,
+    surplus_day: int | None = None,
+    surplus_due: date | None = None,
 ) -> None:
     if policy.status is not PolicyStatus.DRAFT:
         raise PolicyError("لا يمكن تعديل السياسة بعد إرسالها للاعتماد")
@@ -198,6 +204,11 @@ def save_draft(
     if surplus_account_id is not None and surplus_account_id not in destinations:
         raise PolicyError("يجب أن يكون حساب الفائض حسابًا نشطًا لهذه الشركة")
     policy.surplus_account_id = surplus_account_id
+    if surplus_frequency not in SURPLUS_FREQUENCIES:
+        raise PolicyError("اختر موعدًا صالحًا لعزل الفائض")
+    policy.surplus_frequency = surplus_frequency
+    policy.surplus_settlement_day = surplus_day if surplus_frequency is Frequency.DAY_OF_MONTH else None
+    policy.surplus_due_date = surplus_due if surplus_frequency in ANCHORED_MONTHS else None
     _audit(session, user, policy, "policy.saved", buckets=len(new_buckets))
 
 
@@ -225,10 +236,23 @@ def _destination_from_iban(session: Session, policy: Policy, user: User, row: Bu
     return account
 
 
+# Schedules for isolating the surplus (not immediate or daily: the surplus has to build up to cover deficits)
+SURPLUS_FREQUENCIES = (
+    Frequency.WEEKLY, Frequency.MONTHLY, Frequency.DAY_OF_MONTH,
+    Frequency.QUARTERLY, Frequency.SEMIANNUAL, Frequency.ANNUAL,
+)
+
+
 def destination_errors(policy: Policy) -> list[str]:
-    """Every item has a beneficiary its money transfers to. (Surplus: with no account it stays in the pool.)"""
-    return [f"البند «{pb.name}» ليس له مستفيد: اختر الآيبان الذي يُحوَّل إليه" for pb in policy.buckets
-            if pb.destination_account_id is None]
+    """Every item has a beneficiary its money transfers to, and the surplus schedule is complete."""
+    errors = [f"البند «{pb.name}» ليس له مستفيد: اختر الآيبان الذي يُحوَّل إليه" for pb in policy.buckets
+              if pb.destination_account_id is None]
+    day = policy.surplus_settlement_day or 0
+    if policy.surplus_frequency is Frequency.DAY_OF_MONTH and not 1 <= day <= 31:
+        errors.append("حدد يوم عزل الفائض من 1 إلى 31")
+    if policy.surplus_frequency in ANCHORED_MONTHS and policy.surplus_due_date is None:
+        errors.append("حدد تاريخ عزل الفائض القادم")
+    return errors
 
 
 def funded_in_current_period(session: Session, entity_id: int, buckets: list[BucketSpec], today: date) -> set[int]:

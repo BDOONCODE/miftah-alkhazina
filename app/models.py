@@ -197,6 +197,12 @@ class Policy(Base):
     decision_note: Mapped[str] = mapped_column(Text, default="")
     # Where the surplus (left after all items) goes. Empty or the pool account = stays in the pool
     surplus_account_id: Mapped[int | None] = mapped_column(ForeignKey("bank_accounts.id"))
+    # When the pool's remaining surplus is isolated into the surplus account (monthly by default)
+    surplus_frequency: Mapped[Frequency] = mapped_column(
+        _enum(Frequency), default=Frequency.MONTHLY, server_default=Frequency.MONTHLY.value
+    )
+    surplus_settlement_day: Mapped[int | None] = mapped_column(Integer)
+    surplus_due_date: Mapped[date | None] = mapped_column(Date)
 
     buckets: Mapped[list[PolicyBucket]] = relationship(
         back_populates="policy", cascade="all, delete-orphan", order_by="PolicyBucket.priority"

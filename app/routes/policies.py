@@ -145,6 +145,10 @@ def _render_editor(request, user, policy, session, rows, errors, notes, status_c
             "errors": errors,
             "notes": notes,
             "surplus_account": str(policy.surplus_account_id or ""),
+            "surplus_frequency": (policy.surplus_frequency or Frequency.MONTHLY).value,
+            "surplus_day": str(policy.surplus_settlement_day or ""),
+            "surplus_due": policy.surplus_due_date.isoformat() if policy.surplus_due_date else "",
+            "SURPLUS_FREQUENCIES": [f.value for f in svc.SURPLUS_FREQUENCIES],
             "protected_changes": svc.protected_changes_for(session, policy),
             "self_approval": svc.is_self_approval(session, policy),
             "destinations": [
@@ -177,10 +181,19 @@ async def save_draft(request: Request, policy_id: int, user: User = Depends(edit
     notes = str(form.get("notes", ""))
     surplus = str(form.get("surplus_account", ""))
     surplus_id = int(surplus) if surplus.isdigit() else None
+    try:
+        surplus_frequency = Frequency(str(form.get("surplus_frequency", "monthly")))
+        day_raw, due_raw = str(form.get("surplus_day", "")).strip(), str(form.get("surplus_due", "")).strip()
+        surplus_day = int(day_raw) if day_raw else None
+        surplus_due = date.fromisoformat(due_raw) if due_raw else None
+    except ValueError:
+        errors = [*errors, "موعد عزل الفائض غير صالح"]
+        surplus_frequency, surplus_day, surplus_due = Frequency.MONTHLY, None, None
     if errors:
         return _render_editor(request, user, policy, session, views, errors, notes, status_code=422)
     try:
-        svc.save_draft(session, policy, inputs, notes, user, surplus_account_id=surplus_id)
+        svc.save_draft(session, policy, inputs, notes, user, surplus_account_id=surplus_id,
+                       surplus_frequency=surplus_frequency, surplus_day=surplus_day, surplus_due=surplus_due)
     except svc.PolicyError as exc:
         return _render_editor(request, user, policy, session, views, [str(exc)], notes, status_code=422)
     session.commit()

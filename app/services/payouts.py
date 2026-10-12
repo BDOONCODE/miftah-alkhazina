@@ -371,7 +371,7 @@ def run_due(session: Session, entity_id: int, today: date) -> list:
 
     1. Items whose cycle just ended: the pool covers any shortfall, then the full balance transfers
        (excluding the new cycle's share). A paid cycle is recorded, so it is never paid twice.
-    2. At the start of a month: the previous month's remaining surplus is isolated in the surplus account.
+    2. On the surplus schedule (monthly by default): the ended cycle's remaining surplus is isolated.
     Returns the actions taken (payouts and pool moves).
     """
     from .policies import active_policy
@@ -417,23 +417,30 @@ def run_due(session: Session, entity_id: int, today: date) -> list:
         if amount > 0:
             actions.append(_send(session, entity_id, pb.bucket_id, amount, beneficiary, "due", period=previous))
 
-    actions += isolate_month(session, entity_id, policy, today)
+    actions += isolate_surplus(session, entity_id, policy, today)
     return actions
 
 
-def isolate_month(session: Session, entity_id: int, policy: Policy, today: date) -> list:
-    """Move the previous month's remaining surplus from the pool into the surplus account (once a month),
-    then transfer it on to the account the accountant chose, if any."""
-    month_start = today.replace(day=1)
-    previous = (month_start - timedelta(days=1)).replace(day=1).isoformat()
+def isolate_surplus(session: Session, entity_id: int, policy: Policy, today: date) -> list:
+    """On the surplus schedule (monthly by default): move the ended cycle's remaining surplus from the pool
+    into the surplus account (once per cycle), then transfer it on to the account the accountant chose, if any."""
+    frequency = policy.surplus_frequency or Frequency.MONTHLY
+    day, due = policy.surplus_settlement_day, policy.surplus_due_date
+    try:
+        start, _ = period_bounds(frequency, today, day, due)
+    except ValueError:
+        return []  # incomplete schedule (e.g. no day set): nothing to isolate yet
+    if start is None:
+        return []
+    previous = period_key(frequency, start - timedelta(days=1), day, due)
     if session.scalar(select(PoolMove.id).where(
         PoolMove.entity_id == entity_id, PoolMove.kind == "isolate", PoolMove.period_key == previous
     )):
         return []
-    this_month = _sum(session, select(func.coalesce(func.sum(Transaction.surplus), 0)).where(
-        Transaction.entity_id == entity_id, Transaction.occurred_at >= datetime.combine(month_start, time(), RIYADH)
+    this_cycle = _sum(session, select(func.coalesce(func.sum(Transaction.surplus), 0)).where(
+        Transaction.entity_id == entity_id, Transaction.occurred_at >= datetime.combine(start, time(), RIYADH)
     ))
-    amount = pool_balance(session, entity_id) - max(0, this_month)
+    amount = pool_balance(session, entity_id) - max(0, this_cycle)
     if amount <= 0:
         return []
     bucket = surplus_bucket(session, entity_id)

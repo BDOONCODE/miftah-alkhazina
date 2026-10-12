@@ -263,3 +263,23 @@ def test_reversal_blocked_after_pool_was_used(db, setup):
         with pytest.raises(tx.TransactionError, match="الفائض"):
             tx.reverse_transaction(db, small, user, "غلط")
 
+
+
+def test_surplus_isolates_on_a_chosen_day_of_month(db, setup):
+    entity, user, *_ = setup
+    policy = pol.active_policy(db, entity.id)
+    policy.surplus_account_id = None
+    policy.surplus_frequency, policy.surplus_settlement_day = Frequency.DAY_OF_MONTH, 25
+    deposit(db, entity, user, 10_000 * SAR, 20)
+    surplus = po.pool_balance(db, entity.id)
+    assert po.isolate_surplus(db, entity.id, policy, date(2026, 9, 24)) == []  # not the 25th yet
+    po.isolate_surplus(db, entity.id, policy, date(2026, 9, 25))
+    assert po.isolated_surplus(db, entity.id) == surplus and po.pool_balance(db, entity.id) == 0
+    assert db.query(models.PoolMove).filter_by(kind="isolate").one().period_key == "2026-08-25"
+
+
+def test_surplus_schedule_needs_its_day(db, setup):
+    entity, user, *_ = setup
+    draft = pol.start_draft(db, entity, user)
+    draft.surplus_frequency, draft.surplus_settlement_day = Frequency.DAY_OF_MONTH, None
+    assert any("يوم عزل الفائض" in e for e in pol.destination_errors(draft))
