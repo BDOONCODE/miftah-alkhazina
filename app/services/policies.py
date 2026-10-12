@@ -315,8 +315,10 @@ def approve(session: Session, policy: Policy, user: User, note: str = "") -> Non
     _audit(
         session, user, policy, "policy.approved", removed_buckets=removed, self_approved=policy.created_by == user.id
     )
-    from .payouts import ensure_virtual_accounts
+    from .payouts import ensure_pool, ensure_virtual_accounts
 
+    # The company's pool and each item's account open at the provider as soon as the policy is approved
+    ensure_pool(session, policy.entity_id)
     ensure_virtual_accounts(session, policy.entity_id, [pb.bucket_id for pb in policy.buckets])
 
 

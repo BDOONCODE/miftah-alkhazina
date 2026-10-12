@@ -39,11 +39,79 @@ from .banking import BankingError, provider
 REASON_LABELS = {"immediate": "فور التقسيم", "due": "يوم الاستحقاق", "surplus": "الفائض"}
 
 
+class PayoutError(RuntimeError):
+    """A money movement at the banking provider failed."""
+
+
 def _lock_entity(session: Session, entity_id: int) -> None:
     session.scalars(select(Entity).where(Entity.id == entity_id).with_for_update()).one()
 
 
 # ------------------------------------------------------------------ virtual accounts (background)
+
+
+def ensure_pool(session: Session, entity_id: int) -> str:
+    """The company's pool virtual account (opened once). Returns its provider id."""
+    entity = session.get(Entity, entity_id)
+    if entity.pool_virtual_ref is None:
+        entity.pool_virtual_iban, entity.pool_virtual_ref = provider().open_pool_account(entity_id, entity.name)
+        session.add(AuditLog(entity_id=entity_id, action="virtual_account.pool_opened", details={}))
+    return entity.pool_virtual_ref
+
+
+def fund_items(session: Session, entity_id: int, txn: Transaction, source: BankAccount | None) -> None:
+    """Move an incoming amount through the provider: company account -> pool -> each item's virtual account.
+
+    The surplus is simply what stays in the pool. A provider failure aborts the whole transaction,
+    so the bank can resend the notification and nothing is half-split.
+    """
+    pool = ensure_pool(session, entity_id)
+    try:
+        if source is not None:
+            txn.sweep_ref = provider().sweep(
+                from_iban=source.iban, to_ref=pool, amount=txn.amount, reference=f"TX-{txn.id}-sweep"
+            )
+        events = [e for e in txn.events if e.allocated > 0]
+        ensure_virtual_accounts(session, entity_id, [e.bucket_id for e in events])
+        for event in events:
+            bucket = session.get(Bucket, event.bucket_id)
+            event.move_ref = provider().move(
+                from_ref=pool, to_ref=bucket.virtual_ref, amount=event.allocated, reference=f"TX-{txn.id}-B{bucket.id}"
+            )
+    except BankingError as exc:
+        raise PayoutError(f"تعذّر تنفيذ العملية لدى البنك: {exc}") from exc
+
+
+def unwind_items(session: Session, original: Transaction, reversal: Transaction, source: BankAccount | None) -> None:
+    """Reverse the provider moves of a transaction: item accounts -> pool -> back to the company account."""
+    pool = ensure_pool(session, original.entity_id)
+    try:
+        for event in original.events:
+            if event.allocated > 0 and event.move_ref:
+                bucket = session.get(Bucket, event.bucket_id)
+                provider().move(
+                    from_ref=bucket.virtual_ref, to_ref=pool, amount=event.allocated,
+                    reference=f"TX-{reversal.id}-B{bucket.id}",
+                )
+        if original.sweep_ref and source is not None:
+            reversal.sweep_ref = provider().transfer(
+                from_ref=pool, to_iban=source.iban, amount=original.amount, reference=f"TX-{reversal.id}-sweep"
+            )
+    except BankingError as exc:
+        raise PayoutError(f"تعذّر تنفيذ العكس لدى البنك: {exc}") from exc
+
+
+def pool_balance(session: Session, entity_id: int) -> int:
+    """What stays in the pool: all surplus minus the surplus already transferred out."""
+    surplus = session.scalar(
+        select(func.coalesce(func.sum(Transaction.surplus), 0)).where(Transaction.entity_id == entity_id)
+    )
+    paid = session.scalar(
+        select(func.coalesce(func.sum(Payout.amount), 0)).where(
+            Payout.entity_id == entity_id, Payout.bucket_id.is_(None), Payout.status == PayoutStatus.SENT
+        )
+    )
+    return int(surplus or 0) - int(paid or 0)
 
 
 def ensure_virtual_accounts(session: Session, entity_id: int, bucket_ids: list[int]) -> None:
@@ -116,7 +184,7 @@ def _send(
             ensure_virtual_accounts(session, entity_id, [bucket_id])
         from_ref = bucket.virtual_ref
     else:
-        from_ref = f"pool-{entity_id}"  # the surplus leaves from the pool account itself
+        from_ref = ensure_pool(session, entity_id)  # the surplus leaves from the pool account itself
     payout = Payout(
         entity_id=entity_id,
         bucket_id=bucket_id,

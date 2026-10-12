@@ -142,6 +142,12 @@ def record_transaction(
         )
 
     session.flush()
+    session.refresh(txn, ["events"])
+    source_account = session.get(BankAccount, source_account_id) if source_account_id else None
+    try:
+        payouts.fund_items(session, entity.id, txn, source_account)
+    except payouts.PayoutError as exc:
+        raise TransactionError(str(exc)) from exc
     payouts.pay_on_allocation(session, entity.id, policy, txn, result.lines, result.surplus)
 
     session.add(
@@ -235,6 +241,13 @@ def reverse_transaction(session: Session, txn: Transaction, user: User, reason: 
 
     for closure in session.scalars(select(PeriodClosure).where(PeriodClosure.closed_by_transaction_id == txn.id)):
         closure.voided = True
+
+    # Move the money back at the provider: item accounts -> pool -> the company account it came from
+    source_account = session.get(BankAccount, txn.source_account_id) if txn.source_account_id else None
+    try:
+        payouts.unwind_items(session, txn, reversal, source_account)
+    except payouts.PayoutError as exc:
+        raise TransactionError(str(exc)) from exc
 
     session.add(
         AuditLog(

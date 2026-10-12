@@ -121,7 +121,7 @@
 
     <label class="surplus-field">يُحوَّل الفائض (المتبقي بعد جميع البنود) إلى
       <select name="surplus_account">
-        <option value="">يبقى في حساب الدخل</option>
+        <option value="">يبقى في الحساب الكبير</option>
         {% for a in destinations if a.kind.value != 'pool' %}
         <option value="{{ a.id }}" {{ 'selected' if surplus_account == a.id|string }}>{{ a.name }} · {{ KIND_LABELS[a.kind.value] }} · ••{{ a.iban[-4:] }}</option>
         {% endfor %}

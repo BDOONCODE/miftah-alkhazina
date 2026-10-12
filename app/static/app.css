@@ -268,3 +268,5 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 /* Item balances */
 .when-now { background: #e8f0fb; color: #2b5ea7; }
 .surplus-field { max-width: 32rem; }
+.kpi-pool { background: var(--primary-soft, #e3f4ea); }
+.kpi-pool .kpi-value { color: var(--primary); }

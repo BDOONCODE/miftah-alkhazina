@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..auth import current_user, get_entity_for
 from ..db import get_session
 from ..domain.periods import local_date
-from ..models import User, utcnow
+from ..models import BankAccount, User, utcnow
 from ..services import payouts as svc
 from ..services.banking import is_simulated
 from ..services.policies import active_policy
@@ -25,6 +25,7 @@ def balances_page(
     today = local_date(utcnow())
     if policy := active_policy(session, entity_id):
         # Policies approved before the integration: open their items' accounts in the background
+        svc.ensure_pool(session, entity_id)
         svc.ensure_virtual_accounts(session, entity_id, [pb.bucket_id for pb in policy.buckets])
     svc.run_due(session, entity_id, today)  # in case the server was asleep on the due date
     session.commit()
@@ -38,6 +39,8 @@ def balances_page(
             "tab": "balances",
             "items": views,
             "held_total": sum(v.balance for v in views),
+            "pool_total": svc.pool_balance(session, entity_id),
+            "surplus_to": session.get(BankAccount, policy.surplus_account_id) if policy and policy.surplus_account_id else None,
             "payouts": svc.recent_payouts(session, entity_id),
             "names": {v.bucket_id: v.name for v in views},
             "simulated": is_simulated(),

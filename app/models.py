@@ -117,6 +117,10 @@ class Entity(Base):
     contact_phone: Mapped[str] = mapped_column(String(32), default="")
     # Who approves policies: "self" = the creator approves it, "reviewer" = an independent reviewer
     approval_mode: Mapped[str] = mapped_column(String(16), default="reviewer", server_default="reviewer")
+    # The company's pool virtual account at the banking provider: all incoming money collects here,
+    # is split from here into item accounts, and the surplus stays here
+    pool_virtual_iban: Mapped[str | None] = mapped_column(String(34))
+    pool_virtual_ref: Mapped[str | None] = mapped_column(String(128))
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
@@ -236,6 +240,9 @@ class Transaction(Base):
     policy_id: Mapped[int] = mapped_column(ForeignKey("policies.id"))
     note: Mapped[str] = mapped_column(Text, default="")
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))  # empty = arrived automatically from the bank
+    # Provider operation that moved the money from the company account into the pool (empty for manual entries
+    # with no source account)
+    sweep_ref: Mapped[str | None] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
     events: Mapped[list[AllocationEvent]] = relationship(back_populates="transaction", order_by="AllocationEvent.id")
@@ -253,6 +260,8 @@ class AllocationEvent(Base):
     status: Mapped[FundingStatus] = mapped_column(_enum(FundingStatus))
     funded_after: Mapped[int] = mapped_column(BigInteger)
     carried_deficit_after: Mapped[int] = mapped_column(BigInteger)
+    # Provider operation that moved this share from the pool into the item's virtual account
+    move_ref: Mapped[str | None] = mapped_column(String(128))
     # Snapshot of the state before the transaction, used to restore it on reversal
     before_period_key: Mapped[str | None] = mapped_column(String(10))
     before_target: Mapped[int | None] = mapped_column(BigInteger)

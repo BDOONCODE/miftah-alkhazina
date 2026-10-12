@@ -142,3 +142,61 @@ def test_balances_page_hides_virtual_accounts(client, db, setup):
     for text in ("أرصدة البنود", "الإتاوة", "مانح الامتياز", "فور التقسيم", "الفائض", "حساب المالك", "وضع المحاكاة"):
         assert text in page
     assert "SA90" not in page and "افتراضي" not in page
+
+
+class RecordingProvider:
+    """Records every provider call in order, on top of the simulation."""
+
+    def __init__(self):
+        from app.services.banking import SimulatedProvider
+
+        self.sim, self.calls = SimulatedProvider(), []
+
+    def __getattr__(self, name):
+        method = getattr(self.sim, name)
+
+        def call(*args, **kwargs):
+            self.calls.append((name, kwargs.get("amount")))
+            return method(*args, **kwargs)
+
+        return call
+
+
+def test_money_flows_through_the_pool(db, make_user, monkeypatch):
+    from app.services import banking
+
+    recorder = RecordingProvider()
+    monkeypatch.setattr(banking, "_provider", recorder)
+    monkeypatch.setattr(tx, "utcnow", lambda: datetime(2026, 9, 15, 9, tzinfo=timezone.utc))
+    user = make_user("acc")
+    entity = models.Entity(name="مزاج", approval_mode="self")
+    db.add(entity)
+    db.flush()
+    user.entities.append(entity)
+    pos = acc.add_account(db, entity, user, name="نقاط البيع", bank_name="", iban="SA4420000001234567891234", kind="source")
+    landlord = acc.add_account(db, entity, user, name="المؤجر", bank_name="", iban=LANDLORD_IBAN, kind="external")
+    draft = pol.start_draft(db, entity, user)
+    pol.save_draft(db, draft, [
+        pol.BucketInput(None, "الإيجار", 1, CalcType.FIXED_AMOUNT, 3_000 * SAR, Frequency.MONTHLY, None, "", False,
+                        destination_account_id=landlord.id),
+    ], "", user)
+    pol.submit(db, draft, user, "")
+    pol.approve(db, draft, user)
+    db.commit()
+
+    recorder.calls.clear()
+    txn = tx.record_transaction(db, entity, user, 10_000 * SAR, datetime(2026, 9, 10, 10, tzinfo=timezone.utc),
+                                source_account_id=pos.id)
+    db.commit()
+    rent = txn.events[0]
+    # company account -> pool (whole amount), then pool -> the rent account (its share); the surplus stays
+    assert recorder.calls == [("sweep", 10_000 * SAR), ("move", rent.allocated)]
+    assert entity.pool_virtual_ref and txn.sweep_ref and rent.move_ref
+    assert po.pool_balance(db, entity.id) == txn.surplus == 10_000 * SAR - rent.allocated
+
+    recorder.calls.clear()
+    tx.reverse_transaction(db, txn, user, "مبلغ مكرر")
+    db.commit()
+    # back the same way: rent account -> pool -> the company account
+    assert recorder.calls == [("move", rent.allocated), ("transfer", 10_000 * SAR)]
+    assert po.pool_balance(db, entity.id) == 0
