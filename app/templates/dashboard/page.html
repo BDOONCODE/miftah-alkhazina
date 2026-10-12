@@ -14,6 +14,13 @@
   {% endif %}
 </div>
 
+<div class="kpis surplus-strip">
+  <div class="kpi kpi-pool"><span class="kpi-label">فائض هذا الشهر (في الحساب الكبير)</span>
+    <span class="kpi-value num">{{ pool_total | sar }}</span></div>
+  <div class="kpi"><span class="kpi-label">حساب الفائض (المعزول)</span>
+    <span class="kpi-value num">{{ isolated_total | sar }}</span></div>
+</div>
+
 {% if not views %}
 <div class="card empty">اللوحة فارغة. {% if can_edit %}اضغط «إضافة عنصر» للبدء.{% endif %}</div>
 {% endif %}

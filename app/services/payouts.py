@@ -4,20 +4,24 @@ Flow: income lands in the pool account -> is split -> each item's share is held 
 (at the banking provider, in the background; users never deal with it) -> and is transferred to the beneficiary:
   - an item with no due date (immediate): transfers as soon as it is split.
   - an item with a due date: accumulates and transfers in full on the due date (first day after the cycle ends).
-The surplus goes to the account the accountant chose, or stays in the pool.
+The surplus stays in the pool during the month. If an item falls short of its schedule, the pool covers it
+first (by priority). At the start of each month the previous month's remaining surplus is isolated in the
+"surplus" small account, and transfers from there to the account the accountant chose (if any).
+Nothing ever leaves for a real account except from a small account.
 
-Held balance of an item = total allocated to it - total successful transfers from it.
+Held balance of an item = allocated + covered by the pool - successful transfers from it.
+Pool balance = all surplus - covers - isolations (- legacy surplus transfers that left the pool directly).
 """
 from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..domain.periods import period_bounds, period_key
+from ..domain.periods import RIYADH, accrued_target, period_bounds, period_key
 from ..domain.types import AllocationLine, Frequency
 from ..models import (
     AccountKind,
@@ -31,12 +35,14 @@ from ..models import (
     PayoutStatus,
     Policy,
     PolicyBucket,
+    PoolMove,
     Transaction,
 )
 from .accounts import DESTINATION_KINDS
 from .banking import BankingError, provider
 
-REASON_LABELS = {"immediate": "فور التقسيم", "due": "يوم الاستحقاق", "surplus": "الفائض"}
+REASON_LABELS = {"immediate": "فور التقسيم", "due": "يوم الاستحقاق", "surplus": "الفائض الشهري"}
+SURPLUS_NAME = "الفائض"
 
 
 class PayoutError(RuntimeError):
@@ -101,17 +107,116 @@ def unwind_items(session: Session, original: Transaction, reversal: Transaction,
         raise PayoutError(f"تعذّر تنفيذ العكس لدى البنك: {exc}") from exc
 
 
+def _sum(session: Session, stmt) -> int:
+    return int(session.scalar(stmt) or 0)
+
+
 def pool_balance(session: Session, entity_id: int) -> int:
-    """What stays in the pool: all surplus minus the surplus already transferred out."""
-    surplus = session.scalar(
-        select(func.coalesce(func.sum(Transaction.surplus), 0)).where(Transaction.entity_id == entity_id)
-    )
-    paid = session.scalar(
-        select(func.coalesce(func.sum(Payout.amount), 0)).where(
-            Payout.entity_id == entity_id, Payout.bucket_id.is_(None), Payout.status == PayoutStatus.SENT
+    """The current surplus waiting in the pool: all surplus - covers - isolations - legacy direct transfers."""
+    session.flush()
+    surplus = _sum(session, select(func.coalesce(func.sum(Transaction.surplus), 0)).where(Transaction.entity_id == entity_id))
+    moved = _sum(session, select(func.coalesce(func.sum(PoolMove.amount), 0)).where(PoolMove.entity_id == entity_id))
+    legacy = _sum(session, select(func.coalesce(func.sum(Payout.amount), 0)).where(
+        Payout.entity_id == entity_id, Payout.bucket_id.is_(None), Payout.status == PayoutStatus.SENT
+    ))
+    return surplus - moved - legacy
+
+
+def surplus_bucket(session: Session, entity_id: int) -> Bucket:
+    """The "surplus" small account (opened once, with its virtual account at the provider)."""
+    entity = session.get(Entity, entity_id)
+    if entity.surplus_bucket_id is None:
+        bucket = Bucket(entity_id=entity_id, system_name=SURPLUS_NAME)
+        session.add(bucket)
+        session.flush()
+        entity.surplus_bucket_id = bucket.id
+    bucket = session.get(Bucket, entity.surplus_bucket_id)
+    if bucket.virtual_ref is None:
+        bucket.virtual_iban, bucket.virtual_ref = provider().open_virtual_account(entity_id, bucket.id, SURPLUS_NAME)
+    return bucket
+
+
+def isolated_surplus(session: Session, entity_id: int) -> int:
+    """Balance of the "surplus" small account (isolated monthly surplus not yet transferred out)."""
+    entity = session.get(Entity, entity_id)
+    if entity.surplus_bucket_id is None:
+        return 0
+    return balances(session, entity_id).get(entity.surplus_bucket_id, 0)
+
+
+def _move_from_pool(
+    session: Session, entity_id: int, kind: str, bucket: Bucket, amount: int, period: str, transaction_id: int | None
+) -> PoolMove:
+    if bucket.virtual_ref is None:
+        ensure_virtual_accounts(session, entity_id, [bucket.id])
+    move = PoolMove(entity_id=entity_id, kind=kind, bucket_id=bucket.id, amount=amount, period_key=period,
+                    transaction_id=transaction_id)
+    session.add(move)
+    session.flush()
+    try:
+        move.move_ref = provider().move(
+            from_ref=ensure_pool(session, entity_id), to_ref=bucket.virtual_ref, amount=amount, reference=f"PM-{move.id}"
         )
-    )
-    return int(surplus or 0) - int(paid or 0)
+    except BankingError as exc:
+        raise PayoutError(f"تعذّر تنفيذ العملية لدى البنك: {exc}") from exc
+    session.add(AuditLog(entity_id=entity_id, action=f"pool.{kind}",
+                         details={"bucket_id": bucket.id, "amount": amount, "period": period}))
+    return move
+
+
+# ------------------------------------------------------------------ covering deficits from the pool
+
+
+def _deficit(pb, state: BucketPeriodState, today: date, *, period_ended: bool) -> int:
+    """How far an item is behind. Rates: their carried deficit. Fixed: behind schedule as of today,
+    or the whole remaining target once the period has ended."""
+    if pb.calc_type.is_rate:
+        return state.carried_deficit
+    if period_ended:
+        return max(0, state.target - state.funded)
+    due = accrued_target(state.target, pb.frequency, today, pb.settlement_day, pb.due_date)
+    return max(0, due - state.funded)
+
+
+def _due_on(pb, today: date) -> date:
+    """When the item's current cycle is due (undated items are due today)."""
+    _, end = period_bounds(pb.frequency, today, pb.settlement_day, pb.due_date)
+    return end or today
+
+
+def _cover(session: Session, entity_id: int, pb, state: BucketPeriodState, amount: int, transaction_id: int | None) -> PoolMove:
+    move = _move_from_pool(session, entity_id, "cover", session.get(Bucket, pb.bucket_id), amount,
+                           state.period_key, transaction_id)
+    state.funded += amount
+    if pb.calc_type.is_rate:
+        state.carried_deficit -= amount
+    return move
+
+
+def cover_deficits(session: Session, entity_id: int, policy: Policy, today: date,
+                   transaction_id: int | None = None) -> dict[int, int]:
+    """The pool's surplus covers items that are behind in their current period.
+
+    Order: the nearest due date first (undated items are due now, so they come first), ties by priority.
+    Returns {bucket_id: amount covered}."""
+    available = pool_balance(session, entity_id)
+    covered: dict[int, int] = {}
+    if available <= 0:
+        return covered
+    states = {s.bucket_id: s for s in session.scalars(
+        select(BucketPeriodState).where(BucketPeriodState.entity_id == entity_id))}
+    for pb in sorted(policy.buckets, key=lambda b: (_due_on(b, today), b.priority)):
+        state = states.get(pb.bucket_id)
+        if state is None or state.period_key != period_key(pb.frequency, today, pb.settlement_day, pb.due_date):
+            continue
+        amount = min(_deficit(pb, state, today, period_ended=False), available)
+        if amount > 0:
+            _cover(session, entity_id, pb, state, amount, transaction_id)
+            covered[pb.bucket_id] = amount
+            available -= amount
+        if available <= 0:
+            break
+    return covered
 
 
 def ensure_virtual_accounts(session: Session, entity_id: int, bucket_ids: list[int]) -> None:
@@ -150,18 +255,24 @@ def balances(session: Session, entity_id: int) -> dict[int, int]:
     )
     for bucket_id, total in paid:
         result[bucket_id] = result.get(bucket_id, 0) - int(total or 0)
+    received = session.execute(
+        select(PoolMove.bucket_id, func.sum(PoolMove.amount)).where(PoolMove.entity_id == entity_id)
+        .group_by(PoolMove.bucket_id)
+    )
+    for bucket_id, total in received:
+        result[bucket_id] = result.get(bucket_id, 0) + int(total or 0)
     return result
 
 
 def _allocated_in_period(session: Session, bucket_id: int, key: str) -> int:
-    return int(
-        session.scalar(
-            select(func.coalesce(func.sum(AllocationEvent.allocated), 0)).where(
-                AllocationEvent.bucket_id == bucket_id, AllocationEvent.period_key == key
-            )
-        )
-        or 0
-    )
+    """What an item received for one period: its split shares plus any cover from the pool."""
+    split = _sum(session, select(func.coalesce(func.sum(AllocationEvent.allocated), 0)).where(
+        AllocationEvent.bucket_id == bucket_id, AllocationEvent.period_key == key
+    ))
+    covered = _sum(session, select(func.coalesce(func.sum(PoolMove.amount), 0)).where(
+        PoolMove.bucket_id == bucket_id, PoolMove.kind == "cover", PoolMove.period_key == key
+    ))
+    return split + covered
 
 
 # ------------------------------------------------------------------ transfers
@@ -225,25 +336,26 @@ def _beneficiary(session: Session, entity_id: int, account_id: int | None) -> Ba
 
 
 def pay_on_allocation(
-    session: Session, entity_id: int, policy: Policy, txn: Transaction, lines: tuple[AllocationLine, ...], surplus: int
+    session: Session, entity_id: int, policy: Policy, txn: Transaction, lines: tuple[AllocationLine, ...],
+    covered: dict[int, int] | None = None,
 ) -> list[Payout]:
-    """Right after the split: items with no due date transfer, and the surplus goes to its account."""
+    """Right after the split: items with no due date transfer their share (plus any cover from the pool).
+    The surplus stays in the pool until the monthly isolation."""
+    covered = covered or {}
     by_bucket = {pb.bucket_id: pb for pb in policy.buckets}
     sent = []
     for line in lines:
         pb = by_bucket.get(line.bucket_id)
-        if line.allocated <= 0 or pb is None or pb.frequency is not Frequency.IMMEDIATE:
+        amount = line.allocated + covered.get(line.bucket_id, 0)
+        if amount <= 0 or pb is None or pb.frequency is not Frequency.IMMEDIATE:
             continue
         beneficiary = _beneficiary(session, entity_id, pb.destination_account_id)
         if beneficiary is None:
             continue  # stays held until a beneficiary is set
         sent.append(
-            _send(session, entity_id, pb.bucket_id, line.allocated, beneficiary, "immediate",
+            _send(session, entity_id, pb.bucket_id, amount, beneficiary, "immediate",
                   transaction_id=txn.id, period=line.period_key)
         )
-    target = _beneficiary(session, entity_id, policy.surplus_account_id)
-    if surplus > 0 and target is not None and target.kind is not AccountKind.POOL:
-        sent.append(_send(session, entity_id, None, surplus, target, "surplus", transaction_id=txn.id))
     return sent
 
 
@@ -254,21 +366,25 @@ def _periods(pb: PolicyBucket, today: date) -> tuple[str, str]:
     return current, period_key(pb.frequency, start - timedelta(days=1), pb.settlement_day, pb.due_date)
 
 
-def run_due(session: Session, entity_id: int, today: date) -> list[Payout]:
-    """Items with a due date: when a cycle ends its balance transfers (excluding the new cycle's share).
+def run_due(session: Session, entity_id: int, today: date) -> list:
+    """Daily housekeeping (also runs before every incoming amount). Safe to repeat.
 
-    Safe to repeat: a paid cycle is recorded, so it is never paid twice.
+    1. Items whose cycle just ended: the pool covers any shortfall, then the full balance transfers
+       (excluding the new cycle's share). A paid cycle is recorded, so it is never paid twice.
+    2. At the start of a month: the previous month's remaining surplus is isolated in the surplus account.
+    Returns the actions taken (payouts and pool moves).
     """
     from .policies import active_policy
 
     policy = active_policy(session, entity_id)
-    scheduled = [pb for pb in policy.buckets if pb.frequency is not Frequency.IMMEDIATE] if policy else []
-    if not scheduled:
+    if policy is None:
         return []
     _lock_entity(session, entity_id)
-    current_balances = balances(session, entity_id)
-    sent = []
-    for pb in scheduled:
+    actions: list = []
+    due_now = []
+    for pb in policy.buckets:
+        if pb.frequency is Frequency.IMMEDIATE:
+            continue
         beneficiary = _beneficiary(session, entity_id, pb.destination_account_id)
         if beneficiary is None:
             continue
@@ -279,12 +395,53 @@ def run_due(session: Session, entity_id: int, today: date) -> list[Payout]:
                 Payout.status == PayoutStatus.SENT,
             )
         )
-        if already:
+        if not already:
+            due_now.append((pb, beneficiary, current, previous))
+
+    # Cover the ended cycles' shortfalls first, so nothing transfers short while the pool has surplus
+    available = pool_balance(session, entity_id)
+    states = {s.bucket_id: s for s in session.scalars(
+        select(BucketPeriodState).where(BucketPeriodState.entity_id == entity_id))}
+    for pb, _, _, previous in sorted(due_now, key=lambda d: d[0].priority):
+        state = states.get(pb.bucket_id)
+        if available <= 0 or state is None or state.period_key != previous:
             continue
+        amount = min(_deficit(pb, state, today, period_ended=True), available)
+        if amount > 0:
+            actions.append(_cover(session, entity_id, pb, state, amount, None))
+            available -= amount
+
+    current_balances = balances(session, entity_id)
+    for pb, beneficiary, current, previous in due_now:
         amount = current_balances.get(pb.bucket_id, 0) - _allocated_in_period(session, pb.bucket_id, current)
         if amount > 0:
-            sent.append(_send(session, entity_id, pb.bucket_id, amount, beneficiary, "due", period=previous))
-    return sent
+            actions.append(_send(session, entity_id, pb.bucket_id, amount, beneficiary, "due", period=previous))
+
+    actions += isolate_month(session, entity_id, policy, today)
+    return actions
+
+
+def isolate_month(session: Session, entity_id: int, policy: Policy, today: date) -> list:
+    """Move the previous month's remaining surplus from the pool into the surplus account (once a month),
+    then transfer it on to the account the accountant chose, if any."""
+    month_start = today.replace(day=1)
+    previous = (month_start - timedelta(days=1)).replace(day=1).isoformat()
+    if session.scalar(select(PoolMove.id).where(
+        PoolMove.entity_id == entity_id, PoolMove.kind == "isolate", PoolMove.period_key == previous
+    )):
+        return []
+    this_month = _sum(session, select(func.coalesce(func.sum(Transaction.surplus), 0)).where(
+        Transaction.entity_id == entity_id, Transaction.occurred_at >= datetime.combine(month_start, time(), RIYADH)
+    ))
+    amount = pool_balance(session, entity_id) - max(0, this_month)
+    if amount <= 0:
+        return []
+    bucket = surplus_bucket(session, entity_id)
+    actions: list = [_move_from_pool(session, entity_id, "isolate", bucket, amount, previous, None)]
+    beneficiary = _beneficiary(session, entity_id, policy.surplus_account_id)
+    if beneficiary is not None:
+        actions.append(_send(session, entity_id, bucket.id, amount, beneficiary, "surplus", period=previous))
+    return actions
 
 
 def run_due_all(session: Session, today: date) -> int:
@@ -303,6 +460,10 @@ def reversal_blocker(session: Session, txn: Transaction) -> str | None:
     current = balances(session, txn.entity_id)
     if any(current.get(e.bucket_id, 0) < e.allocated for e in txn.events if e.allocated > 0):
         return "حُوِّل رصيد أحد بنود هذه المعاملة إلى المستفيد، لذا لا يمكن عكسها تلقائيًا. صحّحها بمعاملة تسوية"
+    if session.scalar(select(PoolMove.id).where(
+        PoolMove.entity_id == txn.entity_id, PoolMove.created_at >= txn.created_at
+    )):
+        return "استُخدم الفائض بعد هذه المعاملة لتغطية عجز أو عُزل، لذا لا يمكن عكسها تلقائيًا. صحّحها بمعاملة تسوية"
     return None
 
 
@@ -349,8 +510,9 @@ def held_balances(session: Session, entity_id: int, today: date) -> list[HeldVie
                 in_policy=True,
             )
         )
+    surplus_id = session.get(Entity, entity_id).surplus_bucket_id
     for bucket_id, balance in current.items():
-        if bucket_id in seen or balance <= 0:
+        if bucket_id in seen or bucket_id == surplus_id or balance <= 0:
             continue
         last = session.scalar(
             select(PolicyBucket).where(PolicyBucket.bucket_id == bucket_id).order_by(PolicyBucket.id.desc()).limit(1)

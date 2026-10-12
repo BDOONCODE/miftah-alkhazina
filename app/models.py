@@ -121,6 +121,10 @@ class Entity(Base):
     # is split from here into item accounts, and the surplus stays here
     pool_virtual_iban: Mapped[str | None] = mapped_column(String(34))
     pool_virtual_ref: Mapped[str | None] = mapped_column(String(128))
+    # The "surplus" small virtual account: each month the pool's remaining surplus is isolated here
+    surplus_bucket_id: Mapped[int | None] = mapped_column(
+        ForeignKey("buckets.id", use_alter=True, name="fk_entities_surplus_bucket_id")
+    )
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
@@ -169,6 +173,7 @@ class Bucket(Base):
     __tablename__ = "buckets"
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
+    system_name: Mapped[str | None] = mapped_column(String(64))  # an account the system manages (the surplus)
     # The item's virtual account at the banking provider (Neotek): opened when a policy with the item is approved
     virtual_iban: Mapped[str | None] = mapped_column(String(34))
     virtual_ref: Mapped[str | None] = mapped_column(String(128))
@@ -299,6 +304,25 @@ class PeriodClosure(Base):
     closed_by_policy_id: Mapped[int | None] = mapped_column(ForeignKey("policies.id"))
     voided: Mapped[bool] = mapped_column(Boolean, default=False)  # voided by a reversing entry
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
+class PoolMove(Base):
+    """Money leaving the pool for a small account, outside the normal split. Append-only.
+
+    kind "cover":   the pool's surplus covers an item's deficit (pool -> item account)
+    kind "isolate": the month's remaining surplus is isolated (pool -> the surplus account)
+    """
+
+    __tablename__ = "pool_moves"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    bucket_id: Mapped[int] = mapped_column(ForeignKey("buckets.id"), index=True)  # the receiving small account
+    amount: Mapped[int] = mapped_column(BigInteger)
+    period_key: Mapped[str] = mapped_column(String(10))  # cover: the item's period; isolate: the month isolated
+    transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), index=True)
+    move_ref: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
 
 
 class Payout(Base):

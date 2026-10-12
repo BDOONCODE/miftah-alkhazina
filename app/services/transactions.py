@@ -146,9 +146,11 @@ def record_transaction(
     source_account = session.get(BankAccount, source_account_id) if source_account_id else None
     try:
         payouts.fund_items(session, entity.id, txn, source_account)
+        # The pool's surplus covers items that are behind (nearest due first), before anything transfers out
+        covered = payouts.cover_deficits(session, entity.id, policy, local_date(utcnow()), transaction_id=txn.id)
     except payouts.PayoutError as exc:
         raise TransactionError(str(exc)) from exc
-    payouts.pay_on_allocation(session, entity.id, policy, txn, result.lines, result.surplus)
+    payouts.pay_on_allocation(session, entity.id, policy, txn, result.lines, covered)
 
     session.add(
         AuditLog(

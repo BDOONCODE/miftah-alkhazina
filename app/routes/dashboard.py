@@ -9,6 +9,7 @@ from ..db import get_session
 from ..domain import formula
 from ..models import CustomMetric, DashboardWidget, Role, User
 from ..services import dashboards as svc
+from ..services import payouts
 from ..services import metrics as m
 from ..templating import templates
 from ..web import flash, redirect
@@ -42,6 +43,8 @@ def dashboard_page(
                 (c, m.format_value(_safe_eval(c.formula, values), c.fmt)) for c in customs
             ],
             "variable_names": list(values),
+            "pool_total": payouts.pool_balance(session, entity_id),
+            "isolated_total": payouts.isolated_surplus(session, entity_id),
             "KINDS": svc.WIDGET_KINDS,
             "PERIODS": m.PERIOD_LABELS,
             "CHARTS": svc.CHARTS,

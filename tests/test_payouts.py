@@ -68,9 +68,11 @@ def test_undated_item_and_surplus_transfer_with_each_deposit(db, setup):
     paid = {(p.bucket_id, p.reason): p for p in db.query(models.Payout)}
     royalty = paid[(ids["الإتاوة"], "immediate")]
     assert (royalty.amount, royalty.beneficiary_account_id, royalty.transaction_id) == (600 * SAR, accounts["royalty"].id, txn.id)
-    surplus = paid[(None, "surplus")]
-    assert (surplus.amount, surplus.beneficiary_account_id) == (txn.surplus, accounts["owner"].id)
-    assert len(paid) == 2  # rent and reserve have a schedule: held
+    assert len(paid) == 1  # rent and reserve have a schedule: held; the surplus stays in the pool this month
+    # "today" is the 15th: rent is behind its schedule (deposit on the 10th), so the pool's surplus covers it
+    covered = sum(m.amount for m in db.query(models.PoolMove).filter_by(kind="cover"))
+    assert covered == 500 * SAR  # rent: 3,000 x 15/30 = 1,500 due by the 15th, 1,000 came from the split
+    assert po.pool_balance(db, entity.id) == txn.surplus - covered
     balances = po.balances(db, entity.id)
     assert balances[ids["الإتاوة"]] == 0
     assert balances[ids["الاحتياطي"]] == 1_000 * SAR
@@ -167,7 +169,7 @@ def test_money_flows_through_the_pool(db, make_user, monkeypatch):
 
     recorder = RecordingProvider()
     monkeypatch.setattr(banking, "_provider", recorder)
-    monkeypatch.setattr(tx, "utcnow", lambda: datetime(2026, 9, 15, 9, tzinfo=timezone.utc))
+    monkeypatch.setattr(tx, "utcnow", lambda: datetime(2026, 9, 10, 12, tzinfo=timezone.utc))
     user = make_user("acc")
     entity = models.Entity(name="مزاج", approval_mode="self")
     db.add(entity)
@@ -200,3 +202,64 @@ def test_money_flows_through_the_pool(db, make_user, monkeypatch):
     # back the same way: rent account -> pool -> the company account
     assert recorder.calls == [("move", rent.allocated), ("transfer", 10_000 * SAR)]
     assert po.pool_balance(db, entity.id) == 0
+
+
+def test_pool_surplus_covers_deficits_nearest_due_first(db, setup, monkeypatch):
+    """A big deposit leaves surplus in the pool; a later small one leaves items short, and the pool covers
+    exactly what is behind schedule: rent (due at month end) before the reserve (same date, lower priority)."""
+    entity, user, ids, _ = setup
+    today = lambda day: monkeypatch.setattr(tx, "utcnow", lambda: datetime(2026, 9, day, 12, tzinfo=timezone.utc))  # noqa: E731
+    today(10)
+    deposit(db, entity, user, 10_000 * SAR, 10)  # rent gets 1,000 (10/30 of 3,000)
+    pool = po.pool_balance(db, entity.id)
+    today(20)
+    small = deposit(db, entity, user, 100 * SAR, 20)  # royalty 6, rent 94 of the 1,000 due, reserve nothing
+    covers = {m.bucket_id: m.amount for m in db.query(models.PoolMove).filter_by(kind="cover")}
+    assert covers == {ids["الإيجار"]: 906 * SAR, ids["الاحتياطي"]: 10 * SAR}
+    states = {s.bucket_id: s for s in db.query(models.BucketPeriodState)}
+    assert states[ids["الإيجار"]].funded == 2_000 * SAR  # back on schedule: 3,000 x 20/30
+    assert states[ids["الاحتياطي"]].carried_deficit == 0
+    assert po.pool_balance(db, entity.id) == pool - 916 * SAR
+    assert all(m.transaction_id == small.id for m in db.query(models.PoolMove))
+
+
+def test_cover_order_prefers_nearest_due_date(db, setup):
+    entity, user, ids, _ = setup
+    policy = pol.active_policy(db, entity.id)
+    order = [pb.name for pb in sorted(policy.buckets, key=lambda b: (po._due_on(b, date(2026, 9, 12)), b.priority))]
+    assert order == ["الإتاوة", "الإيجار", "الاحتياطي"]  # undated first; same due date -> priority
+
+
+def test_month_start_isolates_last_months_surplus_and_transfers_it(db, setup):
+    entity, user, ids, accounts = setup
+    deposit(db, entity, user, 10_000 * SAR, 30)
+    surplus = po.pool_balance(db, entity.id)
+    assert surplus > 0
+    actions = po.run_due(db, entity.id, date(2026, 10, 1))
+    moves = db.query(models.PoolMove).filter_by(kind="isolate").all()
+    assert [(m.amount, m.period_key) for m in moves] == [(surplus, "2026-09-01")]
+    assert po.pool_balance(db, entity.id) == 0
+    sent = [p for p in actions if isinstance(p, models.Payout) and p.reason == "surplus"]
+    assert [(p.amount, p.beneficiary_account_id) for p in sent] == [(surplus, accounts["owner"].id)]
+    assert po.isolated_surplus(db, entity.id) == 0  # transferred on to the owner's account
+    assert po.run_due(db, entity.id, date(2026, 10, 2)) == []  # once a month
+
+
+def test_isolated_surplus_stays_without_a_destination(db, setup):
+    entity, user, *_ = setup
+    pol.active_policy(db, entity.id).surplus_account_id = None
+    deposit(db, entity, user, 10_000 * SAR, 30)
+    surplus = po.pool_balance(db, entity.id)
+    po.run_due(db, entity.id, date(2026, 10, 1))
+    assert po.isolated_surplus(db, entity.id) == surplus and po.pool_balance(db, entity.id) == 0
+
+
+def test_reversal_blocked_after_pool_was_used(db, setup):
+    entity, user, *_ = setup
+    pol.active_policy(db, entity.id).surplus_account_id = None
+    deposit(db, entity, user, 10_000 * SAR, 10)
+    small = deposit(db, entity, user, 100 * SAR, 12)
+    if not db.query(models.Payout).filter_by(transaction_id=small.id).count():
+        with pytest.raises(tx.TransactionError, match="الفائض"):
+            tx.reverse_transaction(db, small, user, "غلط")
+

@@ -30,6 +30,18 @@
     </tbody>
   </table>
 
+  {% if covers %}
+  <h3>غطّى الفائض عجز البنود</h3>
+  <table class="table">
+    <thead><tr><th>البند</th><th>المبلغ من الحساب الكبير</th></tr></thead>
+    <tbody>
+    {% for c in covers %}
+      <tr><td>{{ names.get(c.bucket_id, '؟') }}</td><td class="num">{{ c.amount | sar }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
   {% if payouts %}
   <h3>حُوِّل فورًا إلى المستفيدين</h3>
   <table class="table">

@@ -3,12 +3,15 @@
 <section class="card">
   <h2>أرصدة البنود</h2>
   <div class="kpis">
-    <div class="kpi kpi-pool"><span class="kpi-label">الفائض في الحساب الكبير</span>
+    <div class="kpi kpi-pool"><span class="kpi-label">فائض هذا الشهر (في الحساب الكبير)</span>
       <span class="kpi-value num">{{ pool_total | sar }}</span>
-      <span class="small muted">{{ ('يُحوَّل إلى ' ~ surplus_to.name) if surplus_to else 'يبقى في الحساب الكبير' }}</span></div>
+      <span class="small muted">يغطي عجز البنود أولًا، ويُعزل أول الشهر القادم</span></div>
+    <div class="kpi"><span class="kpi-label">حساب الفائض (المعزول)</span>
+      <span class="kpi-value num">{{ isolated_total | sar }}</span>
+      <span class="small muted">{{ ('يُحوَّل إلى ' ~ surplus_to.name) if surplus_to else 'يبقى محجوزًا' }}</span></div>
     <div class="kpi"><span class="kpi-label">المحجوز للبنود</span><span class="kpi-value num">{{ held_total | sar }}</span>
       <span class="small muted">في الحسابات الخاصة بالبنود</span></div>
-    <div class="kpi"><span class="kpi-label">الإجمالي</span><span class="kpi-value num">{{ (pool_total + held_total) | sar }}</span>
+    <div class="kpi"><span class="kpi-label">الإجمالي</span><span class="kpi-value num">{{ (pool_total + isolated_total + held_total) | sar }}</span>
       <span class="small muted">ر.س</span></div>
   </div>
   <p class="muted">

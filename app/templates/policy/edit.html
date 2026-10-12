@@ -119,9 +119,9 @@
     <template id="row-template">{{ row({'bucket_id': '', 'name': '', 'priority': '', 'calc_type': 'percentage', 'value': '', 'frequency': 'immediate', 'settlement_day': '', 'due_date': '', 'destination': '', 'dest_iban': '', 'dest_kind': 'external', 'legacy_destination': '', 'protected': '0'}) }}</template>
     <div><button type="button" class="btn" id="add-row">+ إضافة بند</button></div>
 
-    <label class="surplus-field">يُحوَّل الفائض (المتبقي بعد جميع البنود) إلى
+    <label class="surplus-field">يبقى الفائض خلال الشهر في الحساب الكبير ويغطي عجز البنود، ثم يُعزل أول كل شهر في حساب «الفائض». بعد العزل يُحوَّل إلى
       <select name="surplus_account">
-        <option value="">يبقى في الحساب الكبير</option>
+        <option value="">يبقى محجوزًا في حساب الفائض</option>
         {% for a in destinations if a.kind.value != 'pool' %}
         <option value="{{ a.id }}" {{ 'selected' if surplus_account == a.id|string }}>{{ a.name }} · {{ KIND_LABELS[a.kind.value] }} · ••{{ a.iban[-4:] }}</option>
         {% endfor %}

@@ -40,9 +40,10 @@ def balances_page(
             "items": views,
             "held_total": sum(v.balance for v in views),
             "pool_total": svc.pool_balance(session, entity_id),
+            "isolated_total": svc.isolated_surplus(session, entity_id),
             "surplus_to": session.get(BankAccount, policy.surplus_account_id) if policy and policy.surplus_account_id else None,
             "payouts": svc.recent_payouts(session, entity_id),
-            "names": {v.bucket_id: v.name for v in views},
+            "names": {**{v.bucket_id: v.name for v in views}, entity.surplus_bucket_id: svc.SURPLUS_NAME},
             "simulated": is_simulated(),
         },
     )

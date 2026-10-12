@@ -13,7 +13,7 @@ from ..auth import current_user, get_entity_for, require_role
 from ..db import get_session
 from ..domain.money import parse_amount
 from ..domain.periods import RIYADH
-from ..models import AccountKind, BankAccount, Payout, PolicyBucket, Role, Transaction, User, utcnow
+from ..models import AccountKind, BankAccount, Payout, PoolMove, PolicyBucket, Role, Transaction, User, utcnow
 from ..services import transactions as svc
 from ..services.accounts import accounts_for
 from ..services.policies import active_policy
@@ -166,6 +166,9 @@ def transaction_detail(
             "original": session.get(Transaction, txn.reversal_of) if txn.reversal_of else None,
             "source_account": session.get(BankAccount, txn.source_account_id) if txn.source_account_id else None,
             "payouts": list(session.scalars(select(Payout).where(Payout.transaction_id == txn.id).order_by(Payout.id))),
+            "covers": list(session.scalars(
+                select(PoolMove).where(PoolMove.transaction_id == txn.id, PoolMove.kind == "cover").order_by(PoolMove.id)
+            )),
         },
     )
 
