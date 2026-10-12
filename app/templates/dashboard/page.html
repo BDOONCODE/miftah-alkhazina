@@ -4,6 +4,7 @@
 {% endblock %}
 
 {% block entity_content %}
+{% macro icon(name) %}<svg viewBox="0 0 24 24" aria-hidden="true">{% if name == 'incoming' %}<path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/>{% elif name == 'surplus' %}<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>{% elif name == 'deficit' %}<path d="M12 3.5l9 16H3l9-16zM12 10v4.5M12 17.2v.1"/>{% elif name == 'count' %}<path d="M9 6h11M9 12h11M9 18h11M4.5 6v.1M4.5 12v.1M4.5 18v.1"/>{% elif name == 'pool' %}<path d="M4 10h16M6 10v8m4-8v8m4-8v8m4-8v8M3 20h18M12 3l9 5H3l9-5z"/>{% elif name == 'isolated' %}<path d="M6 10V8a6 6 0 0112 0v2M5 10h14v10H5zM12 14v2.5"/>{% else %}<circle cx="12" cy="12" r="7"/>{% endif %}</svg>{% endmacro %}
 <div class="page-head">
   <span class="muted">{{ dashboard.title }}</span>
   {% if can_edit %}
@@ -14,11 +15,23 @@
   {% endif %}
 </div>
 
-<div class="kpis surplus-strip">
-  <div class="kpi kpi-pool"><span class="kpi-label">فائض هذا الشهر (في الحساب الكبير)</span>
-    <span class="kpi-value num">{{ pool_total | sar }}</span></div>
-  <div class="kpi"><span class="kpi-label">حساب الفائض (المعزول)</span>
-    <span class="kpi-value num">{{ isolated_total | sar }}</span></div>
+<div class="surplus-strip">
+  <div class="hero-card hero-pool">
+    <span class="hero-icon">{{ icon('pool') }}</span>
+    <div>
+      <span class="hero-label">فائض هذا الشهر</span>
+      <span class="hero-value num">{{ pool_total | sar }} <small>ر.س</small></span>
+      <span class="hero-hint">في الحساب الكبير، ويغطي عجز البنود أولًا</span>
+    </div>
+  </div>
+  <div class="hero-card hero-isolated">
+    <span class="hero-icon">{{ icon('isolated') }}</span>
+    <div>
+      <span class="hero-label">حساب الفائض</span>
+      <span class="hero-value num">{{ isolated_total | sar }} <small>ر.س</small></span>
+      <span class="hero-hint">الفائض المعزول حسب الجدول الذي حددته</span>
+    </div>
+  </div>
 </div>
 
 {% if not views %}
@@ -28,7 +41,7 @@
 <div class="grid-stack" data-layout-url="/entities/{{ entity.id }}/dashboard/layout">
   {% for v in views %}{% set w = v.widget %}
   <div class="grid-stack-item" gs-id="{{ w.id }}" gs-x="{{ w.x }}" gs-y="{{ w.y }}" gs-w="{{ w.w }}" gs-h="{{ w.h }}">
-    <div class="grid-stack-item-content widget widget-{{ w.kind }}">
+    <div class="grid-stack-item-content widget widget-{{ w.kind }}{% if w.kind == 'kpi' %} kpi-{{ (w.config or {}).get('metric', '') }}{% endif %}">
       <div class="widget-head">
         <span class="widget-title">{{ w.title }}</span>
         <span class="widget-period">{{ v.period_label }}</span>
@@ -45,14 +58,16 @@
       </div>
       <div class="widget-body">
         {% if v.kind == 'kpi' %}
-          <div class="kpi-big num {{ 'negative' if v.negative }}">{{ v.display }}</div>
-          <div class="muted small">{{ v.label }}</div>
+          <div class="kpi-row">
+            <span class="kpi-icon">{{ icon((w.config or {}).get('metric', '')) }}</span>
+            <div class="kpi-big num {{ 'negative' if v.negative }}">{{ v.display }}</div>
+          </div>
 
         {% elif v.kind == 'bucket_progress' %}
           {% for b in v.buckets %}
           <div class="progress-row">
             <div class="progress-label">
-              <span>{{ b.name }}</span>
+              <span>{{ b.name }}{% if not b.target %} <span class="pill pill-muted">فوري</span>{% endif %}</span>
               {% if b.target %}
                 <span class="num small">{{ b.funded | sar }} / {{ b.target | sar }}</span>
               {% else %}

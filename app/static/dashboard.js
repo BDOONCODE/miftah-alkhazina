@@ -1,7 +1,10 @@
 // Dashboard: the grid (GridStack), charts (ECharts), the widget settings dialog, and the formula editor.
 (() => {
   const css = getComputedStyle(document.documentElement);
-  const palette = ["#0f6e5a", "#3b82c4", "#d98e04", "#8a5cc2", "#c2410c", "#64748b", "#0e9384"];
+  // Items in calm greens and blues; the surplus always in warm gold so it stands apart
+  const palette = ["#0f6e5a", "#14b8a6", "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#64748b", "#22c55e"];
+  const SURPLUS = "الفائض";
+  const SURPLUS_COLOR = "#f4b740";
   const font = css.getPropertyValue("font-family") || "IBM Plex Sans Arabic";
   const sar = (v) => Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -12,14 +15,40 @@
     const chart = echarts.init(el, null, { renderer: "svg" });
     const base = { color: palette, textStyle: { fontFamily: font }, tooltip: { valueFormatter: sar } };
     if (spec.type === "pie") {
+      let i = 0;
+      const data = spec.data.map((d) => ({
+        ...d, itemStyle: { color: d.name === SURPLUS ? SURPLUS_COLOR : palette[i++ % palette.length] },
+      }));
+      const total = data.reduce((s, d) => s + d.value, 0);
+      const pct = (v) => (total ? Math.round((v / total) * 1000) / 10 : 0);
+      // An HTML legend beside the donut (reads naturally right-to-left), with each share's amount and percent
+      const legend = document.createElement("ul");
+      legend.className = "donut-legend";
+      legend.innerHTML = data.map((d) => `<li><i style="background:${d.itemStyle.color}"></i>
+        <span class="donut-name"></span><span class="num">${pct(d.value)}%</span></li>`).join("");
+      legend.querySelectorAll(".donut-name").forEach((n, k) => { n.textContent = data[k].name; });
+      el.parentElement.classList.add("donut-wrap");
+      el.parentElement.appendChild(legend);
       chart.setOption({
         ...base,
-        tooltip: { ...base.tooltip, trigger: "item" },
+        tooltip: { ...base.tooltip, trigger: "item", formatter: (p) => `${p.name}<br><b>${sar(p.value)}</b> ر.س · ${p.percent}%` },
+        title: {
+          text: sar(total), subtext: "ر.س · إجمالي الوارد", left: "center", top: "center", itemGap: 2,
+          textStyle: { fontSize: 16, fontWeight: 700, color: "#1c2330", fontFamily: font },
+          subtextStyle: { fontSize: 11, color: "#6b7482", fontFamily: font },
+        },
         series: [{
-          type: "pie", radius: ["38%", "62%"], center: ["50%", "50%"], data: spec.data,
-          label: { formatter: "{b}", fontSize: 11 }, labelLine: { length: 6, length2: 6 },
+          type: "pie", radius: ["62%", "86%"], center: ["50%", "50%"], data, padAngle: 2,
+          itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 2 },
+          label: { show: false }, labelLine: { show: false },
+          emphasis: { scale: true, scaleSize: 5 },
         }],
       });
+      legend.querySelectorAll("li").forEach((li, k) => {
+        li.addEventListener("mouseenter", () => chart.dispatchAction({ type: "highlight", dataIndex: k }));
+        li.addEventListener("mouseleave", () => chart.dispatchAction({ type: "downplay", dataIndex: k }));
+      });
+      requestAnimationFrame(() => chart.resize());  // the legend narrowed the chart's box
     } else if (spec.type === "bar") {
       chart.setOption({
         ...base,
