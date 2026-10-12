@@ -93,6 +93,15 @@ def test_policy_destination_is_an_account(client, db, company, accounts):
     assert "المؤجر" in edit_page
 
 
+def test_income_account_cannot_be_a_beneficiary(db, company, accounts):
+    user = db.query(models.User).filter_by(username="acc").one()
+    draft = pol.start_draft(db, company, user)
+    pool = pol.BucketInput(None, "الإتاوة", 1, models.CalcType.PERCENTAGE, 500, models.Frequency.IMMEDIATE, None, "", False,
+                           destination_account_id=accounts["المجمّع"].id)
+    with pytest.raises(pol.PolicyError, match="مستفيد"):
+        pol.save_draft(db, draft, [pool], "", user)
+
+
 def test_destination_must_be_sub_or_external(db, company, accounts):
     user = db.query(models.User).filter_by(username="acc").one()
     draft = pol.start_draft(db, company, user)
@@ -209,7 +218,7 @@ def test_source_iban_cannot_be_destination(client, db, company, accounts):
     response = client.post(
         f"/policies/{draft.id}/edit", data=_draft_form(destination=["new"], dest_iban=[POS], dest_kind=["sub"])
     )
-    assert response.status_code == 422 and "مصدر إيراد" in response.text
+    assert response.status_code == 422 and "حساب دخل" in response.text
 
 
 def test_registration_goes_to_accounts_with_pool_from_iban(client, db, make_user):

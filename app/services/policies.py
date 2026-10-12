@@ -209,7 +209,7 @@ def _destination_from_iban(session: Session, policy: Policy, user: User, row: Bu
     )
     if existing is not None:
         if existing.kind not in DESTINATION_KINDS:
-            raise PolicyError(f"الآيبان {iban} مسجل كحساب مصدر إيراد، ولا يصلح مستفيدًا لبند")
+            raise PolicyError(f"الآيبان {iban} مسجل كحساب دخل، ولا يصلح مستفيدًا لبند")
         if not existing.is_active:
             raise PolicyError(f"الآيبان {iban} يعود لحساب معطّل. فعّله من الحسابات البنكية")
         return existing
