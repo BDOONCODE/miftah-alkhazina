@@ -18,7 +18,7 @@ PASSWORD_RULES = [
     (lambda p: re.search(r"[a-z]", p) is not None, "حرف إنجليزي صغير (a-z)"),
     (lambda p: re.search(r"[0-9]", p) is not None, "رقم (0-9)"),
     (lambda p: _ENGLISH_SYMBOL.search(p) is not None, "رمز خاص مثل ! @ # $"),
-    (lambda p: _ENGLISH_ONLY.fullmatch(p) is not None, "إنجليزي فقط (بدون عربي أو مسافات)"),
+    (lambda p: _ENGLISH_ONLY.fullmatch(p) is not None, "أحرف إنجليزية فقط (دون حروف عربية أو مسافات)"),
 ]
 
 
@@ -29,9 +29,9 @@ def password_problems(password: str) -> list[str]:
 def hash_password(password: str, *, enforce_rules: bool = True) -> str:
     """enforce_rules=False only for passwords from server settings (temporary, changed on first login)."""
     if enforce_rules and (problems := password_problems(password)):
-        raise ValueError("كلمة المرور لازم تحتوي: " + "، ".join(problems))
+        raise ValueError("يجب أن تحتوي كلمة المرور على: " + "، ".join(problems))
     if len(password) < MIN_PASSWORD_LENGTH:
-        raise ValueError(f"كلمة المرور لازم تكون {MIN_PASSWORD_LENGTH} أحرف على الأقل")
+        raise ValueError(f"يجب أن تتكون كلمة المرور من {MIN_PASSWORD_LENGTH} أحرف على الأقل")
     return _hasher.hash(password)
 
 

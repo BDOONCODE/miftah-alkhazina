@@ -55,7 +55,7 @@ async def signup(request: Request, session: Session = Depends(get_session)):
     )
     values = {"full_name": data.full_name, "email": data.email, "account_type": data.account_type}
     if _email_throttled(request, data.email):
-        return _page(request, "signup", {"form": values, "error": "محاولات كثيرة. حاول بعد ١٠ دقائق", "TYPES": svc.ACCOUNT_TYPES}, 429)
+        return _page(request, "signup", {"form": values, "error": "محاولات كثيرة. حاول مرة أخرى بعد ١٠ دقائق", "TYPES": svc.ACCOUNT_TYPES}, 429)
     try:
         user = svc.register(session, data)
     except svc.SignupError as exc:
@@ -86,13 +86,13 @@ async def resend_verification(request: Request, session: Session = Depends(get_s
     email = str(form.get("email", "")) or request.session.get("pending_email", "")
     request.session["pending_email"] = svc.normalize_email(email)
     if _email_throttled(request, email):
-        flash(request, "طلبات كثيرة. حاول بعد ١٠ دقائق", "error")
+        flash(request, "طلبات كثيرة. حاول مرة أخرى بعد ١٠ دقائق", "error")
         return redirect("/signup/check-email")
     user = svc.find_by_login(session, email)
     if user is not None and user.email and not user.email_verified:
         svc.send_verification(user, _base_url(request))
     # Always the same response, so we do not reveal who is registered
-    flash(request, "لو البريد مسجّل وما تأكد، وصله رابط تأكيد جديد")
+    flash(request, "إذا كان البريد مسجلًا وغير مؤكد، فقد أُرسل إليه رابط تأكيد جديد")
     return redirect("/signup/check-email")
 
 
@@ -105,7 +105,7 @@ def verify_email(request: Request, token: str = "", session: Session = Depends(g
     session.commit()
     request.session.clear()
     request.session["user_id"] = user.id
-    flash(request, "تأكّد بريدك وتفعّل حسابك 🎉 ابدأ بتسجيل أول شركة")
+    flash(request, "تم تأكيد بريدك وتفعيل حسابك 🎉 ابدأ بتسجيل أول شركة")
     return redirect("/")
 
 
@@ -147,5 +147,5 @@ async def reset(request: Request, session: Session = Depends(get_session)):
         return _page(request, "reset", {"token": token, "error": str(exc)}, 422)
     session.commit()
     throttle.reset(_ip(request), user.username)
-    flash(request, "تغيّرت كلمة المرور. سجّل دخولك بالكلمة الجديدة")
+    flash(request, "تم تغيير كلمة المرور. سجّل دخولك بكلمة المرور الجديدة")
     return redirect("/login")

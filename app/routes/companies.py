@@ -50,7 +50,7 @@ async def register_company(request: Request, user: User = Depends(accountant), s
             request, "companies/new.html", {"user": user, "form": values, "error": str(exc)}, status_code=422
         )
     session.commit()
-    flash(request, f"تم تسجيل «{entity.name}». الخطوة الجاية: أضف حسابات الشركة البنكية، وبعدها سياسة التقسيم")
+    flash(request, f"تم تسجيل «{entity.name}». الخطوة التالية: أضف حسابات الشركة البنكية، ثم سياسة التقسيم")
     return redirect(f"/entities/{entity.id}/accounts")
 
 
@@ -77,7 +77,7 @@ async def update_company(
         flash(request, str(exc), "error")
         return redirect(f"/entities/{entity_id}/settings")
     session.commit()
-    flash(request, "انحفظت بيانات الشركة")
+    flash(request, "تم حفظ بيانات الشركة")
     return redirect(f"/entities/{entity_id}/settings")
 
 
@@ -94,7 +94,7 @@ async def add_reviewer(
         flash(request, str(exc), "error")
         return redirect(f"/entities/{entity_id}/settings")
     session.commit()
-    flash(request, f"أُضيف المراجع «{reviewer.full_name}». أعطه اسم المستخدم وكلمة المرور المؤقتة")
+    flash(request, f"أُضيف المراجع «{reviewer.full_name}». سلّمه اسم المستخدم وكلمة المرور المؤقتة")
     return redirect(f"/entities/{entity_id}/settings")
 
 
@@ -111,5 +111,5 @@ async def set_approval_mode(
         flash(request, str(exc), "error")
         return redirect(f"/entities/{entity_id}/settings")
     session.commit()
-    flash(request, "تغيّرت طريقة اعتماد السياسات")
+    flash(request, "تم تغيير طريقة اعتماد السياسات")
     return redirect(f"/entities/{entity_id}/settings")

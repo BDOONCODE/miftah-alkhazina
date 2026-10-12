@@ -6,7 +6,7 @@
     <label>نوع التقرير
       <select name="kind">{% for k, label in KINDS.items() %}<option value="{{ k }}" {{ 'selected' if k == kind }}>{{ label }}</option>{% endfor %}</select>
     </label>
-    <label>الفترة اللي فيها يوم
+    <label>الفترة التي تتضمن يوم
       <input type="date" name="anchor" value="{{ anchor }}">
     </label>
     <div class="form-actions">
@@ -38,12 +38,12 @@
         <td class="num">{{ b.funded | sar }}</td>
         <td class="num {{ 'negative' if b.deficit }}">{{ b.deficit | sar }}</td>
       </tr>
-    {% else %}<tr><td colspan="5" class="muted">ما في بنود.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="5" class="muted">لا توجد بنود.</td></tr>{% endfor %}
     </tbody>
   </table>
 
   {% if report.closures %}
-  <h3>فترات انقفلت</h3>
+  <h3>الفترات المقفلة</h3>
   <table class="table">
     <thead><tr><th>البند</th><th>بداية الفترة</th><th>الهدف</th><th>المموّل</th><th>العجز النهائي</th></tr></thead>
     <tbody>
@@ -54,6 +54,6 @@
     </tbody>
   </table>
   {% endif %}
-  <p class="muted small">ملف Excel فيه كمان كل معاملة وتوزيعها على البنود.</p>
+  <p class="muted small">يتضمن ملف Excel أيضًا كل معاملة وتوزيعها على البنود.</p>
 </section>
 {% endblock %}

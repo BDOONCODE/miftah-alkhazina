@@ -61,7 +61,7 @@ def record_transaction(
     if source_account_id is not None:
         account = session.get(BankAccount, source_account_id)
         if account is None or account.entity_id != entity.id or account.kind not in (AccountKind.SOURCE, AccountKind.POOL):
-            raise TransactionError("حساب المصدر لازم يكون مصدر إيراد أو الحساب المجمّع لهذي الشركة")
+            raise TransactionError("يجب أن يكون حساب المصدر حساب دخل لهذه الشركة")
 
     if external_ref:
         existing = session.scalar(select(Transaction).where(Transaction.external_ref == external_ref))
@@ -70,7 +70,7 @@ def record_transaction(
 
     policy = active_policy(session, entity.id)
     if policy is None:
-        raise TransactionError("ما في سياسة نشطة لهذي الشركة. لازم يعتمد المراجع السياسة قبل تقسيم أي مبلغ")
+        raise TransactionError("لا توجد سياسة نشطة لهذه الشركة. يجب اعتماد السياسة قبل تقسيم أي مبلغ")
 
     # If any items are due for payout, transfer them before splitting the new money
     payouts.run_due(session, entity.id, local_date(utcnow()))
@@ -185,10 +185,10 @@ def reverse_transaction(session: Session, txn: Transaction, user: User, reason: 
         raise TransactionError("اكتب سبب التصحيح")
     latest = reversible_transaction(session, txn.entity_id)
     if latest is None or latest.id != txn.id:
-        raise TransactionError("التصحيح متاح لآخر معاملة فقط. المعاملات الأقدم تتصحح بمعاملة تسوية")
+        raise TransactionError("التصحيح متاح لآخر معاملة فقط، وتُصحَّح المعاملات الأقدم بمعاملة تسوية")
     policy = active_policy(session, txn.entity_id)
     if policy is None or policy.id != txn.policy_id:
-        raise TransactionError("تغيّرت السياسة بعد هذي المعاملة، فما يمكن عكسها تلقائيًا")
+        raise TransactionError("تغيّرت السياسة بعد هذه المعاملة، لذا لا يمكن عكسها تلقائيًا")
     if blocker := payouts.reversal_blocker(session, txn):
         raise TransactionError(blocker)
 
@@ -268,7 +268,7 @@ def ingest_bank_credit(
         raise TransactionError("الإشعار بدون رقم مرجعي")
     account = find_by_iban(session, iban)
     if account is None:
-        raise TransactionError("الآيبان غير مسجّل كمصدر إيراد أو حساب مجمّع لأي شركة")
+        raise TransactionError("الآيبان غير مسجل كحساب دخل لأي شركة")
     entity = session.get(Entity, account.entity_id)
     return record_transaction(
         session,

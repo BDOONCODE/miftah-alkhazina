@@ -65,7 +65,7 @@ def register(session: Session, data: SignupInput) -> User:
     if data.confirm and data.password != data.confirm:
         raise SignupError("كلمتا المرور غير متطابقتين")
     if find_by_login(session, email):
-        raise SignupError("هذا البريد مسجّل. سجّل دخولك، أو استخدم «نسيت كلمة المرور»")
+        raise SignupError("هذا البريد مسجل. سجّل دخولك، أو استخدم «نسيت كلمة المرور»")
     try:
         password_hash = hash_password(data.password)
     except ValueError as exc:
@@ -97,7 +97,7 @@ def verify_email(session: Session, token: str) -> User:
     try:
         data = _verify.loads(token, max_age=VERIFY_MAX_AGE)
     except SignatureExpired as exc:
-        raise SignupError("انتهت صلاحية رابط التأكيد. اطلب رابط جديد") from exc
+        raise SignupError("انتهت صلاحية رابط التأكيد. اطلب رابطًا جديدًا") from exc
     except BadSignature as exc:
         raise SignupError("رابط التأكيد غير صحيح") from exc
     user = session.get(User, data.get("uid"))
@@ -115,13 +115,13 @@ def _email_html(title: str, body: str, button: str, link: str) -> str:
   <h3>{escape(title)}</h3>
   <p style="line-height:1.8">{body}</p>
   <p><a href="{escape(link)}" style="display:inline-block;background:#0f6e5a;color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none">{escape(button)}</a></p>
-  <p style="color:#6b7482;font-size:13px">لو الزر ما اشتغل، انسخ هذا الرابط في المتصفح:<br><span dir="ltr">{escape(link)}</span></p>
+  <p style="color:#6b7482;font-size:13px">إذا لم يعمل الزر، انسخ هذا الرابط في المتصفح:<br><span dir="ltr">{escape(link)}</span></p>
 </div>"""
 
 
 def send_verification(user: User, base_url: str) -> bool:
     link = f"{base_url.rstrip('/')}/verify-email?token={verification_token(user)}"
-    body = f"أهلًا {escape(user.full_name)}،<br>أكّد بريدك عشان تفعّل حسابك. الرابط صالح لمدة ٤٨ ساعة."
+    body = f"أهلًا {escape(user.full_name)}،<br>أكّد بريدك الإلكتروني لتفعيل حسابك. الرابط صالح لمدة ٤٨ ساعة."
     return send_email(
         user.email,
         "أكّد بريدك — مفتاح الخزينة",
@@ -145,18 +145,18 @@ def user_for_reset(session: Session, token: str) -> User:
     try:
         data = _reset.loads(token, max_age=RESET_MAX_AGE)
     except SignatureExpired as exc:
-        raise SignupError("انتهت صلاحية الرابط (ساعة وحدة). اطلب رابط جديد") from exc
+        raise SignupError("انتهت صلاحية الرابط (ساعة واحدة). اطلب رابطًا جديدًا") from exc
     except BadSignature as exc:
         raise SignupError("الرابط غير صحيح") from exc
     user = session.get(User, data.get("uid"))
     if user is None or not user.is_active or data.get("fp") != _password_fingerprint(user):
-        raise SignupError("الرابط مستخدم أو غير صالح. اطلب رابط جديد")
+        raise SignupError("الرابط مستخدم أو غير صالح. اطلب رابطًا جديدًا")
     return user
 
 
 def send_reset(user: User, base_url: str) -> bool:
     link = f"{base_url.rstrip('/')}/reset-password?token={reset_token(user)}"
-    body = "وصلنا طلب لتغيير كلمة مرور حسابك. الرابط صالح لمدة ساعة ويُستخدم مرة وحدة.<br>لو ما طلبته، تجاهل الرسالة."
+    body = "وصلنا طلب لتغيير كلمة مرور حسابك. الرابط صالح لمدة ساعة ويُستخدم مرة واحدة.<br>إذا لم تطلب ذلك، فتجاهل هذه الرسالة."
     return send_email(
         user.email,
         "تغيير كلمة المرور — مفتاح الخزينة",

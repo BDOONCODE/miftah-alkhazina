@@ -54,14 +54,14 @@ def period_bounds(
         return start, _add_months(start, 1, 1)
     if frequency is Frequency.DAY_OF_MONTH:
         if not settlement_day:
-            raise ValueError("جدولة «يوم محدد بالشهر» تحتاج رقم اليوم")
+            raise ValueError("جدولة «يوم محدد من الشهر» تتطلب رقم اليوم")
         start = _clamped(on.year, on.month, settlement_day)
         if on < start:
             start = _add_months(on.replace(day=1), -1, settlement_day)
         return start, _add_months(start.replace(day=1), 1, settlement_day)
     if frequency in ANCHORED_MONTHS:
         if due_date is None:
-            raise ValueError("هذي الجدولة تحتاج تاريخ الاستحقاق القادم")
+            raise ValueError("تتطلب هذه الجدولة تاريخ الاستحقاق القادم")
         step = ANCHORED_MONTHS[frequency]
         months = (on.year - due_date.year) * 12 + (on.month - due_date.month)
         k = months // step

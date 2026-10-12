@@ -107,7 +107,7 @@ def _recover_account(session) -> None:
         return
     user = session.scalar(select(User).where(func.lower(User.username) == username.lower()))
     if user is None:
-        print(f"الاسترجاع: ما في مستخدم باسم «{username}»، الأسماء الموجودة: "
+        print(f"الاسترجاع: لا يوجد مستخدم باسم «{username}»، الأسماء الموجودة: "
               + "، ".join(session.scalars(select(User.username))))
         return
     user.password_hash = hash_password(password, enforce_rules=False)

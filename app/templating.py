@@ -40,7 +40,7 @@ templates.env.globals.update(
         "daily": "يومي",
         "weekly": "أسبوعي",
         "monthly": "شهري",
-        "day_of_month": "يوم محدد بالشهر",
+        "day_of_month": "يوم محدد من الشهر",
         "quarterly": "ربع سنوي",
         "semiannual": "نصف سنوي",
         "annual": "سنوي",
@@ -53,9 +53,9 @@ templates.env.globals.update(
         "rejected": "مرفوضة",
     },
     FUNDING_LABELS={
-        "FULLY_FUNDED": "ممول بالكامل",
-        "PARTIAL": "ممول جزئيًا",
-        "UNFUNDED": "غير ممول",
+        "FULLY_FUNDED": "مموَّل بالكامل",
+        "PARTIAL": "مموَّل جزئيًا",
+        "UNFUNDED": "غير مموَّل",
         "NOT_REQUIRED": "غير مطلوب",
     },
 )

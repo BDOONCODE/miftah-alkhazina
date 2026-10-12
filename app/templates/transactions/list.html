@@ -4,12 +4,12 @@
 
 {% if can_edit %}
   {% if not policy %}
-  <div class="alert alert-warning">ما في سياسة نشطة. <a href="/entities/{{ entity.id }}/policy">حدد سياسة التقسيم</a> واعتمدها أول، عشان المبالغ تتقسّم.</div>
+  <div class="alert alert-warning">لا توجد سياسة نشطة. <a href="/entities/{{ entity.id }}/policy">حدد سياسة التقسيم</a> واعتمدها أولًا ليتم تقسيم المبالغ.</div>
   {% else %}
   <div class="intake">
     <section class="card">
       <h2>إدخال يدوي</h2>
-      <p class="muted">لمبلغ وصل وتبي تسجله بنفسك. يتقسّم فورًا حسب السياسة (نسخة {{ policy.version }}).</p>
+      <p class="muted">لتسجيل مبلغ وصل يدويًا، ويُقسَّم فورًا وفق السياسة (نسخة {{ policy.version }}).</p>
       <form method="post" class="stack">
         <div class="form-grid">
           <label>المبلغ (ر.س) *
@@ -37,8 +37,8 @@
         <h2>تلقائي من البنك <span class="pill">محاكاة</span></h2>
       </div>
       <p class="muted">
-        كأن البنك أرسل إشعار بوصول مبلغ: يمر بنفس مسار الربط البنكي الحقيقي، ويتقسّم بدون ما أحد يدخله.
-        لما يكتمل الربط مع نيوتك، الإيداعات الحقيقية توصل بنفس الطريقة.
+        يحاكي إشعارًا من البنك بوصول مبلغ: يمر بمسار الربط البنكي الحقيقي نفسه، ويُقسَّم دون إدخال يدوي.
+        وعند اكتمال الربط مع نيوتك، تصل الإيداعات الحقيقية بالطريقة نفسها.
       </p>
       {% if sources %}
       <form method="post" action="/entities/{{ entity.id }}/bank-simulator" class="stack" id="sim-form">
@@ -49,7 +49,7 @@
             </select>
           </label>
           <label>المبلغ (ر.س)
-            <input name="amount" inputmode="decimal" class="num" placeholder="فاضي = مبلغ عشوائي">
+            <input name="amount" inputmode="decimal" class="num" placeholder="فارغ = مبلغ عشوائي">
           </label>
         </div>
         <div class="form-actions">
@@ -61,7 +61,7 @@
       {% else %}
       <div class="alert alert-warning">
         أضف حساب <strong>مصدر إيراد</strong> أو <strong>مجمّع</strong> من
-        <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a> عشان تجرب الإيداع التلقائي.
+        <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a> لتجربة الإيداع التلقائي.
       </div>
       {% endif %}
     </section>
@@ -101,7 +101,7 @@
   </table>
   </div>
   {% else %}
-  <p class="muted">ما في معاملات بعد.</p>
+  <p class="muted">لا توجد معاملات بعد.</p>
   {% endif %}
 </section>
 {% endblock %}
@@ -120,29 +120,29 @@
     const send = async () => {
       const data = new FormData(form);
       data.set("amount", "");  // automatic mode always uses a random amount
-      status.textContent = "يرسل إيداع…";
+      status.textContent = "جارٍ إرسال الإيداع…";
       try {
         const r = await fetch(form.action, { method: "POST", body: data, headers: { Accept: "application/json" } });
         const body = await r.json();
-        if (!r.ok) { status.textContent = body.error || "ما انرسل"; stop(); return; }
+        if (!r.ok) { status.textContent = body.error || "تعذّر الإرسال"; stop(); return; }
         location.reload();
       } catch { status.textContent = "تعذّر الاتصال"; }
     };
     const start = () => {
       try { sessionStorage.setItem(key, "1"); } catch {}
       let left = 20;
-      status.textContent = `الإيداع الجاي بعد ${left} ثانية`;
+      status.textContent = `الإيداع التالي بعد ${left} ثانية`;
       timer = setInterval(() => {
         left -= 1;
         if (left <= 0) { clearInterval(timer); send(); }
-        else status.textContent = `الإيداع الجاي بعد ${left} ثانية`;
+        else status.textContent = `الإيداع التالي بعد ${left} ثانية`;
       }, 1000);
     };
     const stop = () => {
       clearInterval(timer);
       try { sessionStorage.removeItem(key); } catch {}
       auto.checked = false;
-      status.textContent = status.textContent.startsWith("الإيداع الجاي") ? "" : status.textContent;
+      status.textContent = status.textContent.startsWith("الإيداع التالي") ? "" : status.textContent;
     };
     auto.addEventListener("change", () => (auto.checked ? start() : stop()));
     let resume = false;

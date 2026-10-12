@@ -8,7 +8,7 @@
     [(p) => /[a-z]/.test(p), "حرف إنجليزي صغير (a-z)"],
     [(p) => /[0-9]/.test(p), "رقم (0-9)"],
     [(p) => /[!-\/:-@\[-`{-~]/.test(p), "رمز خاص مثل ! @ # $"],
-    [(p) => /^[!-~]*$/.test(p), "إنجليزي فقط (بدون عربي أو مسافات)"],
+    [(p) => /^[!-~]*$/.test(p), "أحرف إنجليزية فقط (دون حروف عربية أو مسافات)"],
   ];
 
   // Line icons (no emoji) that take the text color
@@ -55,7 +55,7 @@
         items[i].classList.toggle("bad", !pass && input.value.length > 0);  // red once they start typing
         ok = ok && pass;
       });
-      input.setCustomValidity(ok || !input.value ? "" : "كلمة المرور ما تحقق كل الشروط");
+      input.setCustomValidity(ok || !input.value ? "" : "كلمة المرور لا تستوفي جميع الشروط");
     };
     input.addEventListener("input", check);
     check();

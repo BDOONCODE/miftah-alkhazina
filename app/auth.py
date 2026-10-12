@@ -36,7 +36,7 @@ def current_user(user: User = Depends(current_user_any)) -> User:
 def require_role(*roles: Role):
     def checker(user: User = Depends(current_user)) -> User:
         if user.role not in roles:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "ما عندك صلاحية لهذا الإجراء")
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "ليست لديك صلاحية لهذا الإجراء")
         return user
 
     return checker

@@ -42,7 +42,7 @@
     <button type="button" class="btn-icon js-remove" title="حذف البند" aria-label="حذف البند">✕</button>
   </div>
   <div class="bucket-dest">
-    <label>المستفيد: الآيبان اللي يتحوّل له مبلغ البند
+    <label>المستفيد: الآيبان الذي يُحوَّل إليه مبلغ البند
       <select name="destination" class="js-dest" required>
         <option value="" {{ 'selected' if not dest }}>اختر الحساب…</option>
         {% for a in destinations %}
@@ -62,7 +62,7 @@
         </select>
       </label>
     </div>
-    {% if r.legacy_destination %}<small class="muted">كانت مكتوبة: {{ r.legacy_destination }}</small>{% endif %}
+    {% if r.legacy_destination %}<small class="muted">القيمة السابقة: {{ r.legacy_destination }}</small>{% endif %}
   </div>
 </div>
 {% endmacro %}
@@ -82,32 +82,32 @@
       <span class="muted">مجموع النسب: <strong class="num js-pct-total">{{ '%g' % pct_total }}%</strong></span>
     </div>
     <p class="muted">
-      كل مبلغ يدخل الحساب يمر على البنود <strong>بالترتيب حسب الأولوية</strong>: الأولوية 1 تاخذ نصيبها أول، وبعدها 2،
-      وهكذا. اللي يتبقى بعد كل البنود يظهر كـ<strong>فائض</strong>.
+      كل مبلغ يدخل الحساب يمر على البنود <strong>بالترتيب حسب الأولوية</strong>: تأخذ الأولوية 1 نصيبها أولًا، ثم 2،
+      وهكذا. وما يتبقى بعد جميع البنود يظهر <strong>فائضًا</strong>.
     </p>
     <details class="help">
-      <summary>وش معنى «المستفيد» و«الاستحقاق» و«محمي»؟</summary>
+      <summary>ما المقصود بـ«المستفيد» و«الاستحقاق» و«محمي»؟</summary>
       <dl>
         <dt>ضريبة القيمة المضافة</dt>
-        <dd>المبلغ اللي يدخل فيه الضريبة أصلًا (قيمة البيع + ١٥٪). لبند الضريبة اختر النوع
-          «ضريبة القيمة المضافة» واكتب ١٥: النظام يحجز الضريبة اللي داخل المبلغ بالضبط، ١٥ من كل ١١٥ ريال.
-          النوع «نسبة» يحسب من المبلغ كامل، فلو استخدمته للضريبة يحجز أكثر من المستحق.</dd>
+        <dd>المبلغ الوارد يتضمن الضريبة أصلًا (قيمة البيع + ١٥٪). لبند الضريبة اختر النوع
+          «ضريبة القيمة المضافة» واكتب ١٥، فيحجز النظام الضريبة المتضمَّنة في المبلغ بدقة: ١٥ من كل ١١٥ ريالًا.
+          أما النوع «نسبة» فيُحسب من المبلغ كاملًا، فإن استُخدم للضريبة حجز أكثر من المستحق.</dd>
         <dt>المستفيد</dt>
-        <dd>الآيبان اللي يتحوّل له مبلغ البند: جهة خارجية (مانح الامتياز، المؤجر، الزكاة والدخل) أو حساب للمالك أو الشركة (الأرباح، الاحتياطي).
-          اختر حساب مسجّل، أو «+ آيبان جديد» وينضاف تلقائيًا لتبويب <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a>.</dd>
-        <dt>متى يتحوّل</dt>
-        <dd>حسب <strong>الاستحقاق</strong>: «فوري (بدون موعد)» يتحوّل أول ما يتقسّم الدخل.
-          وأي موعد ثاني (يومي، شهري، نصف سنوي…) يتجمّع المبلغ محجوز ويتحوّل كامل <strong>يوم الاستحقاق</strong>.
-          تتابع المحجوز في <a href="/entities/{{ entity.id }}/balances">أرصدة البنود</a>.</dd>
+        <dd>الآيبان الذي يُحوَّل إليه مبلغ البند: جهة خارجية (مانح الامتياز، المؤجر، هيئة الزكاة والضريبة والجمارك) أو حساب للمالك أو الشركة (الأرباح، الاحتياطي).
+          اختر حسابًا مسجلًا، أو «+ آيبان جديد» ليُضاف تلقائيًا إلى تبويب <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a>.</dd>
+        <dt>موعد التحويل</dt>
+        <dd>وفق <strong>الاستحقاق</strong>: البند «فوري (بدون موعد)» يُحوَّل فور تقسيم الدخل.
+          ومع أي موعد آخر (يومي، شهري، نصف سنوي…) يُحجز المبلغ ويتجمع ثم يُحوَّل كاملًا في <strong>يوم الاستحقاق</strong>.
+          يمكنك متابعة المحجوز في <a href="/entities/{{ entity.id }}/balances">أرصدة البنود</a>.</dd>
         <dt>محمي 🔒</dt>
-        <dd>بند حساس ما نبي أحد يغيّره بسهولة (مثل الضريبة أو الرواتب). بعد ما يتموّل في الفترة الحالية، أي تغيير على
-          قيمته أو أولويته أو استحقاقه أو حذفه يحتاج <strong>تبرير مكتوب</strong> يشوفه المراجع وينحفظ في السجل.</dd>
+        <dd>بند حساس لا ينبغي تغييره بسهولة (مثل الضريبة أو الرواتب). بعد تمويله في الفترة الحالية، يتطلب أي تغيير على
+          قيمته أو أولويته أو استحقاقه أو حذفه <strong>تبريرًا مكتوبًا</strong> يطّلع عليه المراجع ويُحفظ في السجل.</dd>
       </dl>
     </details>
     {% if not has_income %}
     <div class="alert alert-warning">
-      ما في حسابات دخل للشركة. <a href="/entities/{{ entity.id }}/accounts">أضف من الحسابات البنكية</a>
-      حسابات نقاط البيع، أو الحساب الرئيسي اللي تنزل فيه كل المبالغ.
+      لا توجد حسابات دخل للشركة. <a href="/entities/{{ entity.id }}/accounts">أضف من الحسابات البنكية</a>
+      حسابات نقاط البيع، أو الحساب الرئيسي الذي تُودَع فيه جميع المبالغ.
     </div>
     {% endif %}
 
@@ -119,9 +119,9 @@
     <template id="row-template">{{ row({'bucket_id': '', 'name': '', 'priority': '', 'calc_type': 'percentage', 'value': '', 'frequency': 'immediate', 'settlement_day': '', 'due_date': '', 'destination': '', 'dest_iban': '', 'dest_kind': 'external', 'legacy_destination': '', 'protected': '0'}) }}</template>
     <div><button type="button" class="btn" id="add-row">+ إضافة بند</button></div>
 
-    <label class="surplus-field">الفائض (المتبقي بعد كل البنود) يروح إلى
+    <label class="surplus-field">يُحوَّل الفائض (المتبقي بعد جميع البنود) إلى
       <select name="surplus_account">
-        <option value="">يبقى في الحساب المجمّع</option>
+        <option value="">يبقى في حساب الدخل</option>
         {% for a in destinations if a.kind.value != 'pool' %}
         <option value="{{ a.id }}" {{ 'selected' if surplus_account == a.id|string }}>{{ a.name }} · {{ KIND_LABELS[a.kind.value] }} · ••{{ a.iban[-4:] }}</option>
         {% endfor %}
@@ -136,7 +136,7 @@
   <section class="card">
     {% if protected_changes %}
     <div class="alert alert-warning">
-      هذي التعديلات تمس بنودًا محمية تموّلت في الفترة الحالية: {{ protected_changes | join('، ') }}
+      تمس هذه التعديلات بنودًا محمية مُوِّلت في الفترة الحالية: {{ protected_changes | join('، ') }}
     </div>
     <label>التبرير (20 حرفًا على الأقل) *
       <textarea name="justification" rows="2" minlength="20"></textarea>
@@ -151,7 +151,7 @@
   </section>
 </form>
 
-<form method="post" action="/policies/{{ policy.id }}/discard" onsubmit="return confirm('تحذف المسودة؟')">
+<form method="post" action="/policies/{{ policy.id }}/discard" onsubmit="return confirm('هل تريد حذف المسودة؟')">
   <button class="btn-link danger" type="submit">حذف المسودة</button>
 </form>
 {% endblock %}

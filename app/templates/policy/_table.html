@@ -1,7 +1,7 @@
 {% macro buckets_table(policy) %}
 <table class="table">
   <thead>
-    <tr><th>الأولوية</th><th>البند</th><th>النوع</th><th>القيمة</th><th>الاستحقاق (متى يتحوّل)</th><th>المستفيد</th><th></th></tr>
+    <tr><th>الأولوية</th><th>البند</th><th>النوع</th><th>القيمة</th><th>الاستحقاق (موعد التحويل)</th><th>المستفيد</th><th></th></tr>
   </thead>
   <tbody>
   {% for b in policy.buckets %}
@@ -12,7 +12,7 @@
       <td class="num">{{ b.value | pct if b.calc_type.is_rate else (b.value | sar) ~ ' ر.س' }}</td>
       <td>{{ FREQ_LABELS[b.frequency.value] }}{% if b.settlement_day %} ({{ b.settlement_day }}){% endif %}{% if b.due_date %} · يستحق <span class="num">{{ b.due_date }}</span>{% endif %}</td>
       <td>{{ b.destination or '—' }}</td>
-      <td>{% if b.protected %}<span class="pill pill-protected" title="أي تعديل عليه بعد التمويل يحتاج تبرير">🔒 محمي</span>{% endif %}</td>
+      <td>{% if b.protected %}<span class="pill pill-protected" title="أي تعديل عليه بعد التمويل يتطلب تبريرًا">🔒 محمي</span>{% endif %}</td>
     </tr>
   {% endfor %}
   </tbody>
@@ -37,7 +37,7 @@
 {% if policy.status.value == 'pending' %}
   {% if not can_decide %}
     {% if policy.created_by == user.id %}
-    <p class="muted">أنشأت هذي السياسة بنفسك، فاعتمادها يكون من المراجع. تقدر تغيّر طريقة الاعتماد من «بيانات الشركة».</p>
+    <p class="muted">أنشأت هذه السياسة بنفسك، لذا يعتمدها المراجع. يمكنك تغيير طريقة الاعتماد من «بيانات الشركة».</p>
     {% endif %}
   {% else %}
   <div class="decision">

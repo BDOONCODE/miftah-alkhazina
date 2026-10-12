@@ -133,7 +133,7 @@ def login(
     ip = request.client.host if request.client else "?"
     if throttle.is_blocked(ip, username):
         return templates.TemplateResponse(
-            request, "login.html", {"error": "محاولات دخول كثيرة. حاول بعد ١٠ دقائق"}, status_code=429
+            request, "login.html", {"error": "محاولات دخول كثيرة. حاول مرة أخرى بعد ١٠ دقائق"}, status_code=429
         )
     user = find_by_login(session, username)
     if user is None or not user.is_active or not verify_password(user.password_hash, password):

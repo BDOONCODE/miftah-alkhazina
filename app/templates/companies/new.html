@@ -15,13 +15,13 @@
     {{ company_fields(form) }}
   </section>
   <section class="card">
-    <h2>مين يعتمد سياسة التقسيم؟</h2>
+    <h2>من يعتمد سياسة التقسيم؟</h2>
     {% set mode = form.approval_mode or 'self' %}
     {% for key, label in APPROVAL_MODES.items() %}
     <label class="radio">
       <input type="radio" name="approval_mode" value="{{ key }}" {{ 'checked' if mode == key }} class="js-mode">
       <span><strong>{{ label }}</strong><br>
-        <small class="muted">{{ 'تبني السياسة وتعتمدها مباشرة.' if key == 'self' else 'شخص ثاني يراجعها ويعتمدها، مثل صاحب الشركة أو المدير المالي.' }}</small>
+        <small class="muted">{{ 'تبني السياسة وتعتمدها مباشرة.' if key == 'self' else 'شخص آخر يراجعها ويعتمدها، مثل صاحب الشركة أو المدير المالي.' }}</small>
       </span>
     </label>
     {% endfor %}
@@ -30,7 +30,7 @@
       {{ reviewer_fields(form) }}
     </div>
   </section>
-  <p class="muted">الخطوة الجاية: تضيف حسابات الشركة البنكية (الحساب المجمّع وحسابات نقاط البيع ومدى والتوصيل).</p>
+  <p class="muted">الخطوة التالية: إضافة حسابات الشركة البنكية (حسابات نقاط البيع ومدى والتوصيل، أو الحساب الرئيسي).</p>
   <div><button class="btn btn-primary" type="submit">تسجيل الشركة والمتابعة ←</button></div>
 </form>
 <script>

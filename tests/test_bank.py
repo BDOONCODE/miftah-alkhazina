@@ -73,10 +73,12 @@ def test_accounts_validation(client, db, company):
     assert "مجمّع" in client.get(f"/entities/{company.id}/accounts").text
 
 
-def test_accounts_page_only_adds_income_accounts(client, db, company):
-    assert add(client, company, "المؤجر", LANDLORD, "external").status_code == 303
-    assert add(client, company, "حساب الضريبة", TAX, "sub").status_code == 303
-    assert db.query(models.BankAccount).count() == 0
+def test_accounts_page_lists_income_and_beneficiaries_separately(client, db, company):
+    add(client, company, "نقاط البيع", POS, "source")
+    add(client, company, "المؤجر", LANDLORD, "external")
+    add(client, company, "حساب الضريبة", TAX, "sub")
+    kinds = {a.name: a.kind for a in db.query(models.BankAccount)}
+    assert kinds == {"نقاط البيع": AccountKind.SOURCE, "المؤجر": AccountKind.EXTERNAL, "حساب الضريبة": AccountKind.SUB}
     page = client.get(f"/entities/{company.id}/accounts").text
     assert "حسابات الشركة (الدخل)" in page and "المستفيدون (الخروج)" in page
 
@@ -184,7 +186,7 @@ def test_every_item_needs_beneficiary(client, db, company):
     client.post(f"/policies/{draft.id}/edit", data=_draft_form(destination=[""]))
     db.refresh(draft)
     assert draft.status is models.PolicyStatus.DRAFT
-    assert "ما له مستفيد" in client.get(f"/policies/{draft.id}/edit").text
+    assert "ليس له مستفيد" in client.get(f"/policies/{draft.id}/edit").text
 
 
 def test_new_iban_from_policy_creates_account(client, db, company):

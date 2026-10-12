@@ -46,7 +46,7 @@ class UTCDateTime(TypeDecorator):
         if value is None:
             return None
         if value.tzinfo is None:
-            raise ValueError("الوقت لازم يكون بمنطقة زمنية")
+            raise ValueError("يجب أن يتضمن الوقت المنطقة الزمنية")
         return value.astimezone(timezone.utc).replace(tzinfo=None)
 
     def process_result_value(self, value: datetime | None, dialect):

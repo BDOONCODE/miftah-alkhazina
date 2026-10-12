@@ -33,7 +33,7 @@ class SimulatedProvider:
 
     def transfer(self, *, from_ref: str, to_iban: str, amount: int, reference: str) -> str:
         if amount <= 0:
-            raise BankingError("مبلغ التحويل لازم يكون أكبر من صفر")
+            raise BankingError("يجب أن يكون مبلغ التحويل أكبر من صفر")
         return f"sim-tr-{uuid.uuid4().hex[:12]}"
 
 

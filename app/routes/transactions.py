@@ -85,7 +85,7 @@ async def add_transaction(
         flash(request, f"تحقق من المبلغ والتاريخ: {exc}", "error")
         return redirect(f"/entities/{entity_id}/transactions")
     if occurred_at > utcnow() + timedelta(minutes=5):
-        flash(request, "تاريخ المعاملة ما يصير في المستقبل", "error")
+        flash(request, "لا يمكن أن يكون تاريخ المعاملة في المستقبل", "error")
         return redirect(f"/entities/{entity_id}/transactions")
     try:
         source_id = str(form.get("source_account_id", ""))
@@ -133,7 +133,7 @@ async def simulate_bank_credit(
     session.commit()
     if wants_json:
         return JSONResponse({"transaction_id": txn.id, "amount": txn.amount / 100, "surplus": txn.surplus / 100})
-    flash(request, f"وصل إيداع من «{account.name}» وتقسّم تلقائيًا")
+    flash(request, f"وصل إيداع من «{account.name}» وقُسِّم تلقائيًا")
     return redirect(f"/transactions/{txn.id}")
 
 
@@ -181,5 +181,5 @@ async def reverse(request: Request, txn_id: int, user: User = Depends(editor), s
         flash(request, str(exc), "error")
         return redirect(f"/transactions/{txn_id}")
     session.commit()
-    flash(request, "انعكست المعاملة ورجعت أرصدة البنود كما كانت قبلها")
+    flash(request, "عُكست المعاملة وأُعيدت أرصدة البنود إلى ما كانت عليه قبلها")
     return redirect(f"/transactions/{reversal.id}")

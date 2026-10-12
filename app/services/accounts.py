@@ -15,10 +15,10 @@ KIND_LABELS = {
     AccountKind.EXTERNAL.value: "جهة خارجية",
 }
 KIND_HINTS = {
-    AccountKind.SOURCE.value: "حساب تنزل فيه المبيعات مباشرة: نقاط البيع، مدى/فيزا، تطبيقات التوصيل. تقدر تضيف أكثر من واحد",
-    AccountKind.POOL.value: "حساب رئيسي تنزل فيه كل المبالغ. اختره لو ما تبي تربط حسابات نقاط البيع واحد واحد. حساب واحد لكل شركة",
-    AccountKind.SUB.value: "حساب ثاني تملكه الشركة، مثل حساب أرباح المالك أو حساب الرواتب",
-    AccountKind.EXTERNAL.value: "حساب جهة تتحوّل لها فلوس: مانح الامتياز، المؤجر، مورد",
+    AccountKind.SOURCE.value: "حساب تُودَع فيه المبيعات مباشرة: نقاط البيع، ومدى/فيزا، وتطبيقات التوصيل. يمكن إضافة أكثر من حساب",
+    AccountKind.POOL.value: "حساب رئيسي تُودَع فيه جميع المبالغ، ويُختار بدلًا من ربط حسابات نقاط البيع كلًّا على حدة. حساب واحد لكل شركة",
+    AccountKind.SUB.value: "حساب آخر يملكه المالك أو الشركة، مثل حساب الأرباح أو حساب الرواتب",
+    AccountKind.EXTERNAL.value: "حساب جهة تُحوَّل إليها المبالغ: مانح الامتياز، أو المؤجر، أو المورد",
 }
 # Income accounts: where money comes in (managed on the bank accounts page)
 INCOME_KINDS = (AccountKind.SOURCE, AccountKind.POOL)
@@ -60,15 +60,15 @@ def add_account(
     if not name:
         raise AccountError("اسم الحساب مطلوب")
     if not IBAN_RE.match(iban):
-        raise AccountError("الآيبان السعودي يبدأ بـSA وبعده 22 رقمًا")
+        raise AccountError("يبدأ الآيبان السعودي بـSA ويليه 22 رقمًا")
     try:
         account_kind = AccountKind(kind)
     except ValueError as exc:
         raise AccountError("اختر نوع الحساب") from exc
     if session.scalar(select(BankAccount).where(BankAccount.entity_id == entity.id, BankAccount.iban == iban)):
-        raise AccountError("هذا الآيبان مسجّل لهذي الشركة")
+        raise AccountError("هذا الآيبان مسجل لهذه الشركة")
     if account_kind is AccountKind.POOL and pool_account(session, entity.id):
-        raise AccountError("الشركة لها حساب مجمّع. عطّل الحالي أول لو تبي تغيّره")
+        raise AccountError("للشركة حساب مجمّع بالفعل. عطّل الحساب الحالي أولًا إذا أردت تغييره")
 
     account = BankAccount(entity_id=entity.id, name=name, bank_name=bank_name.strip(), iban=iban, kind=account_kind)
     session.add(account)
@@ -86,7 +86,7 @@ def add_account(
 
 def toggle_account(session: Session, account: BankAccount, user: User) -> None:
     if not account.is_active and account.kind is AccountKind.POOL and pool_account(session, account.entity_id):
-        raise AccountError("فيه حساب مجمّع نشط. عطّله أول")
+        raise AccountError("يوجد حساب مجمّع نشط. عطّله أولًا")
     account.is_active = not account.is_active
     session.add(
         AuditLog(

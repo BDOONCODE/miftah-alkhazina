@@ -3,7 +3,7 @@
 {% block content %}
 <div class="login-card card wide">
   <h1>🔑 إنشاء حساب</h1>
-  <p class="muted">سجّل، وأكّد بريدك، وابدأ تقسّم إيرادات شركتك.</p>
+  <p class="muted">أنشئ حسابك، وأكّد بريدك، وابدأ بتقسيم إيرادات شركتك.</p>
   {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
   <form method="post" action="/signup" class="stack">
     <fieldset class="stack plain">
@@ -13,7 +13,7 @@
       <label class="radio">
         <input type="radio" name="account_type" value="{{ key }}" {{ 'checked' if chosen == key }} required>
         <span><strong>{{ label }}</strong><br>
-          <small class="muted">{{ 'أدير تقسيم شركتي بنفسي.' if key == 'business' else 'أدير شركات عملائي، ومعي فريق محاسبين.' }}</small>
+          <small class="muted">{{ 'أدير تقسيم شركتي بنفسي.' if key == 'business' else 'أدير شركات عملائي مع فريق من المحاسبين.' }}</small>
         </span>
       </label>
       {% endfor %}
@@ -29,6 +29,6 @@
     </label>
     <button type="submit" class="btn btn-primary">إنشاء الحساب</button>
   </form>
-  <div class="auth-links"><span>عندك حساب؟ <a href="/login">سجّل دخولك</a></span></div>
+  <div class="auth-links"><span>لديك حساب؟ <a href="/login">سجّل دخولك</a></span></div>
 </div>
 {% endblock %}

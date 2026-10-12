@@ -4,9 +4,9 @@
 <div class="login-card card">
   <h1>📧 أكّد بريدك</h1>
   <p>أرسلنا رابط تأكيد إلى{% if email %} <strong dir="ltr">{{ email }}</strong>{% else %} بريدك{% endif %}.</p>
-  <p class="muted">افتح الرسالة واضغط «تأكيد البريد» عشان يتفعّل حسابك. لو ما لقيتها، شوف مجلد الرسائل غير المرغوبة (Spam).</p>
+  <p class="muted">افتح الرسالة واضغط «تأكيد البريد» لتفعيل حسابك. إذا لم تجدها، فراجع مجلد الرسائل غير المرغوب فيها (Spam).</p>
   <form method="post" action="/verify-email/resend" class="stack">
-    <label>ما وصلتك؟ أرسل الرابط مرة ثانية إلى:
+    <label>لم تصلك؟ أعد إرسال الرابط إلى:
       <input name="email" type="email" value="{{ email }}" required dir="ltr">
     </label>
     <button class="btn btn-primary" type="submit">إعادة الإرسال</button>

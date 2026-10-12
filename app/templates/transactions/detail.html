@@ -31,7 +31,7 @@
   </table>
 
   {% if payouts %}
-  <h3>تحوّل فورًا للمستفيدين</h3>
+  <h3>حُوِّل فورًا إلى المستفيدين</h3>
   <table class="table">
     <thead><tr><th>من بند</th><th>المبلغ</th><th>إلى</th><th>الحالة</th></tr></thead>
     <tbody>
@@ -55,15 +55,15 @@
     {% if source_account %}<div><dt>حساب المصدر</dt><dd>{{ source_account.name }} <span class="muted small num">{{ source_account.iban }}</span></dd></div>{% endif %}
     {% if txn.note %}<div><dt>{{ 'سبب التصحيح' if txn.reversal_of else 'ملاحظة' }}</dt><dd>{{ txn.note }}</dd></div>{% endif %}
     {% if original %}<div><dt>تعكس</dt><dd><a href="/transactions/{{ original.id }}">معاملة #{{ original.id }}</a></dd></div>{% endif %}
-    {% if reversal %}<div><dt>انعكست بـ</dt><dd><a href="/transactions/{{ reversal.id }}">قيد #{{ reversal.id }}</a></dd></div>{% endif %}
+    {% if reversal %}<div><dt>عُكست بـ</dt><dd><a href="/transactions/{{ reversal.id }}">قيد #{{ reversal.id }}</a></dd></div>{% endif %}
   </dl>
 
   {% if can_reverse and user.role.value in ("accountant", "admin") %}
   <details>
-    <summary>تصحيح: عكس هذي المعاملة</summary>
+    <summary>تصحيح: عكس هذه المعاملة</summary>
     <form method="post" action="/transactions/{{ txn.id }}/reverse" class="stack">
-      <p class="muted">يرجّع أرصدة البنود كما كانت قبل المعاملة، ويبقى الأصل والعكس في السجل.</p>
-      <label>سبب التصحيح *<input name="reason" required placeholder="مثال: المبلغ مُدخل بالغلط"></label>
+      <p class="muted">يعيد أرصدة البنود إلى ما كانت عليه قبل المعاملة، ويبقى الأصل والقيد العكسي في السجل.</p>
+      <label>سبب التصحيح *<input name="reason" required placeholder="مثال: أُدخل المبلغ بالخطأ"></label>
       <div><button class="btn btn-danger" type="submit">عكس المعاملة</button></div>
     </form>
   </details>

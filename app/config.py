@@ -29,7 +29,7 @@ def _secret_key() -> str:
     if key := os.environ.get("SECRET_KEY"):
         return key
     if IS_PRODUCTION:
-        raise RuntimeError("SECRET_KEY لازم يتحدد في متغيرات البيئة للإنتاج")
+        raise RuntimeError("يجب تحديد SECRET_KEY في متغيرات البيئة للإنتاج")
     key_file = BASE_DIR / ".secret_key"
     if not key_file.exists():
         key_file.write_text(secrets.token_urlsafe(48), encoding="utf-8")

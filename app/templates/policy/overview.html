@@ -11,11 +11,11 @@
       <a class="btn btn-primary" href="/policies/{{ open.id }}/edit">✎ متابعة التعديل</a>
     {% elif open.status.value == 'pending' and can_edit %}
       <form method="post" action="/policies/{{ open.id }}/withdraw">
-        <button class="btn" type="submit" title="ترجع مسودة، تعدّل عليها وترسلها مرة ثانية">✎ سحب للتعديل</button>
+        <button class="btn" type="submit" title="تُعاد مسودة لتعديلها وإرسالها مرة أخرى">✎ سحب للتعديل</button>
       </form>
     {% endif %}
   </div>
-  {% if open.buckets %}{{ buckets_table(open) }}{% else %}<p class="muted">المسودة فاضية.</p>{% endif %}
+  {% if open.buckets %}{{ buckets_table(open) }}{% else %}<p class="muted">المسودة فارغة.</p>{% endif %}
   {% if open_changes %}
   <div class="alert alert-warning">تعديلات على بنود محمية: {{ open_changes | join('، ') }}</div>
   {% endif %}
@@ -24,8 +24,8 @@
   <div class="alert alert-warning">
     بانتظار اعتماد المراجع:
     {% for r in entity.reviewers %}<strong>{{ r.full_name }}</strong> (<span dir="ltr">{{ r.username }}</span>){{ '، ' if not loop.last }}{% endfor %}.
-    المراجع يدخل بحسابه{% if entity.reviewers | selectattr('must_change_password') | list %} (أول دخول بكلمة المرور المؤقتة اللي حددتها عند تسجيل الشركة){% endif %}
-    ويفتح هذي الصفحة ويضغط «اعتماد». أنت كمحاسب ما تقدر تعتمد سياستك بنفسك.
+    يسجّل المراجع الدخول بحسابه{% if entity.reviewers | selectattr('must_change_password') | list %} (أول دخول بكلمة المرور المؤقتة التي حددتها عند تسجيل الشركة){% endif %}
+    ثم يفتح هذه الصفحة ويضغط «اعتماد». ولا يمكنك بصفتك محاسبًا اعتماد سياستك بنفسك.
   </div>
   {% endif %}
   {{ decision_forms(open, user, can_decide) }}
@@ -44,7 +44,7 @@
   <div class="alert alert-error">
     رفضها {{ rejected.decider.full_name }}: {{ rejected.decision_note }}
   </div>
-  {% if can_edit %}<p class="muted">التعديل يبدأ من نفس بنود النسخة المرفوضة، فما تحتاج تعيد كتابتها.</p>{% endif %}
+  {% if can_edit %}<p class="muted">يبدأ التعديل من بنود النسخة المرفوضة نفسها، فلا حاجة لإعادة كتابتها.</p>{% endif %}
 </section>
 {% endif %}
 
@@ -58,11 +58,11 @@
     {% endif %}
   </div>
   {% if active %}
-    <p class="muted">نسخة {{ active.version }} — أي مبلغ يدخل حساب الشركة يتقسم حسب هذي البنود بالترتيب.</p>
+    <p class="muted">نسخة {{ active.version }} — يُقسَّم أي مبلغ يصل إلى حسابات الشركة وفق هذه البنود بالترتيب.</p>
     {{ buckets_table(active) }}
     {{ policy_meta(active) }}
   {% else %}
-    <p class="muted">ما في سياسة نشطة. المبالغ الواردة ما تتقسم إلا بعد ما يعتمد المراجع السياسة.</p>
+    <p class="muted">لا توجد سياسة نشطة. لا تُقسَّم المبالغ الواردة إلا بعد اعتماد السياسة.</p>
   {% endif %}
 </section>
 

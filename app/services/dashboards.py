@@ -130,7 +130,7 @@ def save_custom_metric(
         raise DashboardError("تنسيق غير معروف")
     duplicate = session.scalar(select(CustomMetric).where(CustomMetric.entity_id == entity_id, CustomMetric.name == name))
     if duplicate is not None and duplicate is not metric:
-        raise DashboardError(f"في مؤشر بنفس الاسم «{name}»")
+        raise DashboardError(f"يوجد مؤشر بالاسم نفسه «{name}»")
     allowed = m.variable_names(m.snapshot(session, entity_id, m.resolve_range("this_month")))
     try:
         formula.validate(expr, allowed)

@@ -42,7 +42,7 @@ def _validate_company(data: CompanyInput) -> None:
         raise CompanyError("اسم الشركة مطلوب")
     iban = data.iban.replace(" ", "").upper()
     if iban and not re.fullmatch(r"SA\d{22}", iban):
-        raise CompanyError("رقم الآيبان السعودي يبدأ بـSA وبعده 22 رقمًا")
+        raise CompanyError("يبدأ الآيبان السعودي بـSA ويليه 22 رقمًا")
 
 
 def _apply(entity: Entity, data: CompanyInput) -> None:
@@ -60,7 +60,7 @@ def create_user(
     if not full_name.strip():
         raise CompanyError("الاسم الكامل مطلوب")
     if not USERNAME_RE.match(username):
-        raise CompanyError("اسم المستخدم بالإنجليزي أو أرقام (3 أحرف على الأقل، بدون مسافات)")
+        raise CompanyError("اسم المستخدم بأحرف إنجليزية أو أرقام (3 أحرف على الأقل، دون مسافات)")
     if session.scalar(select(User).where(User.username == username)):
         raise CompanyError(f"اسم المستخدم «{username}» مستخدم مسبقًا")
     try:
@@ -94,7 +94,7 @@ def register_company(
     if approval_mode not in ("self", "reviewer"):
         raise CompanyError("طريقة اعتماد غير معروفة")
     if approval_mode == "reviewer" and reviewer is None:
-        raise CompanyError("حدد المراجع اللي يعتمد السياسات، أو اختر إنك تعتمدها بنفسك")
+        raise CompanyError("حدد المراجع الذي يعتمد السياسات، أو اختر اعتمادها بنفسك")
     entity = Entity(created_by=accountant.id, approval_mode=approval_mode)
     _apply(entity, company)
     session.add(entity)

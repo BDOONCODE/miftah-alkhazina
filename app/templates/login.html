@@ -8,8 +8,8 @@
   {% if unverified_email %}
   <form method="post" action="/verify-email/resend" class="alert alert-warning">
     <input type="hidden" name="email" value="{{ unverified_email }}">
-    بريدك ما تأكد للحين. افتح رسالة التأكيد، أو
-    <button class="btn-link" type="submit">أرسل لي رابط جديد</button>
+    لم يُؤكَّد بريدك بعد. افتح رسالة التأكيد، أو
+    <button class="btn-link" type="submit">أرسل لي رابطًا جديدًا</button>
   </form>
   {% endif %}
   <form method="post" action="/login" class="stack">
@@ -23,7 +23,7 @@
   </form>
   <div class="auth-links">
     <a href="/forgot-password">نسيت كلمة المرور؟</a>
-    <span>ما عندك حساب؟ <a href="/signup">إنشاء حساب</a></span>
+    <span>ليس لديك حساب؟ <a href="/signup">إنشاء حساب</a></span>
   </div>
 </div>
 {% endblock %}

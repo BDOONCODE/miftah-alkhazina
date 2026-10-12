@@ -65,7 +65,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items }),
-      }).then((r) => { if (!r.ok) alert("ما انحفظ الترتيب، حاول مرة ثانية"); });
+      }).then((r) => { if (!r.ok) alert("لم يُحفظ الترتيب، حاول مرة أخرى"); });
       setTimeout(resizeCharts, 50);
     });
   }

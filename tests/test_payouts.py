@@ -117,7 +117,7 @@ def test_due_payout_leaves_new_period_money(db, setup, monkeypatch):
 def test_reversal_blocked_after_money_left(db, setup):
     entity, user, *_ = setup
     txn = deposit(db, entity, user, 10_000 * SAR, 10)
-    with pytest.raises(tx.TransactionError, match="تحوّل للمستفيدين"):
+    with pytest.raises(tx.TransactionError, match="حُوِّل جزء من هذه المعاملة"):
         tx.reverse_transaction(db, txn, user, "غلط")
 
 

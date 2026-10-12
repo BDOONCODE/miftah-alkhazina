@@ -2,7 +2,7 @@
 {% block entity_content %}
 <section class="card">
   <h2>سجل التدقيق</h2>
-  <p class="muted">كل إجراء على هذي الشركة: مين سوّاه ومتى. السجل ما يتعدّل ولا ينحذف.</p>
+  <p class="muted">جميع الإجراءات على هذه الشركة: من نفّذها ومتى. لا يمكن تعديل السجل أو حذفه.</p>
   <div class="table-scroll">
   <table class="table">
     <thead><tr><th>الوقت</th><th>المستخدم</th><th>الإجراء</th><th>التفاصيل</th></tr></thead>
@@ -24,7 +24,7 @@
           {% if e.details.reviewer %}المراجع: {{ e.details.reviewer }}{% endif %}
         </td>
       </tr>
-    {% else %}<tr><td colspan="4" class="muted">ما في سجلات.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="4" class="muted">لا توجد سجلات.</td></tr>{% endfor %}
     </tbody>
   </table>
   </div>

@@ -93,7 +93,7 @@ def allocate(
 ) -> AllocationResult:
     """Distribute `amount` (halalas) across the items by priority, with no side effects."""
     if amount <= 0:
-        raise ValueError("مبلغ المعاملة لازم يكون أكبر من صفر")
+        raise ValueError("يجب أن يكون مبلغ المعاملة أكبر من صفر")
 
     # Validate every item before computing anything, so a rejection is all-or-nothing
     rolled: dict[int, tuple[BucketState, PeriodClosure | None]] = {

@@ -19,24 +19,24 @@ def validate_policy(buckets: Sequence[BucketSpec]) -> list[str]:
     """Return a list of errors (in Arabic, shown to the user); an empty list means the policy is valid."""
     errors: list[str] = []
     if not buckets:
-        return ["السياسة لازم يكون فيها بند واحد على الأقل"]
+        return ["يجب أن تحتوي السياسة على بند واحد على الأقل"]
 
     priorities = [b.priority for b in buckets]
     if len(set(priorities)) != len(priorities):
-        errors.append("كل بند لازم تكون له أولوية مختلفة")
+        errors.append("يجب أن تكون لكل بند أولوية مختلفة")
 
     for b in buckets:
         label = f"البند «{b.name or '؟'}»"
         if not b.name.strip():
-            errors.append("كل بند لازم يكون له اسم")
+            errors.append("يجب أن يكون لكل بند اسم")
         if b.value <= 0:
-            errors.append(f"{label}: القيمة لازم تكون أكبر من صفر")
+            errors.append(f"{label}: يجب أن تكون القيمة أكبر من صفر")
         if b.calc_type.is_rate and b.value > BASIS_POINTS_FULL:
-            errors.append(f"{label}: النسبة ما تتجاوز 100%")
+            errors.append(f"{label}: يجب ألا تتجاوز النسبة 100%")
         if b.frequency in ANCHORED_MONTHS and b.due_date is None:
             errors.append(f"{label}: حدد تاريخ الاستحقاق القادم")
         if b.frequency is Frequency.DAY_OF_MONTH and not (b.settlement_day and 1 <= b.settlement_day <= 31):
-            errors.append(f"{label}: حدد يوم الاستحقاق بين 1 و31")
+            errors.append(f"{label}: حدد يوم الاستحقاق من 1 إلى 31")
 
     pct_total = sum(effective_rate(b) for b in buckets if b.calc_type.is_rate)
     if pct_total > BASIS_POINTS_FULL:

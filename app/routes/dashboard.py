@@ -78,7 +78,7 @@ async def add_widget(request: Request, entity_id: int, user: User = Depends(edit
         flash(request, str(exc), "error")
         return redirect(f"/entities/{entity_id}/dashboard")
     session.commit()
-    flash(request, "انضاف العنصر للوحة")
+    flash(request, "تمت إضافة العنصر إلى اللوحة")
     return redirect(f"/entities/{entity_id}/dashboard")
 
 
@@ -135,10 +135,10 @@ async def save_metric(request: Request, entity_id: int, user: User = Depends(edi
         )
     except svc.DashboardError as exc:
         session.rollback()
-        flash(request, f"ما انحفظ المؤشر: {exc}", "error")
+        flash(request, f"لم يُحفظ المؤشر: {exc}", "error")
         return redirect(f"/entities/{entity_id}/dashboard#metrics")
     session.commit()
-    flash(request, f"انحفظ المؤشر «{saved.name}». تقدر تضيفه للوحة كبطاقة رقم")
+    flash(request, f"تم حفظ المؤشر «{saved.name}». يمكنك إضافته إلى اللوحة كبطاقة رقم")
     return redirect(f"/entities/{entity_id}/dashboard#metrics")
 
 
@@ -151,5 +151,5 @@ def delete_metric(request: Request, metric_id: int, user: User = Depends(editor)
     entity_id = metric.entity_id
     svc.delete_custom_metric(session, metric, user)
     session.commit()
-    flash(request, "انحذف المؤشر والعناصر اللي تعرضه")
+    flash(request, "تم حذف المؤشر والعناصر التي تعرضه")
     return redirect(f"/entities/{entity_id}/dashboard#metrics")

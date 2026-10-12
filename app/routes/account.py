@@ -35,7 +35,7 @@ async def change_password(
     elif confirm and new != confirm:
         error = "كلمتا المرور الجديدتان غير متطابقتين"
     elif new == current:
-        error = "اختر كلمة مرور مختلفة عن الحالية"
+        error = "اختر كلمة مرور مختلفة عن كلمة المرور الحالية"
     else:
         try:
             user.password_hash = hash_password(new)
@@ -46,7 +46,7 @@ async def change_password(
     user.must_change_password = False
     session.add(AuditLog(user_id=user.id, action="user.password_changed"))
     session.commit()
-    flash(request, "تغيّرت كلمة المرور")
+    flash(request, "تم تغيير كلمة المرور")
     return redirect("/")
 
 
@@ -96,7 +96,7 @@ async def reset_password(
     target.is_active = True
     session.add(AuditLog(user_id=user.id, action="user.password_reset", details={"username": target.username}))
     session.commit()
-    flash(request, f"تغيّرت كلمة مرور «{target.username}». أعطه الكلمة المؤقتة، وبيطلب منه النظام يغيّرها أول دخول")
+    flash(request, f"تم تغيير كلمة مرور «{target.username}». سلّمه كلمة المرور المؤقتة، وسيطلب منه النظام تغييرها عند أول دخول")
     return redirect("/admin/users")
 
 
@@ -112,7 +112,7 @@ def verify_email_manually(
     target.email_verified = True
     session.add(AuditLog(user_id=user.id, action="user.email_verified_by_admin", details={"username": target.username}))
     session.commit()
-    flash(request, f"تفعّل حساب «{target.username}». يقدر يدخل الحين")
+    flash(request, f"تم تفعيل حساب «{target.username}». يمكنه تسجيل الدخول الآن")
     return redirect("/admin/users")
 
 
@@ -120,7 +120,7 @@ def verify_email_manually(
 def toggle_user(request: Request, user_id: int, user: User = Depends(admin_only), session: Session = Depends(get_session)):
     target = session.get(User, user_id)
     if target is None or target.id == user.id:
-        flash(request, "ما يمكن تعطيل هذا الحساب", "error")
+        flash(request, "لا يمكن تعطيل هذا الحساب", "error")
         return redirect("/admin/users")
     target.is_active = not target.is_active
     session.add(

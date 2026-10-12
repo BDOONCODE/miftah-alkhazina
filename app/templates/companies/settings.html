@@ -6,13 +6,13 @@
   <section class="card">
     <h2>بيانات الشركة</h2>
     {{ company_fields(entity, readonly=not can_edit) }}
-    <p class="muted">آيبانات الشركة (المجمّع، المصادر، الحسابات الفرعية) في تبويب <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a>.</p>
+    <p class="muted">حسابات الشركة البنكية والمستفيدون في تبويب <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a>.</p>
     {% if can_edit %}<div><button class="btn btn-primary" type="submit">حفظ</button></div>{% endif %}
   </section>
 </form>
 
 <section class="card">
-  <h2>مين يعتمد سياسة التقسيم؟</h2>
+  <h2>من يعتمد سياسة التقسيم؟</h2>
   <form method="post" action="/entities/{{ entity.id }}/approval-mode" class="stack">
     {% for key, label in APPROVAL_MODES.items() %}
     <label class="radio">
@@ -20,8 +20,8 @@
       <span>
         <strong>{{ label }}</strong><br>
         <small class="muted">
-          {% if key == 'self' %}اللي يبني السياسة يعتمدها مباشرة بزر «حفظ واعتماد». الاعتماد ينسجّل في سجل التدقيق كاعتماد ذاتي.
-          {% else %}السياسة تروح للمراجع، وما تصير نشطة إلا بعد ما يعتمدها. اللي يبني السياسة ما يقدر يعتمدها بنفسه.{% endif %}
+          {% if key == 'self' %}يعتمد منشئ السياسة سياسته مباشرة بزر «حفظ واعتماد»، ويُسجَّل ذلك في سجل التدقيق اعتمادًا ذاتيًا.
+          {% else %}تُرسل السياسة إلى المراجع، ولا تصبح نشطة إلا بعد اعتماده لها. ولا يمكن لمنشئ السياسة اعتمادها بنفسه.{% endif %}
         </small>
       </span>
     </label>
@@ -31,7 +31,7 @@
 </section>
 
 <section class="card">
-  <h2>المراجعين</h2>
+  <h2>المراجعون</h2>
   {% if entity.reviewers %}
   <table class="table">
     <thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>الحالة</th></tr></thead>
@@ -46,7 +46,7 @@
     </tbody>
   </table>
   {% else %}
-  <p class="muted">ما في مراجع.</p>
+  <p class="muted">لا يوجد مراجع.</p>
   {% endif %}
 
   {% if can_edit %}

@@ -15,7 +15,7 @@
 </div>
 
 {% if not views %}
-<div class="card empty">اللوحة فاضية. {% if can_edit %}اضغط «إضافة عنصر» وابدأ.{% endif %}</div>
+<div class="card empty">اللوحة فارغة. {% if can_edit %}اضغط «إضافة عنصر» للبدء.{% endif %}</div>
 {% endif %}
 
 <div class="grid-stack" data-layout-url="/entities/{{ entity.id }}/dashboard/layout">
@@ -30,7 +30,7 @@
           <button type="button" class="btn-icon" title="تعديل" aria-label="تعديل"
                   data-open-widget="{{ w.id }}" data-kind="{{ w.kind }}" data-title="{{ w.title }}"
                   data-config='{{ w.config | tojson }}'>✎</button>
-          <form method="post" action="/dashboard/widgets/{{ w.id }}/delete" onsubmit="return confirm('تحذف العنصر؟')">
+          <form method="post" action="/dashboard/widgets/{{ w.id }}/delete" onsubmit="return confirm('هل تريد حذف العنصر؟')">
             <button class="btn-icon" title="حذف" aria-label="حذف">✕</button>
           </form>
         </span>
@@ -56,17 +56,17 @@
             <div class="bar"><span style="width: {{ (b.progress * 100) | round(1) }}%" class="{{ 'full' if b.progress >= 1 }}"></span></div>
             {% endif %}
           </div>
-          {% else %}<p class="muted">ما في سياسة نشطة.</p>{% endfor %}
+          {% else %}<p class="muted">لا توجد سياسة نشطة.</p>{% endfor %}
 
         {% elif v.kind in ('allocation', 'timeseries') %}
           {% if (v.chart.data if v.kind == 'allocation' else v.chart.labels) %}
           <div class="chart" data-chart='{{ v.chart | tojson }}'></div>
-          {% else %}<p class="muted">ما في معاملات في هذي الفترة.</p>{% endif %}
+          {% else %}<p class="muted">لا توجد معاملات في هذه الفترة.</p>{% endif %}
 
         {% elif v.kind == 'deficits' %}
           {% for b in v.rows %}
           <div class="list-row"><span>{{ b.name }}</span><span class="num negative">{{ b.deficit | sar }}</span></div>
-          {% else %}<p class="muted">ما في عجز 👍</p>{% endfor %}
+          {% else %}<p class="muted">لا يوجد عجز 👍</p>{% endfor %}
 
         {% elif v.kind == 'recent' %}
           <table class="table compact">
@@ -78,7 +78,7 @@
                 <td class="num muted">فائض {{ t.surplus | sar }}</td>
                 <td><a href="/transactions/{{ t.id }}">↗</a></td>
               </tr>
-            {% else %}<tr><td class="muted">ما في معاملات.</td></tr>{% endfor %}
+            {% else %}<tr><td class="muted">لا توجد معاملات.</td></tr>{% endfor %}
             </tbody>
           </table>
         {% endif %}
@@ -90,7 +90,7 @@
 
 <section class="card" id="metrics">
   <h2>المؤشرات المخصصة</h2>
-  <p class="muted">مؤشرات بمعادلات خاصة بالشركة، تنعرض كبطاقة رقم في اللوحة. القيم هنا لهذا الشهر.</p>
+  <p class="muted">مؤشرات بمعادلات خاصة بالشركة، تُعرض بطاقةَ رقمٍ في اللوحة. القيم المعروضة هنا للشهر الحالي.</p>
   {% if customs %}
   <table class="table">
     <thead><tr><th>المؤشر</th><th>المعادلة</th><th>القيمة</th><th></th></tr></thead>
@@ -103,7 +103,7 @@
         <td>
           {% if can_edit %}
           <button type="button" class="btn-link" data-edit-metric='{{ {"id": c.id, "name": c.name, "formula": c.formula, "fmt": c.fmt} | tojson }}'>تعديل</button>
-          <form method="post" action="/metrics/{{ c.id }}/delete" class="inline" onsubmit="return confirm('تحذف المؤشر؟ العناصر اللي تعرضه بتنحذف بعد')">
+          <form method="post" action="/metrics/{{ c.id }}/delete" class="inline" onsubmit="return confirm('هل تريد حذف المؤشر؟ ستُحذف العناصر التي تعرضه أيضًا')">
             <button class="btn-link danger">حذف</button>
           </form>
           {% endif %}

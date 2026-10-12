@@ -6,27 +6,27 @@
     <span class="muted">المحجوز الآن: <strong class="num">{{ held_total | sar }}</strong> ر.س</span>
   </div>
   <p class="muted">
-    نصيب كل بند من الدخل يتحجز له، ويتحوّل للمستفيد حسب موعد استحقاقه: البنود الفورية تتحوّل أول ما يتقسّم الدخل،
-    والبنود اللي لها موعد تتجمّع وتتحوّل كاملة يوم الاستحقاق.
+    يُحجز لكل بند نصيبه من الدخل، ثم يُحوَّل إلى المستفيد وفق موعد استحقاقه: تُحوَّل البنود الفورية فور تقسيم الدخل،
+    أما البنود ذات الموعد فتتجمع وتُحوَّل كاملة في يوم الاستحقاق.
   </p>
   {% if simulated %}
   <div class="alert alert-warning">
-    <strong>وضع المحاكاة:</strong> التحويلات تجريبية لين يكتمل الربط مع البنك. ما يتحرك أي ريال حقيقي.
+    <strong>وضع المحاكاة:</strong> التحويلات تجريبية إلى حين اكتمال الربط مع البنك، ولا تُحرَّك أي مبالغ حقيقية.
   </div>
   {% endif %}
 
   {% if items %}
   <div class="table-scroll">
   <table class="table">
-    <thead><tr><th>البند</th><th>المحجوز</th><th>يتحوّل إلى</th><th>متى</th></tr></thead>
+    <thead><tr><th>البند</th><th>المحجوز</th><th>يُحوَّل إلى</th><th>متى</th></tr></thead>
     <tbody>
     {% for v in items %}
       <tr class="{{ 'row-muted' if not v.in_policy }}">
-        <td>{{ v.name }}{% if not v.in_policy %}<div class="small muted">انحذف من السياسة</div>{% endif %}</td>
+        <td>{{ v.name }}{% if not v.in_policy %}<div class="small muted">حُذف من السياسة</div>{% endif %}</td>
         <td class="num"><strong>{{ v.balance | sar }}</strong></td>
         <td>
           {% if v.beneficiary %}{{ v.beneficiary.name }} <span class="small muted num">••{{ v.beneficiary.iban[-4:] }}</span>
-          {% else %}<span class="muted">ما له مستفيد</span>{% endif %}
+          {% else %}<span class="muted">ليس له مستفيد</span>{% endif %}
         </td>
         <td>
           {% if not v.in_policy %}<span class="muted">—</span>
@@ -45,7 +45,7 @@
   </table>
   </div>
   {% else %}
-  <p class="muted">ما في بنود بعد. تظهر هنا لما تنعتمد <a href="/entities/{{ entity.id }}/policy">سياسة التقسيم</a>.</p>
+  <p class="muted">لا توجد بنود بعد. تظهر هنا بعد اعتماد <a href="/entities/{{ entity.id }}/policy">سياسة التقسيم</a>.</p>
   {% endif %}
 </section>
 
@@ -76,7 +76,7 @@
   </table>
   </div>
   {% else %}
-  <p class="muted">ما تحوّل شي للحين.</p>
+  <p class="muted">لم تُنفَّذ أي تحويلات حتى الآن.</p>
   {% endif %}
 </section>
 {% endblock %}

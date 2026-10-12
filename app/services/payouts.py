@@ -231,10 +231,10 @@ def reversal_blocker(session: Session, txn: Transaction) -> str | None:
     if session.scalar(
         select(Payout.id).where(Payout.transaction_id == txn.id, Payout.status == PayoutStatus.SENT)
     ):
-        return "جزء من هذي المعاملة تحوّل للمستفيدين، فما تنعكس تلقائيًا. صحّحها بمعاملة تسوية"
+        return "حُوِّل جزء من هذه المعاملة إلى المستفيدين، لذا لا يمكن عكسها تلقائيًا. صحّحها بمعاملة تسوية"
     current = balances(session, txn.entity_id)
     if any(current.get(e.bucket_id, 0) < e.allocated for e in txn.events if e.allocated > 0):
-        return "رصيد بند من بنود هذي المعاملة تحوّل للمستفيد، فما تنعكس تلقائيًا. صحّحها بمعاملة تسوية"
+        return "حُوِّل رصيد أحد بنود هذه المعاملة إلى المستفيد، لذا لا يمكن عكسها تلقائيًا. صحّحها بمعاملة تسوية"
     return None
 
 

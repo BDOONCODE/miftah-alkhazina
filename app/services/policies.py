@@ -112,7 +112,7 @@ def _draft_base(session: Session, entity_id: int) -> Policy | None:
 def start_draft(session: Session, entity: Entity, user: User) -> Policy:
     """A new draft starting from the latest version (with the same item identities)."""
     if open_policy(session, entity.id):
-        raise PolicyError("فيه مسودة أو سياسة بانتظار الاعتماد لهذي الشركة")
+        raise PolicyError("توجد مسودة أو سياسة بانتظار الاعتماد لهذه الشركة")
     last_version = session.scalar(select(func.max(Policy.version)).where(Policy.entity_id == entity.id)) or 0
     draft = Policy(entity_id=entity.id, version=last_version + 1, created_by=user.id)
     if current := _draft_base(session, entity.id):
@@ -145,7 +145,7 @@ def save_draft(
     surplus_account_id: int | None = None,
 ) -> None:
     if policy.status is not PolicyStatus.DRAFT:
-        raise PolicyError("ما يمكن تعديل سياسة بعد إرسالها للاعتماد")
+        raise PolicyError("لا يمكن تعديل السياسة بعد إرسالها للاعتماد")
 
     owned = set(session.scalars(select(Bucket.id).where(Bucket.entity_id == policy.entity_id)))
     destinations = {
@@ -167,14 +167,14 @@ def save_draft(
             session.flush()
             bucket_id = bucket.id
         elif bucket_id not in owned:
-            raise PolicyError("بند غير تابع لهذي الشركة")
+            raise PolicyError("البند لا يتبع هذه الشركة")
         account = None
         if row.new_destination_iban.strip():
             account = _destination_from_iban(session, policy, user, row, destinations)
         elif row.destination_account_id is not None:
             account = destinations.get(row.destination_account_id)
             if account is None:
-                raise PolicyError(f"مستفيد البند «{row.name.strip()}» مو حساب نشط (مجمّع أو فرعي أو خارجي) لهذي الشركة")
+                raise PolicyError(f"مستفيد البند «{row.name.strip()}» ليس حسابًا نشطًا لهذه الشركة")
         new_buckets.append(
             PolicyBucket(
                 bucket_id=bucket_id,
@@ -196,7 +196,7 @@ def save_draft(
     policy.buckets.extend(new_buckets)
     policy.notes = notes.strip()
     if surplus_account_id is not None and surplus_account_id not in destinations:
-        raise PolicyError("حساب الفائض لازم يكون حساب نشط للشركة (المجمّع أو حساب آخر أو جهة خارجية)")
+        raise PolicyError("يجب أن يكون حساب الفائض حسابًا نشطًا لهذه الشركة")
     policy.surplus_account_id = surplus_account_id
     _audit(session, user, policy, "policy.saved", buckets=len(new_buckets))
 
@@ -209,9 +209,9 @@ def _destination_from_iban(session: Session, policy: Policy, user: User, row: Bu
     )
     if existing is not None:
         if existing.kind not in DESTINATION_KINDS:
-            raise PolicyError(f"الآيبان {iban} مسجّل كحساب مصدر إيراد، ما يصلح وجهة لبند")
+            raise PolicyError(f"الآيبان {iban} مسجل كحساب مصدر إيراد، ولا يصلح مستفيدًا لبند")
         if not existing.is_active:
-            raise PolicyError(f"الآيبان {iban} لحساب معطّل. فعّله من الحسابات البنكية")
+            raise PolicyError(f"الآيبان {iban} يعود لحساب معطّل. فعّله من الحسابات البنكية")
         return existing
     kind = row.new_destination_kind if row.new_destination_kind in ("sub", "external") else "external"
     try:
@@ -227,7 +227,7 @@ def _destination_from_iban(session: Session, policy: Policy, user: User, row: Bu
 
 def destination_errors(policy: Policy) -> list[str]:
     """Every item has a beneficiary its money transfers to. (Surplus: with no account it stays in the pool.)"""
-    return [f"البند «{pb.name}» ما له مستفيد: اختر الآيبان اللي يتحوّل له" for pb in policy.buckets
+    return [f"البند «{pb.name}» ليس له مستفيد: اختر الآيبان الذي يُحوَّل إليه" for pb in policy.buckets
             if pb.destination_account_id is None]
 
 
@@ -254,7 +254,7 @@ def protected_changes_for(session: Session, policy: Policy, today: date | None =
 
 def submit(session: Session, policy: Policy, user: User, justification: str) -> None:
     if policy.status is not PolicyStatus.DRAFT:
-        raise PolicyError("السياسة مو مسودة")
+        raise PolicyError("السياسة ليست مسودة")
     if errors := validate_policy(specs(policy)) + destination_errors(policy):
         raise PolicyError("؛ ".join(errors))
     changes = protected_changes_for(session, policy)
@@ -286,11 +286,11 @@ def can_decide(session: Session, policy: Policy, user: User) -> bool:
 
 def _check_decider(session: Session, policy: Policy, user: User) -> None:
     if policy.status is not PolicyStatus.PENDING:
-        raise PolicyError("السياسة مو بانتظار الاعتماد")
+        raise PolicyError("السياسة ليست بانتظار الاعتماد")
     if can_decide(session, policy, user):
         return
     if policy.created_by == user.id:
-        raise PolicyError("ما يمكن تعتمد سياسة أنشأتها بنفسك. غيّر طريقة الاعتماد من «بيانات الشركة» لو تبي تعتمد بنفسك")
+        raise PolicyError("لا يمكنك اعتماد سياسة أنشأتها بنفسك. غيّر طريقة الاعتماد من «بيانات الشركة» إذا أردت الاعتماد بنفسك")
     raise PolicyError("الاعتماد للمراجع فقط")
 
 
@@ -366,7 +366,7 @@ def reject(session: Session, policy: Policy, user: User, note: str) -> None:
 def withdraw(session: Session, policy: Policy, user: User) -> None:
     """The accountant pulls the policy back from the reviewer as a draft to edit it."""
     if policy.status is not PolicyStatus.PENDING:
-        raise PolicyError("السياسة مو بانتظار الاعتماد")
+        raise PolicyError("السياسة ليست بانتظار الاعتماد")
     policy.status = PolicyStatus.DRAFT
     policy.submitted_at = None
     _audit(session, user, policy, "policy.withdrawn")
@@ -374,6 +374,6 @@ def withdraw(session: Session, policy: Policy, user: User) -> None:
 
 def discard_draft(session: Session, policy: Policy, user: User) -> None:
     if policy.status is not PolicyStatus.DRAFT:
-        raise PolicyError("السياسة مو مسودة")
+        raise PolicyError("السياسة ليست مسودة")
     _audit(session, user, policy, "policy.draft_discarded")
     session.delete(policy)

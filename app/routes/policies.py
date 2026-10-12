@@ -194,20 +194,20 @@ async def save_draft(request: Request, policy_id: int, user: User = Depends(edit
         except svc.PolicyError as exc:
             session.rollback()
             # Validation errors already show above the table, so do not repeat them in the alert
-            detail = "راجع الملاحظات تحت" if validate_policy(svc.specs(policy)) or svc.destination_errors(policy) else str(exc)
-            flash(request, f"انحفظت المسودة لكن ما {'اعتُمدت' if self_approval else 'انرسلت للمراجع'}: {detail}", "error")
+            detail = "راجع الملاحظات أدناه" if validate_policy(svc.specs(policy)) or svc.destination_errors(policy) else str(exc)
+            flash(request, f"تم حفظ المسودة لكنها لم {'تُعتمد' if self_approval else 'تُرسل إلى المراجع'}: {detail}", "error")
             return redirect(f"/policies/{policy.id}/edit")
         session.commit()
         if self_approval:
-            flash(request, "اعتُمدت السياسة وصارت نشطة. أي مبلغ وارد يتقسم حسبها من الحين")
+            flash(request, "اعتُمدت السياسة وأصبحت نشطة. سيُقسَّم أي مبلغ وارد وفقها من الآن")
         else:
-            flash(request, "انرسلت السياسة للمراجع. بتصير نشطة أول ما يعتمدها")
+            flash(request, "أُرسلت السياسة إلى المراجع، وستصبح نشطة فور اعتمادها")
         return redirect(f"/entities/{policy.entity_id}/policy")
 
     if validate_policy(svc.specs(policy)) or svc.destination_errors(policy):
-        flash(request, "انحفظت المسودة، لكن فيها ملاحظات لازم تنحل قبل الإرسال للاعتماد", "warning")
+        flash(request, "تم حفظ المسودة، لكن فيها ملاحظات يجب معالجتها قبل إرسالها للاعتماد", "warning")
     else:
-        flash(request, "انحفظت المسودة")
+        flash(request, "تم حفظ المسودة")
     return redirect(f"/policies/{policy.id}/edit")
 
 
@@ -247,7 +247,7 @@ def _action(request: Request, policy_id: int, user: User, session: Session, fn, 
 async def approve(request: Request, policy_id: int, user: User = Depends(current_user), session: Session = Depends(get_session)):
     form = await request.form()
     return _action(
-        request, policy_id, user, session, svc.approve, "اعتُمدت السياسة وصارت نشطة",
+        request, policy_id, user, session, svc.approve, "اعتُمدت السياسة وأصبحت نشطة",
         note=str(form.get("note", "")),
     )
 
@@ -270,10 +270,10 @@ def withdraw(request: Request, policy_id: int, user: User = Depends(editor), ses
         flash(request, str(exc), "error")
         return redirect(f"/entities/{policy.entity_id}/policy")
     session.commit()
-    flash(request, "رجعت السياسة مسودة. عدّل عليها وأرسلها مرة ثانية للمراجع")
+    flash(request, "أُعيدت السياسة إلى مسودة. عدّلها ثم أرسلها مرة أخرى إلى المراجع")
     return redirect(f"/policies/{policy.id}/edit")
 
 
 @router.post("/policies/{policy_id}/discard")
 def discard(request: Request, policy_id: int, user: User = Depends(editor), session: Session = Depends(get_session)):
-    return _action(request, policy_id, user, session, svc.discard_draft, "انحذفت المسودة")
+    return _action(request, policy_id, user, session, svc.discard_draft, "تم حذف المسودة")

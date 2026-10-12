@@ -32,6 +32,7 @@ def accounts_page(
             "beneficiaries": [a for a in accounts if a.kind in svc.BENEFICIARY_KINDS],
             "has_pool": svc.pool_account(session, entity_id) is not None,
             "INCOME_KINDS": [k.value for k in svc.INCOME_KINDS],
+            "BENEFICIARY_KINDS": [k.value for k in svc.BENEFICIARY_KINDS],
             "KINDS": svc.KIND_LABELS,
             "HINTS": svc.KIND_HINTS,
         },
@@ -43,10 +44,6 @@ async def add_account(request: Request, entity_id: int, user: User = Depends(edi
     entity = get_entity_for(user, entity_id, session)
     form = await request.form()
     kind = str(form.get("kind", ""))
-    if kind not in [k.value for k in svc.INCOME_KINDS]:
-        # Beneficiaries are added with their items on the policy page
-        flash(request, "هنا تنضاف حسابات الدخل بس. المستفيدين ينضافون من صفحة سياسة التقسيم مع بنودهم", "error")
-        return redirect(f"/entities/{entity_id}/accounts")
     try:
         account = svc.add_account(
             session,
@@ -62,7 +59,7 @@ async def add_account(request: Request, entity_id: int, user: User = Depends(edi
         flash(request, str(exc), "error")
         return redirect(f"/entities/{entity_id}/accounts")
     session.commit()
-    flash(request, f"انضاف الحساب «{account.name}»")
+    flash(request, f"تمت إضافة الحساب «{account.name}»")
     return redirect(f"/entities/{entity_id}/accounts")
 
 

@@ -181,7 +181,7 @@ def test_transaction_pages_and_roles(client, db, setup):
     )
     assert response.status_code == 303 and response.headers["location"].startswith("/transactions/")
     detail = client.get(response.headers["location"]).text
-    assert "600.00" in detail and "ممول جزئيًا" in detail
+    assert "600.00" in detail and "مموَّل جزئيًا" in detail
 
     client.post("/logout")
     login(client, "sara", "Password-123!")

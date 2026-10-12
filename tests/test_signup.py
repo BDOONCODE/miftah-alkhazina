@@ -48,7 +48,7 @@ def test_signup_verify_and_login(client, db, outbox):
 
     # Before confirmation: login is blocked with an option to resend
     blocked = client.post("/login", data={"username": "ahmed@example.com", "password": STRONG})
-    assert blocked.status_code == 403 and "أرسل لي رابط جديد" in blocked.text
+    assert blocked.status_code == 403 and "أرسل لي رابطًا جديدًا" in blocked.text
 
     verified = client.get(link_from(outbox[0]), follow_redirects=False)
     assert verified.headers["location"] == "/"
@@ -71,7 +71,7 @@ def test_bad_verification_token(client):
 
 def test_resend_does_not_reveal_accounts(client, outbox):
     response = client.post("/verify-email/resend", data={"email": "nobody@example.com"})
-    assert "لو البريد مسجّل" in response.text
+    assert "إذا كان البريد مسجلًا" in response.text
     assert outbox == []
 
 
@@ -81,7 +81,7 @@ def test_forgot_password_link_is_single_use(client, db, outbox):
     client.post("/logout")
 
     page = client.post("/forgot-password", data={"login": "AHMED@example.com"})
-    assert "لو الحساب مسجّل" in page.text
+    assert "إذا كان الحساب مسجلًا" in page.text
     reset_link = link_from(outbox[-1])
 
     assert client.post(
@@ -114,8 +114,8 @@ def test_self_signed_user_can_register_company_with_self_approval(client, db, ou
 
 def test_arabic_letters_are_not_symbols():
     assert "رمز خاص مثل ! @ # $" in password_problems("يبيسيصصصصضض")
-    assert password_problems("Strongpass1ع!") == ["إنجليزي فقط (بدون عربي أو مسافات)"]
-    assert password_problems("Strong pass1!") == ["إنجليزي فقط (بدون عربي أو مسافات)"]
+    assert password_problems("Strongpass1ع!") == ["أحرف إنجليزية فقط (دون حروف عربية أو مسافات)"]
+    assert password_problems("Strong pass1!") == ["أحرف إنجليزية فقط (دون حروف عربية أو مسافات)"]
 
 
 def test_admin_can_verify_email_manually(client, db, make_user):

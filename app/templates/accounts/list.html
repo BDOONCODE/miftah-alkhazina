@@ -37,13 +37,13 @@
 <section class="card">
   <h2>حسابات الشركة (الدخل)</h2>
   <p class="muted">
-    الحسابات اللي <strong>تدخل فيها الفلوس</strong>. اربط حسابات نقاط البيع ومدى والتوصيل كل واحد لحاله،
-    أو أضف <strong>الحساب الرئيسي</strong> اللي تنزل فيه كل المبالغ. أول ما يوصل مبلغ لأي حساب منها، يتقسّم حسب سياسة التقسيم.
+    الحسابات التي <strong>تُودَع فيها المبالغ</strong>. اربط حسابات نقاط البيع ومدى والتوصيل كلًّا على حدة،
+    أو أضف <strong>الحساب الرئيسي</strong> الذي تُودَع فيه جميع المبالغ. وما إن يصل مبلغ إلى أي منها حتى يُقسَّم وفق سياسة التقسيم.
   </p>
   {% if income %}
     {{ accounts_table(income) }}
   {% else %}
-  <div class="alert alert-warning">ما في حسابات دخل للحين. أضف حساب نقاط البيع أو الحساب الرئيسي تحت.</div>
+  <div class="alert alert-warning">لا توجد حسابات دخل حتى الآن. أضف حساب نقاط البيع أو الحساب الرئيسي أدناه.</div>
   {% endif %}
 </section>
 
@@ -82,19 +82,50 @@
 <section class="card">
   <h2>المستفيدون (الخروج)</h2>
   <p class="muted">
-    الحسابات اللي <strong>تطلع لها الفلوس</strong> بعد التقسيم: جهات خارجية مثل مانح الامتياز والمؤجر والزكاة والدخل،
-    أو حسابات للمالك أو الشركة مثل الأرباح والاحتياطي. تنضاف من صفحة
-    <a href="/entities/{{ entity.id }}/policy">سياسة التقسيم</a> مع كل بند، وهنا تقدر تشوفها وتعطّلها.
+    الحسابات التي <strong>تُحوَّل إليها المبالغ</strong> بعد التقسيم: جهات خارجية مثل مانح الامتياز والمؤجر وهيئة الزكاة والضريبة والجمارك،
+    أو حسابات للمالك أو الشركة مثل الأرباح والاحتياطي. تُضاف هنا، أو من صفحة
+    <a href="/entities/{{ entity.id }}/policy">سياسة التقسيم</a> أثناء تحديد مستفيد كل بند.
   </p>
   {% if beneficiaries %}
     {{ accounts_table(beneficiaries) }}
   {% else %}
-  <p class="muted">ما في مستفيدين للحين. تنضاف لما تحدد مستفيد لكل بند في سياسة التقسيم.</p>
+  <p class="muted">لا يوجد مستفيدون حتى الآن.</p>
   {% endif %}
 </section>
 
+{% if can_edit %}
+<section class="card">
+  <h2>إضافة مستفيد</h2>
+  <form method="post" class="stack">
+    <fieldset class="stack plain">
+      <legend>نوع المستفيد</legend>
+      <div class="kind-grid">
+        {% for key in BENEFICIARY_KINDS %}
+        <label class="radio">
+          <input type="radio" name="kind" value="{{ key }}" required {{ 'checked' if key == 'external' }}>
+          <span><strong>{{ KINDS[key] }}</strong><br><small class="muted">{{ HINTS[key] }}</small></span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    <div class="form-grid">
+      <label>اسم المستفيد *
+        <input name="name" required placeholder="مثال: مانح الامتياز">
+      </label>
+      <label>البنك
+        <input name="bank_name" placeholder="مثال: الأهلي">
+      </label>
+      <label>الآيبان *
+        <input name="iban" required dir="ltr" placeholder="SA…">
+      </label>
+    </div>
+    <div><button class="btn btn-primary" type="submit">إضافة المستفيد</button></div>
+  </form>
+</section>
+{% endif %}
+
 <div class="next-step">
-  <span class="muted">الخطوة الجاية: بنود التقسيم ومستفيد كل بند.</span>
+  <span class="muted">الخطوة التالية: تحديد بنود التقسيم ومستفيد كل بند.</span>
   <a class="btn btn-primary" href="/entities/{{ entity.id }}/policy">التالي: سياسة التقسيم ←</a>
 </div>
 {% endblock %}

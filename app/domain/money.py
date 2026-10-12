@@ -19,7 +19,7 @@ def parse_amount(text: str) -> int:
     value = _to_decimal(text)
     halalas = value * 100
     if halalas != halalas.to_integral_value():
-        raise ValueError("المبلغ ما يقبل أكثر من خانتين عشريتين")
+        raise ValueError("لا يقبل المبلغ أكثر من خانتين عشريتين")
     return int(halalas)
 
 
@@ -27,7 +27,7 @@ def parse_percent(text: str) -> int:
     """'15.5' -> 1550 basis points."""
     value = _to_decimal(text) * 100
     if value != value.to_integral_value():
-        raise ValueError("النسبة ما تقبل أكثر من خانتين عشريتين")
+        raise ValueError("لا تقبل النسبة أكثر من خانتين عشريتين")
     return int(value)
 
 

@@ -25,7 +25,7 @@ class FormulaError(ValueError):
 def _parse(expr: str) -> ast.Expression:
     text = expr.translate(_NORMALIZE).strip()
     if not text:
-        raise FormulaError("المعادلة فاضية")
+        raise FormulaError("المعادلة فارغة")
     if len(text) > MAX_LENGTH:
         raise FormulaError("المعادلة طويلة جدًا")
     try:
@@ -57,7 +57,7 @@ def _check(node: ast.AST, allowed: Collection[str]) -> None:
         for arg in node.args:
             _check(arg, allowed)
     else:
-        raise FormulaError("المعادلة فيها عنصر غير مسموح (المسموح: أرقام، مؤشرات، + - * / ( ) min max abs)")
+        raise FormulaError("تحتوي المعادلة على عنصر غير مسموح (المسموح: أرقام، مؤشرات، + - * / ( ) min max abs)")
 
 
 def validate(expr: str, allowed: Collection[str]) -> None:

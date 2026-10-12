@@ -15,7 +15,7 @@
     {% if r.active %}
       <span class="pill pill-active">سياسة نشطة · نسخة {{ r.active.version }}</span>
     {% else %}
-      <span class="pill pill-muted">ما في سياسة نشطة</span>
+      <span class="pill pill-muted">لا توجد سياسة نشطة</span>
     {% endif %}
     {% if r.open %}
       <span class="pill pill-{{ r.open.status.value }}">{{ POLICY_STATUS_LABELS[r.open.status.value] }}</span>
@@ -26,9 +26,9 @@
 {% else %}
 <div class="card empty">
   {% if user.role.value in ("accountant", "admin") %}
-    ما سجّلت أي شركة بعد. <a href="/companies/new">سجّل أول شركة</a>
+    لم تسجّل أي شركة بعد. <a href="/companies/new">سجّل أول شركة</a>
   {% else %}
-    ما في شركات مرتبطة بحسابك بعد.
+    لا توجد شركات مرتبطة بحسابك بعد.
   {% endif %}
 </div>
 {% endif %}
