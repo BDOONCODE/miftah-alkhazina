@@ -5,6 +5,12 @@
   <h1>🔑 مفتاح الخزينة</h1>
   <p class="muted">سجّل دخولك للمتابعة</p>
   {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  {% if disabled %}
+  <div class="alert alert-error">
+    تم تعطيل حسابكم. للتواصل يرجى إرسال طلب إلى الدعم.
+    <div><a class="btn btn-primary" href="/support">إرسال طلب إلى الدعم</a></div>
+  </div>
+  {% endif %}
   {% if unverified_email %}
   <form method="post" action="/verify-email/resend" class="alert alert-warning">
     <input type="hidden" name="email" value="{{ unverified_email }}">

@@ -17,6 +17,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -393,6 +394,35 @@ class ReversalRequest(Base):
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
     requester: Mapped[User] = relationship(foreign_keys=[requested_by])
+
+
+class SupportTicket(Base):
+    """A message to support: from a signed-in user, or from a user whose account was disabled."""
+
+    __tablename__ = "support_tickets"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
+    contact: Mapped[str] = mapped_column(String(254))  # how to reach the sender (email or username)
+    subject: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text)
+    # open (new) -> in_progress (the admin opened it) -> closed (the admin replied)
+    status: Mapped[str] = mapped_column(String(16), default="open")
+    reply: Mapped[str] = mapped_column(Text, default="")
+    handled_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+
+    sender: Mapped[User | None] = relationship(foreign_keys=[user_id])
+    images: Mapped[list[SupportTicketImage]] = relationship(order_by="SupportTicketImage.id")
+
+
+class SupportTicketImage(Base):
+    """A screenshot attached to a support ticket, kept in the database (the free host has no persistent disk)."""
+
+    __tablename__ = "support_ticket_images"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("support_tickets.id"), index=True)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    mime: Mapped[str] = mapped_column(String(32))
 
 
 # ---------------------------------------------------------------- dashboard

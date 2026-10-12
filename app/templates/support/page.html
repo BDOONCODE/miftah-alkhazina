@@ -2,9 +2,37 @@
 {% block content %}
 <div class="page-head">
   <h1>الدعم والتكامل</h1>
-  <a href="/admin/users" class="btn">المستخدمون وكلمات المرور</a>
+  <div class="row-actions">
+    <a href="/admin/api" class="btn">توثيق الربط (API)</a>
+    <a href="/admin/users" class="btn">المستخدمون وكلمات المرور</a>
+  </div>
 </div>
 <p class="muted">متابعة الربط البنكي والتحويلات المتعثرة وطلبات العكس. لا تظهر هنا بيانات الشركات ولا أرقام الحسابات ولا المبالغ.</p>
+
+<section class="card" id="tickets">
+  <h2>طلبات الدعم</h2>
+  {% if tickets %}
+  <table class="table">
+    <thead><tr><th>#</th><th>المرسل</th><th>الموضوع</th><th>الوقت</th><th>الحالة</th><th></th></tr></thead>
+    <tbody>
+    {% for t in tickets %}
+      <tr>
+        <td class="num">{{ t.id }}</td>
+        <td>{{ t.sender.full_name if t.sender else '' }}<div class="muted small" dir="ltr">{{ t.contact }}</div>
+          {% if t.sender and not t.sender.is_active %}<span class="pill pill-rejected">حساب معطّل</span>{% endif %}</td>
+        <td>{% if t.status == 'open' %}<strong>{{ t.subject }}</strong>{% else %}{{ t.subject }}{% endif %}
+          {% if t.images %}<span class="muted small">· 🖼 {{ t.images | length }}</span>{% endif %}</td>
+        <td>{{ t.created_at | riyadh }}</td>
+        <td><span class="pill pill-ticket-{{ t.status }}">{{ TICKET_STATUS[t.status] }}</span></td>
+        <td><a href="/admin/tickets/{{ t.id }}">فتح</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">لا توجد طلبات دعم.</p>
+  {% endif %}
+</section>
 
 <section class="card" id="issues">
   <h2>التحويلات الفاشلة</h2>

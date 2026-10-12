@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1>توثيق الربط (API)</h1>
+  <a href="/admin/support" class="btn">← الدعم والتكامل</a>
+</div>
+<p class="muted">عقد الربط بين مفتاح الخزينة ومزوّد الخدمات المصرفية المفتوحة (نيوتك). يُعدَّل وفق توثيق نيوتك الرسمي عند وصوله.</p>
+
+<section class="card">
+  <h2>الحالة الآن</h2>
+  <dl class="meta">
+    <div><dt>استقبال إشعارات البنك</dt><dd>{% if webhook_on %}<span class="pill pill-active">مفعّل</span>{% else %}<span class="pill pill-pending">غير مفعّل</span> <span class="muted small">يُفعَّل بضبط المتغير BANK_WEBHOOK_SECRET في Render</span>{% endif %}</dd></div>
+    <div><dt>تنفيذ التحويلات</dt><dd>{% if simulated %}<span class="pill pill-pending">محاكاة</span> <span class="muted small">لا تتحرك أموال حقيقية حتى يُربط نيوتك</span>{% else %}<span class="pill pill-active">نيوتك</span>{% endif %}</dd></div>
+  </dl>
+</section>
+
+<section class="card">
+  <h2>١. استقبال إشعار وصول مبلغ (من نيوتك إلينا)</h2>
+  <p>يرسل البنك إشعارًا عند وصول أي مبلغ إلى حساب دخل مسجّل لشركة، فيُقسَّم المبلغ فورًا وفق سياستها النشطة.</p>
+  <pre dir="ltr" class="code">POST {{ base_url }}/api/bank/incoming
+Content-Type: application/json
+X-Signature: hex( HMAC-SHA256( BANK_WEBHOOK_SECRET, raw request body ) )
+
+{
+  "iban": "SA0380000000608010167519",
+  "amount": "1500.00",
+  "occurred_at": "2026-09-30T10:00:00+03:00",
+  "reference": "NTK-123456"
+}</pre>
+  <table class="table">
+    <thead><tr><th>الحقل</th><th>الوصف</th></tr></thead>
+    <tbody>
+      <tr><td dir="ltr">iban</td><td>آيبان حساب الدخل الذي وصل إليه المبلغ، ويجب أن يكون مسجّلًا لدى إحدى الشركات</td></tr>
+      <tr><td dir="ltr">amount</td><td>المبلغ بالريال، بخانتين عشريتين</td></tr>
+      <tr><td dir="ltr">occurred_at</td><td>وقت الإيداع (اختياري، وإن غاب يُعتمد وقت الاستلام. وإن خلا من المنطقة الزمنية يُعدّ بتوقيت الرياض)</td></tr>
+      <tr><td dir="ltr">reference</td><td>الرقم المرجعي لدى البنك. لا يُقسَّم المرجع نفسه مرتين، فإعادة إرسال الإشعار آمنة</td></tr>
+    </tbody>
+  </table>
+  <h3>الردود</h3>
+  <table class="table">
+    <thead><tr><th>الرمز</th><th>المعنى</th></tr></thead>
+    <tbody>
+      <tr><td class="num">200</td><td>قُسِّم المبلغ: <code dir="ltr">{"status": "allocated", "transaction_id": 42, "surplus": 120.5}</code></td></tr>
+      <tr><td class="num">400</td><td>بيانات ناقصة أو غير صالحة</td></tr>
+      <tr><td class="num">401</td><td>التوقيع غير صحيح</td></tr>
+      <tr><td class="num">422</td><td>تعذّر التقسيم مع ذكر السبب: آيبان غير مسجّل، أو مرجع مكرر، أو لا توجد سياسة نشطة، أو رفض البنك إحدى الحركات (وتظهر في «التحويلات الفاشلة»)</td></tr>
+      <tr><td class="num">503</td><td>الربط غير مفعّل بعد</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>٢. العمليات التي نطلبها من نيوتك</h2>
+  <p>كل حركة مال حقيقية تمر عبر هذه العمليات، ويحمل كل منها رقمًا مرجعيًا يظهر في «التحويلات الفاشلة» إن رُفض.</p>
+  <table class="table">
+    <thead><tr><th>العملية</th><th>المرحلة</th><th>متى</th><th>صيغة المرجع</th></tr></thead>
+    <tbody>
+      <tr><td dir="ltr">open_pool_account</td><td>فتح الحساب المجمّع (حساب افتراضي) للشركة</td><td>عند اعتماد أول سياسة</td><td>—</td></tr>
+      <tr><td dir="ltr">open_virtual_account</td><td>فتح حساب افتراضي لكل بند ولحساب «الفائض»</td><td>عند الاعتماد أو أول استخدام</td><td>—</td></tr>
+      <tr><td dir="ltr">sweep</td><td>حساب الشركة ← الحساب المجمّع</td><td>مع كل مبلغ يصل</td><td dir="ltr">TX-{معاملة}-sweep</td></tr>
+      <tr><td dir="ltr">move</td><td>الحساب المجمّع ← حساب البند الافتراضي</td><td>حصة كل بند، وتغطية العجز، وعزل الفائض</td><td dir="ltr">TX-{معاملة}-B{بند} · PM-{رقم}</td></tr>
+      <tr><td dir="ltr">transfer</td><td>حساب البند الافتراضي ← المستفيد</td><td>فور التقسيم أو يوم الاستحقاق</td><td dir="ltr">PO-…</td></tr>
+    </tbody>
+  </table>
+  <p class="muted small">العكس يسير بالاتجاه المعاكس: من حسابات البنود إلى الحساب المجمّع (move) ثم إلى حساب الشركة (transfer)، بمرجع <span dir="ltr">TX-{قيد العكس}-…</span>.</p>
+</section>
+{% endblock %}

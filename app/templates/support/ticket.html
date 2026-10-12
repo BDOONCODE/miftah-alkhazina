@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}الدعم — مفتاح الخزينة{% endblock %}
+{% block content %}
+<div class="{{ 'login-card card wide' if disabled else '' }}">
+  <h1>طلب دعم</h1>
+  {% if disabled %}
+  <div class="alert alert-error">حسابك معطّل. اكتب طلبك وسيصل إلى فريق الدعم، ويظهر الرد في هذه الصفحة.</div>
+  {% endif %}
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <section class="{{ '' if disabled else 'card' }}">
+    <form method="post" action="/support" enctype="multipart/form-data" class="stack">
+      <label>الموضوع *
+        <input name="subject" maxlength="200" required value="{{ form.subject or '' }}">
+      </label>
+      <label>نص الطلب *
+        <textarea name="body" rows="6" maxlength="5000" required>{{ form.body or '' }}</textarea>
+      </label>
+      <label>صور توضيحية (اختيارية)
+        <input name="images" type="file" accept="image/png,image/jpeg,image/webp" multiple>
+        <small class="muted">حتى {{ MAX_IMAGES }} صور، بصيغة PNG أو JPG أو WEBP، وحجم كل صورة ٢ ميغابايت بحد أقصى</small>
+      </label>
+      <div><button class="btn btn-primary" type="submit">إرسال</button></div>
+    </form>
+  </section>
+
+  {% if mine %}
+  <section class="{{ '' if disabled else 'card' }}">
+    <h2>طلباتي</h2>
+    <table class="table">
+      <thead><tr><th>#</th><th>الموضوع</th><th>أُرسل</th><th>الحالة</th><th>رد الدعم</th></tr></thead>
+      <tbody>
+      {% for t in mine %}
+        <tr>
+          <td class="num">{{ t.id }}</td>
+          <td>{{ t.subject }}</td>
+          <td>{{ t.created_at | riyadh }}</td>
+          <td><span class="pill pill-ticket-{{ t.status }}">{{ TICKET_STATUS[t.status] }}</span></td>
+          <td>{{ t.reply or '—' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

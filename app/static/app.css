@@ -287,3 +287,10 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 .was { font-size: .8rem; color: var(--muted); }
 .was .muted { display: none; }
 .changes-summary { margin-bottom: .75rem; }
+.code { background: #f4f6f8; border-radius: 8px; padding: .75rem 1rem; overflow-x: auto; text-align: left; font-size: .85rem; }
+.pre-line { white-space: pre-line; }
+.pill-ticket-open { background: #e8f0fe; color: #1a56db; }
+.pill-ticket-in_progress { background: #fff1d6; color: var(--warning); }
+.pill-ticket-closed { background: #e3f4ea; color: var(--positive); }
+.ticket-images { display: flex; flex-wrap: wrap; gap: .75rem; }
+.ticket-images img { max-width: 220px; max-height: 160px; border-radius: 8px; border: 1px solid #e3e6ea; object-fit: cover; }

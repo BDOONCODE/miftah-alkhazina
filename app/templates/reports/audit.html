@@ -10,7 +10,7 @@
     {% for e in entries %}
       <tr>
         <td class="num">{{ e.created_at | riyadh }}</td>
-        <td>{{ e.user.full_name if e.user else '—' }}</td>
+        <td>{% if e.user %}{{ e.user.full_name }}{% else %}<span class="muted">النظام (تلقائي)</span>{% endif %}</td>
         <td>{{ LABELS.get(e.action, e.action) }}</td>
         <td class="small muted">
           {% if e.details.transaction_id %}<a href="/transactions/{{ e.details.reversal_id or e.details.transaction_id }}">معاملة #{{ e.details.transaction_id }}</a>{% endif %}
@@ -20,6 +20,7 @@
           {% if e.details.note %} · {{ e.details.note }}{% endif %}
           {% if e.details.protected_changes %} · 🔒 {{ e.details.protected_changes | join('، ') }}{% endif %}
           {% if e.details.name %}{{ e.details.name }}{% endif %}
+          {% if e.details.to %} · إلى {{ e.details.to }}{% endif %}
           {% if e.details.formula %} · <code>{{ e.details.formula }}</code>{% endif %}
           {% if e.details.reviewer %}المراجع: {{ e.details.reviewer }}{% endif %}
         </td>

@@ -1,4 +1,4 @@
-"""User account (change password) and accountant management for admins."""
+"""User account (change password) and user support for the general admin."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
@@ -10,7 +10,6 @@ from ..auth import current_user_any, require_role
 from ..db import get_session
 from ..models import AuditLog, Role, User
 from ..security import hash_password, verify_password
-from ..services.companies import CompanyError, create_user
 from ..templating import templates
 from ..web import flash, redirect
 
@@ -54,27 +53,6 @@ async def change_password(
 def users_page(request: Request, user: User = Depends(admin_only), session: Session = Depends(get_session)):
     users = session.scalars(select(User).order_by(User.role, User.full_name)).all()
     return templates.TemplateResponse(request, "account/users.html", {"user": user, "users": users, "error": None})
-
-
-@router.post("/admin/users")
-async def create_accountant(request: Request, user: User = Depends(admin_only), session: Session = Depends(get_session)):
-    form = await request.form()
-    try:
-        created = create_user(
-            session,
-            full_name=str(form.get("full_name", "")),
-            username=str(form.get("username", "")),
-            password=str(form.get("password", "")),
-            role=Role.ACCOUNTANT,
-            actor=user,
-        )
-    except CompanyError as exc:
-        session.rollback()
-        flash(request, str(exc), "error")
-        return redirect("/admin/users")
-    session.commit()
-    flash(request, f"أُنشئ حساب المحاسب «{created.full_name}»")
-    return redirect("/admin/users")
 
 
 @router.post("/admin/users/{user_id}/reset-password")

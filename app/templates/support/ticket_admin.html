@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1>طلب دعم #{{ ticket.id }} <span class="pill pill-ticket-{{ ticket.status }}">{{ TICKET_STATUS[ticket.status] }}</span></h1>
+  <a href="/admin/support#tickets" class="btn">← طلبات الدعم</a>
+</div>
+<section class="card">
+  <dl class="meta">
+    <div><dt>المرسل</dt><dd>{{ ticket.sender.full_name if ticket.sender else '' }} <span class="muted" dir="ltr">{{ ticket.contact }}</span>
+      {% if ticket.sender and not ticket.sender.is_active %}<span class="pill pill-rejected">حساب معطّل</span>
+      <a href="/admin/users">إدارة الحساب</a>{% endif %}</dd></div>
+    <div><dt>أُرسل</dt><dd>{{ ticket.created_at | riyadh }}</dd></div>
+  </dl>
+  <h2>{{ ticket.subject }}</h2>
+  <p class="pre-line">{{ ticket.body }}</p>
+  {% if ticket.images %}
+  <div class="ticket-images">
+    {% for img in ticket.images %}
+    <a href="/admin/ticket-images/{{ img.id }}" target="_blank" rel="noopener"><img src="/admin/ticket-images/{{ img.id }}" alt="صورة {{ loop.index }}"></a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+<section class="card">
+  {% if ticket.status == 'closed' %}
+    <h2>الرد</h2>
+    <p class="pre-line">{{ ticket.reply }}</p>
+  {% else %}
+  <form method="post" action="/admin/tickets/{{ ticket.id }}/close" class="stack">
+    <label>الرد على المرسل *
+      <textarea name="reply" rows="4" required placeholder="مثال: أعدنا تفعيل حسابك، ويمكنك الدخول الآن"></textarea>
+    </label>
+    <div><button class="btn btn-primary" type="submit">إرسال الرد وإغلاق الطلب</button></div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

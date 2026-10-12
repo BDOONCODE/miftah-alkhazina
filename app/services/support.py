@@ -14,6 +14,8 @@ from ..models import (
     Payout,
     PayoutStatus,
     ReversalRequest,
+    SupportTicket,
+    SupportTicketImage,
     Transaction,
     TransactionSource,
     TransferIssue,
@@ -142,3 +144,81 @@ def update_request(session: Session, row: ReversalRequest, user: User, status: s
     row.status, row.note, row.handled_by, row.updated_at = status, note.strip(), user.id, utcnow()
     session.add(AuditLog(user_id=user.id, entity_id=row.entity_id, action="support.reversal_updated",
                          details={"request_id": row.id, "status": status}))
+
+
+# ------------------------------------------------------------------ support tickets
+
+MAX_IMAGE_BYTES = 2 * 1024 * 1024
+MAX_IMAGES = 5
+TICKET_STATUS = {"open": "جديد", "in_progress": "جاري المعالجة", "closed": "تم الإغلاق"}
+# Detected from the file's first bytes, never from the name or the browser's claim
+IMAGE_SIGNATURES = {b"\x89PNG\r\n\x1a\n": "image/png", b"\xff\xd8\xff": "image/jpeg"}
+
+
+def image_type(data: bytes) -> str | None:
+    for signature, mime in IMAGE_SIGNATURES.items():
+        if data.startswith(signature):
+            return mime
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def open_ticket(
+    session: Session, *, user: User | None, contact: str, subject: str, body: str, images: list[bytes] = ()
+) -> SupportTicket:
+    contact, subject, body = contact.strip(), subject.strip(), body.strip()
+    if not subject or not body:
+        raise SupportError("اكتب الموضوع ونص الطلب")
+    if not contact:
+        raise SupportError("اكتب بريدك أو اسم المستخدم لنتواصل معك")
+    if len(subject) > 200 or len(body) > 5000:
+        raise SupportError("الموضوع أو النص أطول من المسموح")
+    images = [i for i in images if i]
+    if len(images) > MAX_IMAGES:
+        raise SupportError(f"الحد الأقصى {MAX_IMAGES} صور")
+    typed = []
+    for image in images:
+        if len(image) > MAX_IMAGE_BYTES:
+            raise SupportError("حجم كل صورة ٢ ميغابايت بحد أقصى")
+        if (mime := image_type(image)) is None:
+            raise SupportError("أرفق صورًا بصيغة PNG أو JPG أو WEBP")
+        typed.append((image, mime))
+    ticket = SupportTicket(user_id=user.id if user else None, contact=contact, subject=subject, body=body)
+    session.add(ticket)
+    session.flush()
+    session.add_all(SupportTicketImage(ticket_id=ticket.id, data=data, mime=mime) for data, mime in typed)
+    session.add(AuditLog(user_id=user.id if user else None, action="support.ticket_opened",
+                         details={"ticket_id": ticket.id}))
+    return ticket
+
+
+def tickets(session: Session, limit: int = 50) -> list[SupportTicket]:
+    """Tickets still in hand first (oldest first), then the most recent closed ones."""
+    open_rows = session.scalars(
+        select(SupportTicket).where(SupportTicket.status != "closed").order_by(SupportTicket.created_at)
+    ).all()
+    closed = session.scalars(
+        select(SupportTicket).where(SupportTicket.status == "closed").order_by(SupportTicket.created_at.desc()).limit(limit)
+    ).all()
+    return [*open_rows, *closed]
+
+
+def my_tickets(session: Session, user: User) -> list[SupportTicket]:
+    return list(session.scalars(
+        select(SupportTicket).where(SupportTicket.user_id == user.id).order_by(SupportTicket.created_at.desc())
+    ))
+
+
+def mark_opened(session: Session, ticket: SupportTicket, user: User) -> None:
+    """The admin opened a new ticket: the sender now sees it in progress."""
+    if ticket.status == "open":
+        ticket.status, ticket.handled_by = "in_progress", user.id
+        session.add(AuditLog(user_id=user.id, action="support.ticket_opened_by_admin", details={"ticket_id": ticket.id}))
+
+
+def close_ticket(session: Session, ticket: SupportTicket, user: User, reply: str) -> None:
+    if not reply.strip():
+        raise SupportError("اكتب الرد على المرسل")
+    ticket.status, ticket.reply, ticket.handled_by = "closed", reply.strip(), user.id
+    session.add(AuditLog(user_id=user.id, action="support.ticket_closed", details={"ticket_id": ticket.id}))

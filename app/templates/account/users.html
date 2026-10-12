@@ -1,15 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>المستخدمون</h1>
-<section class="card">
-  <h2>إضافة محاسب</h2>
-  <form method="post" class="form-grid">
-    <label>الاسم الكامل <input name="full_name" required></label>
-    <label>اسم المستخدم <input name="username" dir="ltr" required></label>
-    <label>كلمة مرور مؤقتة <input name="password" type="password" minlength="8" dir="ltr" autocomplete="new-password" required data-rules></label>
-    <div class="form-actions"><button class="btn btn-primary" type="submit">إضافة</button></div>
-  </form>
-</section>
+<p class="muted">يسجّل المحاسب حسابه بنفسه، ويُدعى المراجع من صفحة شركته. دورك هنا الدعم: تفعيل الحسابات وتعطيلها وتعيين كلمة مرور مؤقتة لمن نسيها.</p>
 
 <section class="card">
   <table class="table">

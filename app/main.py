@@ -139,12 +139,17 @@ def login(
             request, "login.html", {"error": "محاولات دخول كثيرة. حاول مرة أخرى بعد ١٠ دقائق"}, status_code=429
         )
     user = find_by_login(session, username)
-    if user is None or not user.is_active or not verify_password(user.password_hash, password):
+    if user is None or not verify_password(user.password_hash, password):
         throttle.record_failure(ip, username)
         return templates.TemplateResponse(
             request, "login.html", {"error": "البريد/اسم المستخدم أو كلمة المرور غير صحيحة"}, status_code=401
         )
     throttle.reset(ip, username)
+    if not user.is_active:
+        # Only revealed after a correct password. The user can still write to support from this browser
+        request.session.clear()
+        request.session["disabled_user_id"] = user.id
+        return templates.TemplateResponse(request, "login.html", {"error": None, "disabled": True}, status_code=403)
     if not user.email_verified and not mailer.is_configured():
         # Registered before email sending was enabled: the confirmation link never arrived, so verify after a correct password
         user.email_verified = True
