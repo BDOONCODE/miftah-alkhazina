@@ -18,17 +18,6 @@
 </div>
 {% endmacro %}
 
-{% macro pool_fields(v) %}
-<div class="form-grid">
-  <label>البنك
-    <input name="bank_name" value="{{ v.bank_name or '' }}" placeholder="مثال: الراجحي">
-  </label>
-  <label>آيبان الحساب المجمّع
-    <input name="iban" value="{{ v.iban or '' }}" dir="ltr" placeholder="SA…">
-  </label>
-</div>
-{% endmacro %}
-
 {% macro reviewer_fields(v) %}
 <div class="form-grid">
   <label>اسم المراجع *
