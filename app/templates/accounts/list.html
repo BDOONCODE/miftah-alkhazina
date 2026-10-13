@@ -88,16 +88,8 @@
     أو حسابات للمالك أو الشركة مثل الأرباح والاحتياطي. تُضاف هنا، أو من صفحة
     <a href="/entities/{{ entity.id }}/policy">سياسة التقسيم</a> أثناء تحديد مستفيد كل بند.
   </p>
-  {% if beneficiaries %}
-    {{ accounts_table(beneficiaries) }}
-  {% else %}
-  <p class="muted">لا يوجد مستفيدون حتى الآن.</p>
-  {% endif %}
-</section>
-
-{% if can_edit %}
-<section class="card">
-  <h2>إضافة مستفيد</h2>
+  {% if can_edit %}
+  <h3>إضافة مستفيد</h3>
   <form method="post" class="stack">
     <fieldset class="stack plain">
       <legend>نوع المستفيد</legend>
@@ -123,8 +115,17 @@
     </div>
     <div><button class="btn btn-primary" type="submit">إضافة المستفيد</button></div>
   </form>
+  {% endif %}
 </section>
-{% endif %}
+
+<section class="card">
+  <h2>المستفيدون المضافون</h2>
+  {% if beneficiaries %}
+    {{ accounts_table(beneficiaries) }}
+  {% else %}
+  <p class="muted">لا يوجد مستفيدون حتى الآن.</p>
+  {% endif %}
+</section>
 
 <div class="next-step">
   <span class="muted">الخطوة التالية: تحديد بنود التقسيم ومستفيد كل بند.</span>

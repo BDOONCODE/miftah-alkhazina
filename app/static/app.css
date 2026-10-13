@@ -351,3 +351,4 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 /* Left-to-right (English) */
 [dir=ltr] .table td.num, [dir=ltr] .table th.num { text-align: left; }
 [dir=ltr] .pw-wrap input { padding-right: 2.6rem; }
+.section-gap { margin-top: 1.75rem; }

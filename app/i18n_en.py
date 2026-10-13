@@ -285,6 +285,8 @@ EN = {
     "أثناء تحديد مستفيد كل بند.": "page while choosing each item’s beneficiary.",
     "لا يوجد مستفيدون حتى الآن.": "No beneficiaries yet.",
     "إضافة مستفيد": "Add a beneficiary",
+    "المستفيدون المضافون": "Beneficiaries added",
+    "مدير النظام": "System admin",
     "نوع المستفيد": "Beneficiary type",
     "اسم المستفيد *": "Beneficiary name *",
     "مثال: مانح الامتياز": "e.g. Franchisor",
