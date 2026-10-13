@@ -3,7 +3,7 @@
   const css = getComputedStyle(document.documentElement);
   // Items in calm greens and blues; the surplus always in warm gold so it stands apart
   const palette = ["#0f6e5a", "#14b8a6", "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#64748b", "#22c55e"];
-  const SURPLUS = "الفائض";
+  const SURPLUS = T("الفائض");
   const SURPLUS_COLOR = "#f4b740";
   const font = css.getPropertyValue("font-family") || "IBM Plex Sans Arabic";
   const sar = (v) => Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -31,9 +31,9 @@
       el.parentElement.appendChild(legend);
       chart.setOption({
         ...base,
-        tooltip: { ...base.tooltip, trigger: "item", formatter: (p) => `${p.name}<br><b>${sar(p.value)}</b> ر.س · ${p.percent}%` },
+        tooltip: { ...base.tooltip, trigger: "item", formatter: (p) => `${p.name}<br><b>${sar(p.value)}</b> ${T("ر.س")} · ${p.percent}%` },
         title: {
-          text: sar(total), subtext: "ر.س · إجمالي الوارد", left: "center", top: "center", itemGap: 2,
+          text: sar(total), subtext: T("ر.س · إجمالي الوارد"), left: "center", top: "center", itemGap: 2,
           textStyle: { fontSize: 16, fontWeight: 700, color: "#1c2330", fontFamily: font },
           subtextStyle: { fontSize: 11, color: "#6b7482", fontFamily: font },
         },
@@ -54,8 +54,8 @@
         ...base,
         tooltip: { ...base.tooltip, trigger: "axis" },
         grid: { left: 8, right: 8, top: 16, bottom: 8, containLabel: true },
-        xAxis: { type: "category", data: spec.data.map((d) => d.name), inverse: true },
-        yAxis: { type: "value", position: "right" },
+        xAxis: { type: "category", data: spec.data.map((d) => d.name), inverse: document.dir === "rtl" },
+        yAxis: { type: "value", position: document.dir === "rtl" ? "right" : "left" },
         series: [{ type: "bar", data: spec.data.map((d) => d.value), barMaxWidth: 36, colorBy: "data" }],
       });
     } else {
@@ -64,8 +64,8 @@
         tooltip: { ...base.tooltip, trigger: "axis" },
         legend: { bottom: 0 },
         grid: { left: 8, right: 8, top: 16, bottom: 32, containLabel: true },
-        xAxis: { type: "category", data: spec.labels, inverse: true },
-        yAxis: { type: "value", position: "right" },
+        xAxis: { type: "category", data: spec.labels, inverse: document.dir === "rtl" },
+        yAxis: { type: "value", position: document.dir === "rtl" ? "right" : "left" },
         series: spec.series.map((s) => ({ ...s, type: "line", smooth: true, symbolSize: 6 })),
       });
     }
@@ -76,7 +76,7 @@
 
   // ---------- grid
   const gridEl = document.querySelector(".grid-stack");
-  const grid = GridStack.init({ column: 12, cellHeight: 70, margin: 8, staticGrid: true, float: false, rtl: true }, gridEl);
+  const grid = GridStack.init({ column: 12, cellHeight: 70, margin: 8, staticGrid: true, float: false, rtl: document.dir === "rtl" }, gridEl);
   grid.on("resizestop", resizeCharts);
 
   const toggle = document.getElementById("toggle-edit");
@@ -86,7 +86,7 @@
       editing = !editing;
       grid.setStatic(!editing);
       gridEl.classList.toggle("editing", editing);
-      toggle.textContent = editing ? "✓ تم" : "✎ ترتيب العناصر";
+      toggle.textContent = editing ? T("✓ تم") : T("✎ ترتيب العناصر");
     });
     grid.on("change", () => {
       const items = grid.save(false).map((n) => ({ id: n.id, x: n.x, y: n.y, w: n.w, h: n.h }));
@@ -94,7 +94,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items }),
-      }).then((r) => { if (!r.ok) alert("لم يُحفظ الترتيب، حاول مرة أخرى"); });
+      }).then((r) => { if (!r.ok) alert(T("لم يُحفظ الترتيب، حاول مرة أخرى")); });
       setTimeout(resizeCharts, 50);
     });
   }
@@ -113,7 +113,7 @@
         form.reset();
         const isNew = btn.dataset.openWidget === "new";
         form.action = isNew ? form.dataset.addUrl : `/dashboard/widgets/${btn.dataset.openWidget}`;
-        document.getElementById("widget-dialog-title").textContent = isNew ? "إضافة عنصر" : "تعديل العنصر";
+        document.getElementById("widget-dialog-title").textContent = isNew ? T("إضافة عنصر") : T("تعديل العنصر");
         kind.disabled = !isNew;
         if (!isNew) {
           kind.value = btn.dataset.kind;

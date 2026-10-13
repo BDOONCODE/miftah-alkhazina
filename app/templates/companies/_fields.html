@@ -1,7 +1,7 @@
 {% macro company_fields(v, readonly=false) %}
 <div class="form-grid">
   <label>اسم الشركة *
-    <input name="name" value="{{ v.name or '' }}" required {{ 'readonly' if readonly }}>
+    <input name="name" value="{{ (v.name or '') | keep }}" required {{ 'readonly' if readonly }}>
   </label>
   <label>السجل التجاري
     <input name="cr_number" value="{{ v.cr_number or '' }}" dir="ltr" {{ 'readonly' if readonly }}>
@@ -10,7 +10,7 @@
     <input name="vat_number" value="{{ v.vat_number or '' }}" dir="ltr" {{ 'readonly' if readonly }}>
   </label>
   <label>مسؤول التواصل
-    <input name="contact_name" value="{{ v.contact_name or '' }}" {{ 'readonly' if readonly }}>
+    <input name="contact_name" value="{{ (v.contact_name or '') | keep }}" {{ 'readonly' if readonly }}>
   </label>
   <label>جوال التواصل
     <input name="contact_phone" value="{{ v.contact_phone or '' }}" dir="ltr" {{ 'readonly' if readonly }}>
@@ -21,7 +21,7 @@
 {% macro reviewer_fields(v) %}
 <div class="form-grid">
   <label>اسم المراجع *
-    <input name="reviewer_full_name" value="{{ v.reviewer_full_name or '' }}" required>
+    <input name="reviewer_full_name" value="{{ (v.reviewer_full_name or '') | keep }}" required>
   </label>
   <label>بريد المراجع الإلكتروني *
     <input name="reviewer_email" type="email" value="{{ v.reviewer_email or '' }}" dir="ltr" required>

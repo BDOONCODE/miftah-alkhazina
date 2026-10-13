@@ -8,7 +8,7 @@
       <input name="priority" type="number" min="1" value="{{ r.priority }}" class="num" required>
     </label>
     <label class="f-name">اسم البند
-      <input name="name" value="{{ r.name }}" placeholder="مثال: الضريبة" required>
+      <input name="name" value="{{ r.name | keep }}" placeholder="مثال: الضريبة" required>
     </label>
     <label>النوع
       <select name="calc_type" class="js-calc">

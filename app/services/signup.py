@@ -112,12 +112,17 @@ def verify_email(session: Session, token: str) -> User:
 
 
 def _email_html(title: str, body: str, button: str, link: str) -> str:
-    return f"""<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;max-width:480px;margin:auto;color:#1c2330">
-  <h2 style="color:#0f6e5a">🔑 مفتاح الخزينة</h2>
+    """The email in the language the sender is using the site in."""
+    from ..i18n import current_lang, t
+
+    title, body, button = t(title), t(body), t(button)
+    direction = "ltr" if current_lang.get() == "en" else "rtl"
+    return f"""<div dir="{direction}" style="font-family:Tahoma,Arial,sans-serif;max-width:480px;margin:auto;color:#1c2330">
+  <h2 style="color:#0f6e5a">🔑 {t("مفتاح الخزينة")}</h2>
   <h3>{escape(title)}</h3>
   <p style="line-height:1.8">{body}</p>
   <p><a href="{escape(link)}" style="display:inline-block;background:#0f6e5a;color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none">{escape(button)}</a></p>
-  <p style="color:#6b7482;font-size:13px">إذا لم يعمل الزر، انسخ هذا الرابط في المتصفح:<br><span dir="ltr">{escape(link)}</span></p>
+  <p style="color:#6b7482;font-size:13px">{t("إذا لم يعمل الزر، انسخ هذا الرابط في المتصفح:")}<br><span dir="ltr">{escape(link)}</span></p>
 </div>"""
 
 

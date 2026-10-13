@@ -13,7 +13,8 @@ from datetime import date, datetime, time, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
+
+from ..i18n import t
 from ..domain import formula
 from ..domain.money import format_amount
 from ..domain.periods import RIYADH, accrued_target, local_date, period_key, period_start
@@ -313,8 +314,8 @@ def timeseries(snap: Snapshot, granularity: str) -> dict:
     return {
         "labels": [k.strftime(fmt) for k in keys],
         "series": [
-            {"name": "الوارد", "data": [incoming[k] / 100 for k in keys]},
-            {"name": "المخصص", "data": [(incoming[k] - surplus[k]) / 100 for k in keys]},
-            {"name": "الفائض", "data": [surplus[k] / 100 for k in keys]},
+            {"name": t("الوارد"), "data": [incoming[k] / 100 for k in keys]},
+            {"name": t("المخصص"), "data": [(incoming[k] - surplus[k]) / 100 for k in keys]},
+            {"name": t("الفائض"), "data": [surplus[k] / 100 for k in keys]},
         ],
     }

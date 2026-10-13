@@ -10,7 +10,8 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
+
+from ..i18n import current_lang, t
 from ..domain.periods import RIYADH
 from ..models import AllocationEvent, Entity, PeriodClosure, utcnow
 from . import metrics as m
@@ -181,6 +182,14 @@ def to_excel(report: Report) -> bytes:
                 _money(cell)
     _widths(ws, [24, 14, 14, 14, 16])
 
+    if current_lang.get() == "en":  # the downloaded file follows the site language
+        for ws in wb.worksheets:
+            ws.sheet_view.rightToLeft = False
+            ws.title = t(ws.title)[:31]
+            for row in ws.iter_rows():
+                for cell in row:
+                    if isinstance(cell.value, str) and not cell.value.startswith("="):
+                        cell.value = t(cell.value)
     buffer = BytesIO()
     wb.save(buffer)
     return buffer.getvalue()

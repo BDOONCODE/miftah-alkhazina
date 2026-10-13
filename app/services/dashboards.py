@@ -4,6 +4,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..i18n import t
 from ..domain import formula
 from ..models import AuditLog, CustomMetric, Dashboard, DashboardWidget, Entity, User
 from . import metrics as m
@@ -179,9 +180,9 @@ def widget_views(session: Session, dashboard: Dashboard) -> list[dict]:
         elif widget.kind == "bucket_progress":
             view["buckets"] = [b for b in snap.buckets if b.in_policy]
         elif widget.kind == "allocation":
-            data = [{"name": b.name, "value": b.allocated / 100} for b in snap.buckets if b.allocated]
+            data = [{"name": t(b.name), "value": b.allocated / 100} for b in snap.buckets if b.allocated]
             if snap.surplus:
-                data.append({"name": "الفائض", "value": snap.surplus / 100})
+                data.append({"name": t("الفائض"), "value": snap.surplus / 100})
             view["chart"] = {"type": cfg.get("chart", "pie"), "data": data}
         elif widget.kind == "timeseries":
             view["chart"] = {"type": "line", **m.timeseries(snap, cfg.get("granularity", "day"))}

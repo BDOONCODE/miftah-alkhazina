@@ -329,7 +329,7 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 .dot[style*='--i: 3'] { --c: #8b5cf6; } .dot[style*='--i: 4'] { --c: #ec4899; } .dot[style*='--i: 5'] { --c: #f97316; }
 .pill-muted { background: #eef0f3; color: var(--muted); }
 .widget-kpi .widget-body { overflow: hidden; padding-top: .2rem; display: flex; align-items: center; }
-.widget-kpi .widget-period { display: inline; }
+.widget-kpi .widget-period { display: none; }
 .widget-kpi .kpi-row { margin: 0; min-width: 0; }
 .kpi-icon { width: 36px; height: 36px; }
 .kpi-icon svg { width: 20px; height: 20px; }
@@ -344,3 +344,10 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 .donut-legend i { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .donut-legend .donut-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .donut-legend .num { color: var(--muted); font-size: .82rem; }
+/* Language toggle */
+.lang-toggle { font-size: .85rem; font-weight: 600; text-decoration: none; border: 1px solid var(--border); border-radius: 999px; padding: .15rem .7rem; color: var(--primary); background: var(--surface); }
+.lang-toggle:hover { border-color: var(--primary); }
+.lang-corner { display: flex; justify-content: flex-end; padding: .75rem 1rem 0; }
+/* Left-to-right (English) */
+[dir=ltr] .table td.num, [dir=ltr] .table th.num { text-align: left; }
+[dir=ltr] .pw-wrap input { padding-right: 2.6rem; }

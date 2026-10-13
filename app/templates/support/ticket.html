@@ -10,10 +10,10 @@
   <section class="{{ '' if disabled else 'card' }}">
     <form method="post" action="/support" enctype="multipart/form-data" class="stack">
       <label>الموضوع *
-        <input name="subject" maxlength="200" required value="{{ form.subject or '' }}">
+        <input name="subject" maxlength="200" required value="{{ (form.subject or '') | keep }}">
       </label>
       <label>نص الطلب *
-        <textarea name="body" rows="6" maxlength="5000" required>{{ form.body or '' }}</textarea>
+        <textarea name="body" rows="6" maxlength="5000" required>{{ (form.body or '') | keep }}</textarea>
       </label>
       <label>صور توضيحية (اختيارية)
         <input name="images" type="file" accept="image/png,image/jpeg,image/webp" multiple>

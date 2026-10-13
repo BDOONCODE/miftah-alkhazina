@@ -3,12 +3,12 @@
 (() => {
   // Same rules as the server (security.py). Symbols are English-keyboard only, so Arabic letters do not count as a symbol
   const RULES = [
-    [(p) => p.length >= 8, "8 أحرف على الأقل"],
-    [(p) => /[A-Z]/.test(p), "حرف إنجليزي كبير (A-Z)"],
-    [(p) => /[a-z]/.test(p), "حرف إنجليزي صغير (a-z)"],
-    [(p) => /[0-9]/.test(p), "رقم (0-9)"],
-    [(p) => /[!-\/:-@\[-`{-~]/.test(p), "رمز خاص مثل ! @ # $"],
-    [(p) => /^[!-~]*$/.test(p), "أحرف إنجليزية فقط (دون حروف عربية أو مسافات)"],
+    [(p) => p.length >= 8, T("8 أحرف على الأقل")],
+    [(p) => /[A-Z]/.test(p), T("حرف إنجليزي كبير (A-Z)")],
+    [(p) => /[a-z]/.test(p), T("حرف إنجليزي صغير (a-z)")],
+    [(p) => /[0-9]/.test(p), T("رقم (0-9)")],
+    [(p) => /[!-\/:-@\[-`{-~]/.test(p), T("رمز خاص مثل ! @ # $")],
+    [(p) => /^[!-~]*$/.test(p), T("أحرف إنجليزية فقط (دون حروف عربية أو مسافات)")],
   ];
 
   // Line icons (no emoji) that take the text color
@@ -26,13 +26,13 @@
     const eye = document.createElement("button");
     eye.type = "button";
     eye.className = "pw-eye";
-    eye.setAttribute("aria-label", "إظهار كلمة المرور");
+    eye.setAttribute("aria-label", T("إظهار كلمة المرور"));
     eye.innerHTML = EYE;
     eye.addEventListener("click", () => {
       const show = input.type === "password";
       input.type = show ? "text" : "password";
       eye.innerHTML = show ? EYE_OFF : EYE;
-      eye.setAttribute("aria-label", show ? "إخفاء كلمة المرور" : "إظهار كلمة المرور");
+      eye.setAttribute("aria-label", show ? T("إخفاء كلمة المرور") : T("إظهار كلمة المرور"));
       input.focus();
     });
     wrap.appendChild(eye);
@@ -55,7 +55,7 @@
         items[i].classList.toggle("bad", !pass && input.value.length > 0);  // red once they start typing
         ok = ok && pass;
       });
-      input.setCustomValidity(ok || !input.value ? "" : "كلمة المرور لا تستوفي جميع الشروط");
+      input.setCustomValidity(ok || !input.value ? "" : T("كلمة المرور لا تستوفي جميع الشروط"));
     };
     input.addEventListener("input", check);
     check();

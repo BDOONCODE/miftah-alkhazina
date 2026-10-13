@@ -8,7 +8,7 @@
   <form method="post" action="/invite" class="stack">
     <input type="hidden" name="token" value="{{ token }}">
     <label>الاسم الكامل
-      <input name="full_name" value="{{ invitee.full_name if invitee else '' }}" autocomplete="name" required>
+      <input name="full_name" value="{{ (invitee.full_name if invitee else '') | keep }}" autocomplete="name" required>
     </label>
     <label>البريد الإلكتروني
       <input value="{{ invitee.email if invitee else '' }}" type="email" dir="ltr" readonly>

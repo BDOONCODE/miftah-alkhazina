@@ -1,5 +1,7 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+{% macro lang_toggle() %}{% set here = request.url.path ~ ('?' ~ request.url.query if request.url.query else '') %}
+<a class="lang-toggle" href="/lang/{{ 'ar' if lang() == 'en' else 'en' }}?next={{ here | urlencode }}" lang="{{ 'ar' if lang() == 'en' else 'en' }}">{{ 'العربية' if lang() == 'en' else 'English' }}</a>{% endmacro %}
+<html lang="{{ lang() }}" dir="{{ 'ltr' if lang() == 'en' else 'rtl' }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -24,11 +26,14 @@
       {% endif %}
     </nav>
     <div class="who">
+      {{ lang_toggle() }}
       <a href="/account/password" class="muted" title="تغيير كلمة المرور">{{ user.full_name }}</a>
       <span class="badge">{{ ROLE_LABELS[user.role.value] }}</span>
       <form method="post" action="/logout"><button class="btn-link" type="submit">خروج</button></form>
     </div>
   </header>
+  {% else %}
+  <div class="lang-corner">{{ lang_toggle() }}</div>
   {% endif %}
   <main class="container">
     {% for f in pop_flashes(request) %}
@@ -36,6 +41,11 @@
     {% endfor %}
     {% block content %}{% endblock %}
   </main>
+  <script>
+    // Translations for the scripts (empty in Arabic). T("text", a, b) fills {} in order
+    window.I18N = {{ js_catalog() | tojson }};
+    window.T = (s, ...args) => { let out = window.I18N[s] || s; args.forEach((a) => { out = out.replace("{}", a); }); return out; };
+  </script>
   <script src="/static/password.js?v={{ ASSET_VERSION }}"></script>
   <script src="/static/iban.js?v={{ ASSET_VERSION }}"></script>
   <script src="/static/copy.js?v={{ ASSET_VERSION }}"></script>

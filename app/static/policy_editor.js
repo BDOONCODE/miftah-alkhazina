@@ -11,7 +11,7 @@
     rows.querySelectorAll(".bucket-row").forEach((tr) => {
       const calc = tr.querySelector(".js-calc").value;
       const isPct = calc !== "fixed_amount";
-      tr.querySelector(".js-unit").textContent = isPct ? "%" : "ر.س";
+      tr.querySelector(".js-unit").textContent = isPct ? "%" : T("ر.س");
       const freq = tr.querySelector(".js-freq").value;
       tr.querySelector(".js-day").hidden = freq !== "day_of_month";
       const due = tr.querySelector(".js-due");
@@ -41,21 +41,21 @@
     day.required = !day.hidden;
     due.hidden = !["quarterly", "semiannual", "annual"].includes(freq);
     due.required = !due.hidden;
-    const date = due.value ? ` بدءًا من ${due.value}` : "";
+    const date = due.value ? " " + T("بدءًا من {}", due.value) : "";
     const when = {
-      weekly: "كل أسبوع (يوم الأحد)",
-      monthly: "أول كل شهر",
-      day_of_month: day.value ? `يوم ${day.value} من كل شهر` : "في يوم محدد من كل شهر",
-      quarterly: `كل ثلاثة أشهر${date}`,
-      semiannual: `كل ستة أشهر${date}`,
-      annual: `كل سنة${date}`,
+      weekly: T("كل أسبوع (يوم الأحد)"),
+      monthly: T("أول كل شهر"),
+      day_of_month: day.value ? T("يوم {} من كل شهر", day.value) : T("في يوم محدد من كل شهر"),
+      quarterly: T("كل ثلاثة أشهر{}", date),
+      semiannual: T("كل ستة أشهر{}", date),
+      annual: T("كل سنة{}", date),
     }[freq];
     const option = surplus.querySelector(".js-sacc").selectedOptions[0];
     const to = option && option.value
-      ? `ثم يُحوَّل إلى «${option.dataset.name}» (••${option.dataset.iban}).`
-      : "ويبقى محجوزًا هناك.";
+      ? T("ثم يُحوَّل إلى «{}» (••{}).", option.dataset.name, option.dataset.iban)
+      : T("ويبقى محجوزًا هناك.");
     surplus.querySelector(".js-surplus-summary").textContent =
-      `يبقى الفائض في الحساب الكبير ويغطي عجز البنود أولًا، ثم يُعزل ${when} في حساب «الفائض»، ${to}`;
+      T("يبقى الفائض في الحساب الكبير ويغطي عجز البنود أولًا، ثم يُعزل {} في حساب «الفائض»، {}", when, to);
   }
   if (surplus) {
     surplus.addEventListener("input", refreshSurplus);

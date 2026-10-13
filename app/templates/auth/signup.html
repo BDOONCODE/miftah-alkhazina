@@ -19,7 +19,7 @@
       {% endfor %}
     </fieldset>
     <label>الاسم الكامل
-      <input name="full_name" value="{{ form.full_name or '' }}" autocomplete="name" required>
+      <input name="full_name" value="{{ (form.full_name or '') | keep }}" autocomplete="name" required>
     </label>
     <label>البريد الإلكتروني
       <input name="email" type="email" value="{{ form.email or '' }}" autocomplete="email" required dir="ltr">

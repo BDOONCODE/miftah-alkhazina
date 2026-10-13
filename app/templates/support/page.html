@@ -89,7 +89,7 @@
               <option value="{{ key }}" {{ 'selected' if key == r.status }}>{{ label }}</option>
               {% endfor %}
             </select>
-            <input name="note" value="{{ r.note }}" placeholder="ملاحظة للمحاسب">
+            <input name="note" value="{{ r.note | keep }}" placeholder="ملاحظة للمحاسب">
             <button class="btn btn-primary" type="submit">حفظ</button>
           </form>
         </td>

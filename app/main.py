@@ -13,6 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import mailer, throttle
 from .auth import LoginRequired, PasswordChangeRequired, accessible_entities, current_user
+from .i18n import COOKIE as LANG_COOKIE, LANGS, LanguageMiddleware
 from .config import BASE_DIR, HTTPS_ONLY_COOKIES, SECRET_KEY
 from .db import get_session
 from .models import AuditLog, Role, User, utcnow
@@ -59,6 +60,7 @@ app = FastAPI(title="مفتاح الخزينة", docs_url=None, redoc_url=None, 
 app.add_middleware(
     SessionMiddleware, secret_key=SECRET_KEY, https_only=HTTPS_ONLY_COOKIES, same_site="lax", max_age=12 * 3600
 )
+app.add_middleware(LanguageMiddleware)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
 app.include_router(signup.router)
 app.include_router(account.router)
@@ -82,6 +84,17 @@ class _HideHealthChecks(logging.Filter):
 
 
 logging.getLogger("uvicorn.access").addFilter(_HideHealthChecks())
+
+
+@app.get("/lang/{code}", include_in_schema=False)
+def switch_language(code: str, request: Request, next: str = "/"):
+    """Switch the interface language and return to the same page."""
+    target = next if next.startswith("/") and not next.startswith("//") else "/"
+    response = redirect(target)
+    if code in LANGS:
+        response.set_cookie(LANG_COOKIE, code, max_age=365 * 24 * 3600, samesite="lax", httponly=False,
+                            secure=HTTPS_ONLY_COOKIES)
+    return response
 
 
 @app.get("/healthz", include_in_schema=False)

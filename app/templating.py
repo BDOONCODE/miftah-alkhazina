@@ -2,6 +2,7 @@ import hashlib
 
 from fastapi.templating import Jinja2Templates
 
+from . import i18n
 from .config import BASE_DIR
 from .domain.money import format_amount, format_percent
 from .domain.periods import RIYADH
@@ -11,6 +12,13 @@ from .services.policies import APPROVAL_MODES
 from .web import pop_flashes
 
 templates = Jinja2Templates(directory=BASE_DIR / "app" / "templates")
+# Arabic / English: static text and printed values are translated at render time (see app/i18n.py)
+templates.env.add_extension(i18n.ArabicText)
+templates.env.finalize = i18n.finalize
+templates.env.globals.update(
+    _td=i18n._td, _ts=i18n._ts, lang=lambda: i18n.current_lang.get(), js_catalog=i18n.js_catalog,
+)
+templates.env.filters["keep"] = lambda v: i18n.Keep(v) if isinstance(v, str) else v
 templates.env.filters["sar"] = format_amount
 templates.env.filters["pct"] = format_percent
 templates.env.filters["riyadh"] = lambda dt, fmt="%Y-%m-%d %H:%M": dt.astimezone(RIYADH).strftime(fmt) if dt else ""

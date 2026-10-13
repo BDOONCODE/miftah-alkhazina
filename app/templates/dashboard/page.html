@@ -48,7 +48,7 @@
         {% if can_edit %}
         <span class="widget-actions">
           <button type="button" class="btn-icon" title="تعديل" aria-label="تعديل"
-                  data-open-widget="{{ w.id }}" data-kind="{{ w.kind }}" data-title="{{ w.title }}"
+                  data-open-widget="{{ w.id }}" data-kind="{{ w.kind }}" data-title="{{ w.title | keep }}"
                   data-config='{{ w.config | tojson }}'>✎</button>
           <form method="post" action="/dashboard/widgets/{{ w.id }}/delete" onsubmit="return confirm('هل تريد حذف العنصر؟')">
             <button class="btn-icon" title="حذف" aria-label="حذف">✕</button>

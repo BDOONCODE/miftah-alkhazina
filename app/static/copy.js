@@ -7,10 +7,10 @@ document.addEventListener("click", async (e) => {
   const label = button.textContent;
   try {
     await navigator.clipboard.writeText(input.value);
-    button.textContent = "تم النسخ ✓";
+    button.textContent = T("تم النسخ ✓");
   } catch {
     input.select();
-    button.textContent = "انسخ النص المحدد";
+    button.textContent = T("انسخ النص المحدد");
   }
   setTimeout(() => (button.textContent = label), 2000);
 });

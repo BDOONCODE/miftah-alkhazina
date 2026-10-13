@@ -27,6 +27,9 @@ def is_configured() -> bool:
 
 def send_email(to: str, subject: str, html: str, text: str) -> bool:
     """Return True if it was actually sent."""
+    from .i18n import t
+
+    subject, text = t(subject), t(text)
     message = {"to": to, "subject": subject, "html": html, "text": text}
     if outbox is not None:
         outbox.append(message)
