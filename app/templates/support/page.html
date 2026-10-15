@@ -3,11 +3,19 @@
 <div class="page-head">
   <h1>الدعم والتكامل</h1>
   <div class="row-actions">
+    <a href="/admin/virtual-ibans" class="btn">آيبانات الإيداع</a>
     <a href="/admin/api" class="btn">توثيق الربط (API)</a>
     <a href="/admin/users" class="btn">المستخدمون وكلمات المرور</a>
   </div>
 </div>
 <p class="muted">متابعة الربط البنكي والتحويلات المتعثرة وطلبات العكس. لا تظهر هنا بيانات الشركات ولا أرقام الحسابات ولا المبالغ.</p>
+
+{% if iban_waiting or iban_stock.available < LOW_STOCK %}
+<div class="alert alert-warning">
+  آيبانات الإيداع: المتاح {{ iban_stock.available }}{% if iban_waiting %}، و{{ iban_waiting | length }} شركة بانتظار آيبان{% endif %}.
+  <a href="/admin/virtual-ibans">أضف آيبانات من نيوتك</a>
+</div>
+{% endif %}
 
 <section class="card" id="tickets">
   <h2>طلبات الدعم</h2>

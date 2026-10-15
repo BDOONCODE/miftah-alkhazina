@@ -11,6 +11,7 @@ from ..db import get_session
 from ..models import ReversalRequest, Role, SupportTicket, SupportTicketImage, TransferIssue, User
 from ..routes.bank import _secret
 from ..services import support as svc
+from ..services import virtual_ibans
 from ..services.banking import is_simulated
 from ..templating import templates
 from ..web import flash, redirect
@@ -27,6 +28,9 @@ def support_page(request: Request, user: User = Depends(admin_only), session: Se
         "issues": svc.issues(session),
         "requests": svc.requests(session),
         "tickets": svc.tickets(session),
+        "iban_stock": virtual_ibans.stock(session),
+        "iban_waiting": virtual_ibans.waiting(session),
+        "LOW_STOCK": virtual_ibans.LOW_STOCK,
         "TICKET_STATUS": svc.TICKET_STATUS,
         "LEG_LABELS": svc.LEG_LABELS,
         "REQUEST_STATUS": svc.REQUEST_STATUS,
@@ -169,3 +173,44 @@ async def close_ticket(
     session.commit()
     flash(request, f"أُرسل الرد وأُغلق طلب الدعم #{ticket.id}")
     return redirect("/admin/support#tickets")
+
+
+# ------------------------------------------------------------------ deposit IBAN inventory
+
+
+@router.get("/admin/virtual-ibans", response_class=HTMLResponse)
+def ibans_page(request: Request, user: User = Depends(admin_only), session: Session = Depends(get_session)):
+    return templates.TemplateResponse(request, "support/virtual_ibans.html", {
+        "user": user,
+        "stock": virtual_ibans.stock(session),
+        "rows": virtual_ibans.inventory(session),
+        "waiting": virtual_ibans.waiting(session),
+        "FREEZE_DAYS": virtual_ibans.FREEZE_DAYS,
+    })
+
+
+@router.post("/admin/virtual-ibans")
+async def add_ibans(request: Request, user: User = Depends(admin_only), session: Session = Depends(get_session)):
+    form = await request.form()
+    added, rejected = virtual_ibans.add_ibans(session, str(form.get("ibans", "")), user)
+    session.commit()
+    flash(request, f"أُضيف {added} آيبان إلى المخزون" + (f"، ورُفض {len(rejected)}: {'، '.join(rejected[:5])}" if rejected else ""),
+          "error" if rejected and not added else "success")
+    return redirect("/admin/virtual-ibans")
+
+
+@router.post("/admin/virtual-ibans/{row_id}/release")
+def release_iban(request: Request, row_id: int, user: User = Depends(admin_only), session: Session = Depends(get_session)):
+    from ..models import VirtualIban
+
+    row = session.get(VirtualIban, row_id)
+    if row is None:
+        raise HTTPException(404, "الآيبان غير موجود")
+    try:
+        virtual_ibans.release(session, row, user)
+    except virtual_ibans.VirtualIbanError as exc:
+        flash(request, str(exc), "error")
+        return redirect("/admin/virtual-ibans")
+    session.commit()
+    flash(request, f"سُحب الآيبان، ويُجمَّد {virtual_ibans.FREEZE_DAYS} يومًا قبل أن يعود إلى المخزون")
+    return redirect("/admin/virtual-ibans")

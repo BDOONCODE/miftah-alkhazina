@@ -1,13 +1,13 @@
 """Transferring item balances to beneficiaries according to their schedule.
 
-Flow: income lands in the pool account -> is split -> each item's share is held in its own virtual account
-(at the banking provider, in the background; users never deal with it) -> and is transferred to the beneficiary:
+Flow: the client transfers its revenue to its virtual IBAN -> the money lands in Miftah's master account ->
+it is split in our ledger -> each item's share is held (a ledger balance, not a bank account) -> and paid out
+from the master to the item's beneficiary, in Miftah's name with a description naming the client:
   - an item with no due date (immediate): transfers as soon as it is split.
   - an item with a due date: accumulates and transfers in full on the due date (first day after the cycle ends).
-The surplus stays in the pool during the month. If an item falls short of its schedule, the pool covers it
-first (by priority). At the start of each month the previous month's remaining surplus is isolated in the
-"surplus" small account, and transfers from there to the account the accountant chose (if any).
-Nothing ever leaves for a real account except from a small account.
+The surplus stays in the company's pool balance during the cycle. If an item falls short of its schedule, the
+pool covers it first (nearest due date first). On the surplus schedule the cycle's remaining surplus is set
+aside in the company's "surplus" balance, and transfers from there to the account the accountant chose (if any).
 
 Held balance of an item = allocated + covered by the pool - successful transfers from it.
 Pool balance = all surplus - covers - isolations (- legacy surplus transfers that left the pool directly).
@@ -42,7 +42,8 @@ from ..models import (
 from .accounts import DESTINATION_KINDS
 from .banking import BankingError, provider
 
-REASON_LABELS = {"immediate": "فور التقسيم", "due": "يوم الاستحقاق", "surplus": "الفائض الشهري"}
+REASON_LABELS = {"immediate": "فور التقسيم", "due": "يوم الاستحقاق", "surplus": "الفائض الشهري",
+                 "withdrawal": "سحب إلى حساب الشركة"}
 SURPLUS_NAME = "الفائض"
 
 
@@ -79,67 +80,12 @@ def _lock_entity(session: Session, entity_id: int) -> None:
     session.scalars(select(Entity).where(Entity.id == entity_id).with_for_update()).one()
 
 
-# ------------------------------------------------------------------ virtual accounts (background)
+# ------------------------------------------------------------------ the master account
 
 
-def ensure_pool(session: Session, entity_id: int) -> str:
-    """The company's pool virtual account (opened once). Returns its provider id."""
-    entity = session.get(Entity, entity_id)
-    if entity.pool_virtual_ref is None:
-        entity.pool_virtual_iban, entity.pool_virtual_ref = provider().open_pool_account(entity_id, entity.name)
-        session.add(AuditLog(entity_id=entity_id, action="virtual_account.pool_opened", details={}))
-    return entity.pool_virtual_ref
-
-
-def fund_items(session: Session, entity_id: int, txn: Transaction, source: BankAccount | None) -> None:
-    """Move an incoming amount through the provider: company account -> pool -> each item's virtual account.
-
-    The surplus is simply what stays in the pool. A provider failure aborts the whole transaction,
-    so the bank can resend the notification and nothing is half-split.
-    """
-    pool = ensure_pool(session, entity_id)
-    leg = {"leg": "sweep", "destination": "الحساب المجمّع", "reference": f"TX-{txn.id}-sweep"}
-    try:
-        if source is not None:
-            txn.sweep_ref = provider().sweep(
-                from_iban=source.iban, to_ref=pool, amount=txn.amount, reference=leg["reference"]
-            )
-        events = [e for e in txn.events if e.allocated > 0]
-        ensure_virtual_accounts(session, entity_id, [e.bucket_id for e in events])
-        for event in events:
-            bucket = session.get(Bucket, event.bucket_id)
-            leg = {"leg": "move", "destination": _bucket_name(session, bucket), "reference": f"TX-{txn.id}-B{bucket.id}"}
-            event.move_ref = provider().move(
-                from_ref=pool, to_ref=bucket.virtual_ref, amount=event.allocated, reference=leg["reference"]
-            )
-    except BankingError as exc:
-        raise PayoutError(
-            f"تعذّر تنفيذ العملية لدى البنك: {exc}", {"entity_id": entity_id, "error": str(exc), **leg}
-        ) from exc
-
-
-def unwind_items(session: Session, original: Transaction, reversal: Transaction, source: BankAccount | None) -> None:
-    """Reverse the provider moves of a transaction: item accounts -> pool -> back to the company account."""
-    pool = ensure_pool(session, original.entity_id)
-    leg: dict = {}
-    try:
-        for event in original.events:
-            if event.allocated > 0 and event.move_ref:
-                bucket = session.get(Bucket, event.bucket_id)
-                leg = {"destination": "الحساب المجمّع", "reference": f"TX-{reversal.id}-B{bucket.id}"}
-                provider().move(
-                    from_ref=bucket.virtual_ref, to_ref=pool, amount=event.allocated, reference=leg["reference"]
-                )
-        if original.sweep_ref and source is not None:
-            leg = {"destination": source.name, "reference": f"TX-{reversal.id}-sweep"}
-            reversal.sweep_ref = provider().transfer(
-                from_ref=pool, to_iban=source.iban, amount=original.amount, reference=leg["reference"]
-            )
-    except BankingError as exc:
-        raise PayoutError(
-            f"تعذّر تنفيذ العكس لدى البنك: {exc}",
-            {"entity_id": original.entity_id, "leg": "unwind", "error": str(exc), **leg},
-        ) from exc
+def master_account() -> str:
+    """Every client's money is held in Miftah's single master account at the provider."""
+    return provider().master_ref()
 
 
 def _sum(session: Session, stmt) -> int:
@@ -158,21 +104,18 @@ def pool_balance(session: Session, entity_id: int) -> int:
 
 
 def surplus_bucket(session: Session, entity_id: int) -> Bucket:
-    """The "surplus" small account (opened once, with its virtual account at the provider)."""
+    """The company's "surplus" balance, where the set-aside surplus is held (created once)."""
     entity = session.get(Entity, entity_id)
     if entity.surplus_bucket_id is None:
         bucket = Bucket(entity_id=entity_id, system_name=SURPLUS_NAME)
         session.add(bucket)
         session.flush()
         entity.surplus_bucket_id = bucket.id
-    bucket = session.get(Bucket, entity.surplus_bucket_id)
-    if bucket.virtual_ref is None:
-        bucket.virtual_iban, bucket.virtual_ref = provider().open_virtual_account(entity_id, bucket.id, SURPLUS_NAME)
-    return bucket
+    return session.get(Bucket, entity.surplus_bucket_id)
 
 
 def isolated_surplus(session: Session, entity_id: int) -> int:
-    """Balance of the "surplus" small account (isolated monthly surplus not yet transferred out)."""
+    """The company's set-aside surplus not yet transferred out."""
     entity = session.get(Entity, entity_id)
     if entity.surplus_bucket_id is None:
         return 0
@@ -182,21 +125,11 @@ def isolated_surplus(session: Session, entity_id: int) -> int:
 def _move_from_pool(
     session: Session, entity_id: int, kind: str, bucket: Bucket, amount: int, period: str, transaction_id: int | None
 ) -> PoolMove:
-    if bucket.virtual_ref is None:
-        ensure_virtual_accounts(session, entity_id, [bucket.id])
+    """A ledger move inside the master account: the pool's surplus to an item (cover) or set aside (isolate)."""
     move = PoolMove(entity_id=entity_id, kind=kind, bucket_id=bucket.id, amount=amount, period_key=period,
                     transaction_id=transaction_id)
     session.add(move)
     session.flush()
-    try:
-        move.move_ref = provider().move(
-            from_ref=ensure_pool(session, entity_id), to_ref=bucket.virtual_ref, amount=amount, reference=f"PM-{move.id}"
-        )
-    except BankingError as exc:
-        raise PayoutError(f"تعذّر تنفيذ العملية لدى البنك: {exc}", {
-            "entity_id": entity_id, "leg": "move", "destination": _bucket_name(session, bucket),
-            "reference": f"PM-{move.id}", "error": str(exc),
-        }) from exc
     session.add(AuditLog(entity_id=entity_id, action=f"pool.{kind}",
                          details={"bucket_id": bucket.id, "amount": amount, "period": period}))
     return move
@@ -257,25 +190,6 @@ def cover_deficits(session: Session, entity_id: int, policy: Policy, today: date
     return covered
 
 
-def ensure_virtual_accounts(session: Session, entity_id: int, bucket_ids: list[int]) -> None:
-    """Every item in an approved policy has a virtual account at the provider (opened once, kept with the item)."""
-    names = {
-        pb.bucket_id: pb.name
-        for pb in session.scalars(select(PolicyBucket).where(PolicyBucket.bucket_id.in_(bucket_ids)))
-    }
-    for bucket in session.scalars(select(Bucket).where(Bucket.id.in_(bucket_ids), Bucket.virtual_ref.is_(None))):
-        bucket.virtual_iban, bucket.virtual_ref = provider().open_virtual_account(
-            entity_id, bucket.id, names.get(bucket.id, "")
-        )
-        session.add(
-            AuditLog(
-                entity_id=entity_id,
-                action="virtual_account.opened",
-                details={"bucket_id": bucket.id, "name": names.get(bucket.id, "")},
-            )
-        )
-
-
 def balances(session: Session, entity_id: int) -> dict[int, int]:
     """Held balance per item (halalas)."""
     session.flush()
@@ -327,13 +241,6 @@ def _send(
     transaction_id: int | None = None,
     period: str | None = None,
 ) -> Payout:
-    if bucket_id is not None:
-        bucket = session.get(Bucket, bucket_id)
-        if bucket.virtual_ref is None:
-            ensure_virtual_accounts(session, entity_id, [bucket_id])
-        from_ref = bucket.virtual_ref
-    else:
-        from_ref = ensure_pool(session, entity_id)  # the surplus leaves from the pool account itself
     payout = Payout(
         entity_id=entity_id,
         bucket_id=bucket_id,
@@ -348,7 +255,8 @@ def _send(
     )
     try:
         payout.provider_ref = provider().transfer(
-            from_ref=from_ref, to_iban=beneficiary.iban, amount=amount, reference=payout.reference
+            from_ref=master_account(), to_iban=beneficiary.iban, amount=amount, reference=payout.reference,
+            description=_description(session, entity_id, bucket_id, reason, period),
         )
         payout.status = PayoutStatus.SENT
     except BankingError as exc:
@@ -365,6 +273,34 @@ def _send(
                      "to": beneficiary.name, "error": payout.error},
         )
     )
+    return payout
+
+
+def _description(session: Session, entity_id: int, bucket_id: int | None, reason: str, period: str | None) -> str:
+    """Payouts leave in Miftah's name, so the description tells the beneficiary who the money is from and why."""
+    company = session.get(Entity, entity_id).name
+    if reason == "withdrawal":
+        purpose = "سحب من الرصيد"
+    else:
+        purpose = _bucket_name(session, session.get(Bucket, bucket_id)) if bucket_id else SURPLUS_NAME
+    return f"نيابة عن {company}: {purpose}" + (f" {period}" if period else "")
+
+
+def withdraw(session: Session, entity: Entity, user, amount: int, account_id: int) -> Payout:
+    """The company takes money back from its set-aside surplus, to one of its own registered accounts only."""
+    from .accounts import INCOME_KINDS
+
+    account = session.get(BankAccount, account_id) if account_id else None
+    if account is None or account.entity_id != entity.id or not account.is_active or account.kind not in INCOME_KINDS:
+        raise PayoutError("السحب متاح إلى حسابات الشركة المسجّلة فقط")
+    if amount <= 0:
+        raise PayoutError("يجب أن يكون مبلغ السحب أكبر من صفر")
+    _lock_entity(session, entity.id)
+    if amount > isolated_surplus(session, entity.id):
+        raise PayoutError("المبلغ أكبر من رصيد حساب الفائض")
+    payout = _send(session, entity.id, surplus_bucket(session, entity.id).id, amount, account, "withdrawal")
+    session.add(AuditLog(user_id=user.id, entity_id=entity.id, action="surplus.withdrawn",
+                         details={"amount": amount, "to": account.name, "payout_id": payout.id}))
     return payout
 
 

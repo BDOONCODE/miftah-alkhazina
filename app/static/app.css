@@ -352,3 +352,18 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 [dir=ltr] .table td.num, [dir=ltr] .table th.num { text-align: left; }
 [dir=ltr] .pw-wrap input { padding-right: 2.6rem; }
 .section-gap { margin-top: 1.75rem; }
+/* Deposit IBAN */
+.deposit-card { border: 1px solid var(--primary); }
+.deposit-head { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.deposit-head h2 { margin: 0; }
+.deposit-iban { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin: .5rem 0; }
+.deposit-iban input { font-size: 1.15rem; font-weight: 600; letter-spacing: .04em; max-width: 22rem; flex: 1 1 16rem; }
+.pill-iban-available { background: #e3f4ea; color: var(--positive); }
+.pill-iban-assigned { background: #e8f0fe; color: #1a56db; }
+.pill-iban-frozen { background: #eef0f3; color: var(--muted); }
+.letter { max-width: 720px; margin: 0 auto; background: var(--surface); padding: 2rem; border-radius: var(--radius); border: 1px solid var(--border); }
+.letter-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--primary); margin-bottom: 1rem; }
+.letter-actions { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+.letter-table th { width: 35%; }
+.letter-iban { font-size: 1.1rem; font-weight: 700; }
+@media print { .topbar, .lang-corner, .no-print { display: none !important; } .letter { border: none; } body { background: #fff; } }

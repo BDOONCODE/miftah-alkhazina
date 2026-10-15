@@ -9,6 +9,8 @@ from ..db import get_session
 from ..domain import formula
 from ..models import CustomMetric, DashboardWidget, Role, User
 from ..services import dashboards as svc
+from ..services import virtual_ibans
+from ..services.policies import active_policy
 from ..services import payouts
 from ..services import metrics as m
 from ..templating import templates
@@ -24,6 +26,7 @@ def dashboard_page(
 ):
     entity = get_entity_for(user, entity_id, session)
     dashboard = svc.get_or_create(session, entity, user)
+    deposit_iban = virtual_ibans.current(session, entity)
     session.commit()
     customs = svc.customs_for(session, entity_id)
     snap = m.snapshot(session, entity_id, m.resolve_range("this_month"))
@@ -44,6 +47,9 @@ def dashboard_page(
             ],
             "variable_names": list(values),
             "pool_total": payouts.pool_balance(session, entity_id),
+            "deposit_iban": deposit_iban,
+            "has_policy": active_policy(session, entity_id) is not None,
+            "shortfall": snap.deficit,
             "isolated_total": payouts.isolated_surplus(session, entity_id),
             "KINDS": svc.WIDGET_KINDS,
             "PERIODS": m.PERIOD_LABELS,

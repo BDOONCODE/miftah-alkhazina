@@ -1,0 +1,31 @@
+{# The company's deposit IBAN: where it transfers its revenue so it reaches Miftah and is split #}
+{% macro deposit_iban_card(entity, deposit_iban, has_policy, compact=false) %}
+<section class="card deposit-card">
+  <div class="deposit-head">
+    <h2>آيبان الإيداع</h2>
+    {% if deposit_iban %}<a class="btn" href="/entities/{{ entity.id }}/deposit-iban/letter" target="_blank" rel="noopener">خطاب الآيبان</a>{% endif %}
+  </div>
+  {% if deposit_iban %}
+    <p class="muted">حوّل إيرادات الشركة إلى هذا الآيبان، فتصل إلى مفتاح الخزينة وتُقسَّم تلقائيًا وفق سياستك.</p>
+    <div class="deposit-iban">
+      <input id="deposit-iban-{{ entity.id }}" value="{{ deposit_iban.iban }}" dir="ltr" readonly aria-label="آيبان الإيداع">
+      <button class="btn btn-primary" type="button" data-copy="deposit-iban-{{ entity.id }}">نسخ</button>
+    </div>
+    {% if not compact %}
+    <details class="help">
+      <summary>كيف أجعل التحويل تلقائيًا؟</summary>
+      <ol>
+        <li>أضف هذا الآيبان مستفيدًا في تطبيق بنكك للأعمال.</li>
+        <li>أنشئ <strong>تحويلًا دوريًا (أمرًا دائمًا)</strong> من الحساب الذي سجّلته في «الحسابات التي تحوّل منها».</li>
+        <li>اختر التكرار (يوميًا أو أسبوعيًا) ومبلغًا قريبًا من إيرادك المعتاد في تلك المدة.</li>
+      </ol>
+      <p class="muted small">الحوالات الواردة من حساب غير مسجّل تنتظر تأكيدك قبل تقسيمها.</p>
+    </details>
+    {% endif %}
+  {% elif has_policy %}
+    <div class="alert alert-warning">جارٍ تخصيص آيبان الإيداع لشركتك، وسيظهر هنا قريبًا.</div>
+  {% else %}
+    <p class="muted">يظهر آيبان الإيداع بعد اعتماد سياسة التقسيم. وقبل الاعتماد سجّل الحساب الذي ستحوّل منه إيراداتك.</p>
+  {% endif %}
+</section>
+{% endmacro %}

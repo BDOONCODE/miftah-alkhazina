@@ -1,5 +1,5 @@
 """Transferring item balances to beneficiaries by schedule: immediately with each deposit, or in full on the due date. And the surplus to its account."""
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -9,12 +9,14 @@ from app.services import accounts as acc
 from app.services import payouts as po
 from app.services import policies as pol
 from app.services import transactions as tx
+from app.services import virtual_ibans as vib
 
 SAR = 100
 ROYALTY_IBAN = "SA5550000000000000000005"
 LANDLORD_IBAN = "SA6660000000000000000006"
 RESERVE_IBAN = "SA7770000000000000000007"
 OWNER_IBAN = "SA8880000000000000000008"
+OWN_IBAN = "SA9990000000000000000009"
 
 
 @pytest.fixture
@@ -28,6 +30,7 @@ def setup(db, make_user, monkeypatch):
     user.entities.append(entity)
     add = lambda name, iban, kind: acc.add_account(db, entity, user, name=name, bank_name="", iban=iban, kind=kind)  # noqa: E731
     accounts = {
+        "own": add("الحساب الجاري", OWN_IBAN, "source"),
         "royalty": add("مانح الامتياز", ROYALTY_IBAN, "external"),
         "landlord": add("المؤجر", LANDLORD_IBAN, "external"),
         "reserve": add("حساب الاحتياطي", RESERVE_IBAN, "sub"),
@@ -55,11 +58,12 @@ def deposit(db, entity, user, amount, day):
     return txn
 
 
-def test_approval_opens_a_virtual_account_per_item_in_the_background(db, setup):
-    buckets = db.query(models.Bucket).all()
-    assert len(buckets) == 3
-    assert all(acc.IBAN_RE.match(b.virtual_iban) and b.virtual_ref for b in buckets)
-    assert len({b.virtual_iban for b in buckets}) == 3
+def test_approval_gives_the_company_its_deposit_iban(db, setup):
+    entity, *_ = setup
+    deposit_iban = vib.for_entity(db, entity.id)
+    assert deposit_iban is not None and acc.IBAN_RE.match(deposit_iban.iban)
+    assert vib.entity_for(db, deposit_iban.iban).id == entity.id
+    assert all(b.virtual_iban is None for b in db.query(models.Bucket))  # items are ledger balances, not bank accounts
 
 
 def test_undated_item_and_surplus_transfer_with_each_deposit(db, setup):
@@ -152,56 +156,32 @@ class RecordingProvider:
     def __init__(self):
         from app.services.banking import SimulatedProvider
 
-        self.sim, self.calls = SimulatedProvider(), []
+        self.sim, self.calls, self.sent = SimulatedProvider(), [], []
 
     def __getattr__(self, name):
         method = getattr(self.sim, name)
 
         def call(*args, **kwargs):
             self.calls.append((name, kwargs.get("amount")))
+            if name == "transfer":
+                self.sent.append(kwargs)
             return method(*args, **kwargs)
 
         return call
 
 
-def test_money_flows_through_the_pool(db, make_user, monkeypatch):
+def test_only_payouts_reach_the_bank(db, setup, monkeypatch):
+    """The split lives in the ledger: the one call to the bank is the payout, from the master, naming the client."""
     from app.services import banking
 
     recorder = RecordingProvider()
     monkeypatch.setattr(banking, "_provider", recorder)
-    monkeypatch.setattr(tx, "utcnow", lambda: datetime(2026, 9, 10, 12, tzinfo=timezone.utc))
-    user = make_user("acc")
-    entity = models.Entity(name="مزاج", approval_mode="self")
-    db.add(entity)
-    db.flush()
-    user.entities.append(entity)
-    pos = acc.add_account(db, entity, user, name="نقاط البيع", bank_name="", iban="SA4420000001234567891234", kind="source")
-    landlord = acc.add_account(db, entity, user, name="المؤجر", bank_name="", iban=LANDLORD_IBAN, kind="external")
-    draft = pol.start_draft(db, entity, user)
-    pol.save_draft(db, draft, [
-        pol.BucketInput(None, "الإيجار", 1, CalcType.FIXED_AMOUNT, 3_000 * SAR, Frequency.MONTHLY, None, "", False,
-                        destination_account_id=landlord.id),
-    ], "", user)
-    pol.submit(db, draft, user, "")
-    pol.approve(db, draft, user)
-    db.commit()
-
-    recorder.calls.clear()
-    txn = tx.record_transaction(db, entity, user, 10_000 * SAR, datetime(2026, 9, 10, 10, tzinfo=timezone.utc),
-                                source_account_id=pos.id)
-    db.commit()
-    rent = txn.events[0]
-    # company account -> pool (whole amount), then pool -> the rent account (its share); the surplus stays
-    assert recorder.calls == [("sweep", 10_000 * SAR), ("move", rent.allocated)]
-    assert entity.pool_virtual_ref and txn.sweep_ref and rent.move_ref
-    assert po.pool_balance(db, entity.id) == txn.surplus == 10_000 * SAR - rent.allocated
-
-    recorder.calls.clear()
-    tx.reverse_transaction(db, txn, user, "مبلغ مكرر")
-    db.commit()
-    # back the same way: rent account -> pool -> the company account
-    assert recorder.calls == [("move", rent.allocated), ("transfer", 10_000 * SAR)]
-    assert po.pool_balance(db, entity.id) == 0
+    entity, user, ids, _ = setup
+    deposit(db, entity, user, 10_000 * SAR, 10)
+    assert [c for c in recorder.calls if c[0] == "transfer"] == [("transfer", 600 * SAR)]  # the royalty, immediate
+    payout = db.query(models.Payout).one()
+    assert recorder.sent[0]["from_ref"] == "sim-master"
+    assert recorder.sent[0]["description"] == f"نيابة عن مزاج: الإتاوة {payout.period_key}"
 
 
 def test_pool_surplus_covers_deficits_nearest_due_first(db, setup, monkeypatch):
@@ -313,23 +293,82 @@ def test_failed_transfer_reaches_support_without_amount(client, db, setup, make_
     assert issue.resolved and issue.note == "أعيد التحويل مع نيوتك"
 
 
-def test_failed_sweep_is_kept_after_the_rollback(client, db, setup, monkeypatch):
+def test_deposit_from_unregistered_account_waits_for_the_accountant(client, db, setup):
+    entity, user, *_ = setup
+    deposit_iban = vib.for_entity(db, entity.id).iban
+    held = tx.ingest_bank_credit(db, deposit_iban, "SA5500000000000000000099", 2_000 * SAR,
+                                 datetime(2026, 9, 10, 10, tzinfo=timezone.utc), "NEO-77", sender_name="مؤسسة أخرى")
+    db.commit()
+    assert isinstance(held, models.HeldDeposit) and db.query(models.Transaction).count() == 0
+
+    _login(client, "acc")
+    page = client.get(f"/entities/{entity.id}/transactions").text
+    assert "حوالات بانتظار تأكيدك" in page and "مؤسسة أخرى" in page
+    client.post(f"/held-deposits/{held.id}/accept", data={"register": "1"})
+    db.refresh(held)
+    txn = db.get(models.Transaction, held.transaction_id)
+    assert held.status == "accepted" and txn.amount == 2_000 * SAR and txn.external_ref == "NEO-77"
+    assert db.get(models.BankAccount, txn.source_account_id).iban == "SA5500000000000000000099"  # registered now
+
+    again = tx.ingest_bank_credit(db, deposit_iban, "SA5500000000000000000099", 500 * SAR,
+                                  datetime(2026, 9, 11, 10, tzinfo=timezone.utc), "NEO-78")
+    assert isinstance(again, models.Transaction)  # the next transfer from it is split directly
+
+
+def test_refused_deposit_goes_to_support_for_return(client, db, setup):
+    entity, *_ = setup
+    held = tx.ingest_bank_credit(db, vib.for_entity(db, entity.id).iban, "SA5500000000000000000099", 900 * SAR,
+                                 datetime(2026, 9, 10, 10, tzinfo=timezone.utc), "NEO-90", sender_name="مجهول")
+    db.commit()
+    _login(client, "acc")
+    client.post(f"/held-deposits/{held.id}/reject")
+    db.refresh(held)
+    issue = db.query(models.TransferIssue).one()
+    assert held.status == "rejected" and (issue.leg, issue.reference) == ("deposit", "NEO-90")
+
+
+def test_withdrawal_only_to_own_accounts(db, setup):
+    entity, user, ids, accounts = setup
+    pol.active_policy(db, entity.id).surplus_account_id = None
+    deposit(db, entity, user, 10_000 * SAR, 10)
+    po.run_due(db, entity.id, date(2026, 10, 1))  # September's surplus is set aside
+    available = po.isolated_surplus(db, entity.id)
+    assert available > 0
+    with pytest.raises(po.PayoutError, match="المسجّلة"):
+        po.withdraw(db, entity, user, 100 * SAR, accounts["royalty"].id)
+    with pytest.raises(po.PayoutError, match="أكبر من رصيد"):
+        po.withdraw(db, entity, user, available + 1, accounts["own"].id)
+    payout = po.withdraw(db, entity, user, 100 * SAR, accounts["own"].id)
+    assert payout.reason == "withdrawal" and po.isolated_surplus(db, entity.id) == available - 100 * SAR
+
+
+def test_inventory_assigns_waiting_companies_and_freezes_released(db, make_user, monkeypatch):
     from app.services import banking
 
-    def refuse(**_):
-        raise banking.BankingError("الحساب موقوف")
+    class Live:  # not the simulation: no test IBANs are issued
+        def master_ref(self):
+            return "live-master"
 
-    source = acc.add_account(db, setup[0], setup[1], name="نقاط البيع", bank_name="", iban="SA1110000000000000000011",
-                             kind="source")
-    db.commit()
-    monkeypatch.setattr(banking._provider, "sweep", refuse)
-    _login(client, "acc")
-    client.post(f"/entities/{setup[0].id}/transactions", data={
-        "amount": "1000", "occurred_at": "2026-09-10T10:00", "source_account_id": str(source.id),
-    })
-    assert db.query(models.Transaction).count() == 0  # nothing half-split
-    issue = db.query(models.TransferIssue).one()
-    assert (issue.leg, issue.destination) == ("sweep", "الحساب المجمّع")
+        def transfer(self, **kwargs):
+            return "live-tr"
+
+    monkeypatch.setattr(banking, "_provider", Live())
+    admin = make_user("boss", role=models.Role.ADMIN)
+    entity = models.Entity(name="مزاج", approval_mode="self")
+    db.add(entity)
+    db.flush()
+    assert vib.assign(db, entity) is None  # empty inventory: the company waits
+    db.add(models.Policy(entity_id=entity.id, version=1, status=models.PolicyStatus.ACTIVE, created_by=admin.id))
+    db.flush()
+    assert [e.id for e in vib.waiting(db)] == [entity.id]
+    added, rejected = vib.add_ibans(db, "SA1100000000000000000071\nbad\nSA1100000000000000000072", admin)
+    assert (added, rejected) == (2, ["bad"])
+    row = vib.for_entity(db, entity.id)
+    assert row.iban == "SA1100000000000000000071" and vib.waiting(db) == []
+    vib.release(db, row, admin)
+    assert vib.stock(db) == {"available": 1, "assigned": 0, "frozen": 1}
+    row.released_at = row.released_at - timedelta(days=vib.FREEZE_DAYS + 1)
+    assert vib.stock(db)["available"] == 2  # the freeze is over
 
 
 def test_reversal_request_goes_to_support_and_back(client, db, setup, make_user):

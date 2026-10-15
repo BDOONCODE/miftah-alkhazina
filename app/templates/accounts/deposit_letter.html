@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}خطاب آيبان الإيداع — {{ entity.name }}{% endblock %}
+{% block content %}
+<div class="letter">
+  <div class="letter-actions no-print">
+    <button class="btn btn-primary" type="button" onclick="window.print()">طباعة / حفظ PDF</button>
+  </div>
+  <header class="letter-head">
+    <h1>🔑 مفتاح الخزينة</h1>
+    <span class="muted">التاريخ: <span class="num">{{ today | riyadh('%Y-%m-%d') }}</span></span>
+  </header>
+  <h2>خطاب آيبان الإيداع</h2>
+  <p>نفيدكم بأن الآيبان التالي مخصّص لاستقبال إيرادات <strong>{{ entity.name }}</strong> عبر منصة مفتاح الخزينة، لتُقسَّم وفق سياسة التقسيم المعتمدة لديها.</p>
+  <table class="table letter-table">
+    <tbody>
+      <tr><th>اسم الشركة</th><td>{{ entity.name }}</td></tr>
+      {% if entity.cr_number %}<tr><th>السجل التجاري</th><td class="num">{{ entity.cr_number }}</td></tr>{% endif %}
+      <tr><th>اسم المستفيد</th><td>مفتاح الخزينة</td></tr>
+      <tr><th>آيبان الإيداع</th><td class="num letter-iban">{{ deposit_iban.iban }}</td></tr>
+      <tr><th>المرجع</th><td class="num">MK-{{ entity.id }}</td></tr>
+    </tbody>
+  </table>
+  <p class="muted small">يُرجى إضافة هذا الآيبان مستفيدًا في حسابكم البنكي، وإنشاء تحويل دوري إليه من الحساب المسجّل في المنصة.</p>
+</div>
+{% endblock %}

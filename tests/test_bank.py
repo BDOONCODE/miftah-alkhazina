@@ -80,7 +80,7 @@ def test_accounts_page_lists_income_and_beneficiaries_separately(client, db, com
     kinds = {a.name: a.kind for a in db.query(models.BankAccount)}
     assert kinds == {"نقاط البيع": AccountKind.SOURCE, "المؤجر": AccountKind.EXTERNAL, "حساب الضريبة": AccountKind.SUB}
     page = client.get(f"/entities/{company.id}/accounts").text
-    assert "حسابات الشركة (الدخل)" in page and "المستفيدون (الخروج)" in page
+    assert "الحسابات التي تحوّل منها" in page and "المستفيدون (الخروج)" in page
 
 
 def test_policy_destination_is_an_account(client, db, company, accounts):
@@ -161,9 +161,13 @@ def post_webhook(client, payload, secret=SECRET):
 
 
 def test_bank_webhook(client, db, company, accounts, monkeypatch):
+    from app.services import virtual_ibans
+
     activate_policy(client, db, company, accounts)
+    deposit_iban = virtual_ibans.for_entity(db, company.id).iban
     client.post("/logout")  # the notification comes from the bank without a login session
-    payload = {"iban": POS, "amount": "4000.00", "occurred_at": "2026-09-02T10:00:00+03:00", "reference": "NEO-1"}
+    payload = {"virtual_iban": deposit_iban, "sender_iban": POS, "amount": "4000.00",
+               "occurred_at": "2026-09-02T10:00:00+03:00", "reference": "NEO-1"}
 
     monkeypatch.delenv("BANK_WEBHOOK_SECRET", raising=False)
     assert post_webhook(client, payload).status_code == 503  # integration not enabled
@@ -176,9 +180,11 @@ def test_bank_webhook(client, db, company, accounts, monkeypatch):
     assert again.json()["transaction_id"] == first.json()["transaction_id"]
     assert db.query(models.Transaction).count() == 1
 
-    unknown = post_webhook(client, payload | {"iban": LANDLORD, "reference": "NEO-2"})
-    assert unknown.status_code == 422  # an external account, not a revenue source
-    assert post_webhook(client, {"iban": POS}).status_code == 400
+    stranger = post_webhook(client, payload | {"sender_iban": LANDLORD, "reference": "NEO-2"})
+    assert stranger.json()["status"] == "held"  # not a registered account: waits for the accountant
+    unknown = post_webhook(client, payload | {"virtual_iban": "SA0000000000000000000000", "reference": "NEO-3"})
+    assert unknown.status_code == 422  # not anyone's deposit IBAN
+    assert post_webhook(client, {"virtual_iban": deposit_iban}).status_code == 400
 
 
 def _draft_form(**overrides):
@@ -199,6 +205,7 @@ def test_every_item_needs_beneficiary(client, db, company):
 
 
 def test_new_iban_from_policy_creates_account(client, db, company):
+    add(client, company, "نقاط البيع", POS, "source")
     client.post(f"/entities/{company.id}/policy/draft")
     draft = pol.open_policy(db, company.id)
     client.post(
@@ -207,7 +214,7 @@ def test_new_iban_from_policy_creates_account(client, db, company):
     )
     db.refresh(draft)
     assert draft.status is models.PolicyStatus.ACTIVE  # self-approval
-    account = db.query(models.BankAccount).one()
+    account = db.query(models.BankAccount).filter_by(kind=AccountKind.SUB).one()
     assert (account.iban, account.kind, account.name) == (TAX, AccountKind.SUB, "الضريبة")
     assert draft.buckets[0].destination_account_id == account.id
 
@@ -235,6 +242,7 @@ def test_registration_goes_to_accounts_with_pool_from_iban(client, db, make_user
 
 
 def test_semiannual_item_needs_and_saves_due_date(client, db, company):
+    add(client, company, "نقاط البيع", POS, "source")
     client.post(f"/entities/{company.id}/policy/draft")
     draft = pol.open_policy(db, company.id)
     form = _draft_form(

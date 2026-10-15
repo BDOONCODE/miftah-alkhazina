@@ -6,8 +6,10 @@ from sqlalchemy.orm import Session
 
 from ..auth import current_user, get_entity_for, require_role
 from ..db import get_session
-from ..models import BankAccount, Role, User
+from ..models import BankAccount, Role, User, utcnow
 from ..services import accounts as svc
+from ..services import virtual_ibans
+from ..services.policies import active_policy
 from ..templating import templates
 from ..web import flash, redirect
 
@@ -20,6 +22,8 @@ def accounts_page(
     request: Request, entity_id: int, user: User = Depends(current_user), session: Session = Depends(get_session)
 ):
     entity = get_entity_for(user, entity_id, session)
+    deposit_iban = virtual_ibans.current(session, entity)
+    session.commit()
     accounts = svc.accounts_for(session, entity_id)
     return templates.TemplateResponse(
         request,
@@ -31,6 +35,8 @@ def accounts_page(
             "income": [a for a in accounts if a.kind in svc.INCOME_KINDS],
             "beneficiaries": [a for a in accounts if a.kind in svc.BENEFICIARY_KINDS],
             "has_pool": svc.pool_account(session, entity_id) is not None,
+            "deposit_iban": deposit_iban,
+            "has_policy": active_policy(session, entity_id) is not None,
             "INCOME_KINDS": [k.value for k in svc.INCOME_KINDS],
             "BENEFICIARY_KINDS": [k.value for k in svc.BENEFICIARY_KINDS],
             "KINDS": svc.KIND_LABELS,
@@ -95,3 +101,17 @@ def toggle_account(request: Request, account_id: int, user: User = Depends(edito
         return redirect(f"/entities/{account.entity_id}/accounts")
     session.commit()
     return redirect(f"/entities/{account.entity_id}/accounts")
+
+
+@router.get("/entities/{entity_id}/deposit-iban/letter", response_class=HTMLResponse)
+def deposit_letter(
+    request: Request, entity_id: int, user: User = Depends(current_user), session: Session = Depends(get_session)
+):
+    """A printable letter with the deposit IBAN, for adding it as a beneficiary at the company's bank."""
+    entity = get_entity_for(user, entity_id, session)
+    deposit_iban = virtual_ibans.for_entity(session, entity_id)
+    if deposit_iban is None:
+        raise HTTPException(404, "لم يُخصَّص آيبان الإيداع لهذه الشركة بعد")
+    return templates.TemplateResponse(request, "accounts/deposit_letter.html", {
+        "user": user, "entity": entity, "deposit_iban": deposit_iban, "today": utcnow(),
+    })

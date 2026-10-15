@@ -16,13 +16,15 @@
 
 <section class="card">
   <h2>١. استقبال إشعار وصول مبلغ (من نيوتك إلينا)</h2>
-  <p>يرسل البنك إشعارًا عند وصول أي مبلغ إلى حساب دخل مسجّل لشركة، فيُقسَّم المبلغ فورًا وفق سياستها النشطة.</p>
+  <p>يرسل البنك إشعارًا عند وصول أي مبلغ إلى آيبان إيداع لشركة، فيُقسَّم المبلغ فورًا وفق سياستها النشطة.</p>
   <pre dir="ltr" class="code">POST {{ base_url }}/api/bank/incoming
 Content-Type: application/json
 X-Signature: hex( HMAC-SHA256( BANK_WEBHOOK_SECRET, raw request body ) )
 
 {
-  "iban": "SA0380000000608010167519",
+  "virtual_iban": "SA9100000000000000000012",
+  "sender_iban": "SA0380000000608010167519",
+  "sender_name": "مؤسسة النخيل",
   "amount": "1500.00",
   "occurred_at": "2026-09-30T10:00:00+03:00",
   "reference": "NTK-123456"
@@ -30,7 +32,9 @@ X-Signature: hex( HMAC-SHA256( BANK_WEBHOOK_SECRET, raw request body ) )
   <table class="table">
     <thead><tr><th>الحقل</th><th>الوصف</th></tr></thead>
     <tbody>
-      <tr><td dir="ltr">iban</td><td>آيبان حساب الدخل الذي وصل إليه المبلغ، ويجب أن يكون مسجّلًا لدى إحدى الشركات</td></tr>
+      <tr><td dir="ltr">virtual_iban</td><td>آيبان الإيداع الذي وصل إليه المبلغ، ومنه تُعرف الشركة</td></tr>
+      <tr><td dir="ltr">sender_iban</td><td>آيبان الحساب المحوِّل. إن كان من حسابات الشركة المسجّلة قُسِّم المبلغ فورًا، وإلا انتظر تأكيد المحاسب</td></tr>
+      <tr><td dir="ltr">sender_name</td><td>اسم صاحب الحساب المحوِّل (اختياري)</td></tr>
       <tr><td dir="ltr">amount</td><td>المبلغ بالريال، بخانتين عشريتين</td></tr>
       <tr><td dir="ltr">occurred_at</td><td>وقت الإيداع (اختياري، وإن غاب يُعتمد وقت الاستلام. وإن خلا من المنطقة الزمنية يُعدّ بتوقيت الرياض)</td></tr>
       <tr><td dir="ltr">reference</td><td>الرقم المرجعي لدى البنك. لا يُقسَّم المرجع نفسه مرتين، فإعادة إرسال الإشعار آمنة</td></tr>
@@ -41,9 +45,10 @@ X-Signature: hex( HMAC-SHA256( BANK_WEBHOOK_SECRET, raw request body ) )
     <thead><tr><th>الرمز</th><th>المعنى</th></tr></thead>
     <tbody>
       <tr><td class="num">200</td><td>قُسِّم المبلغ: <code dir="ltr">{"status": "allocated", "transaction_id": 42, "surplus": 120.5}</code></td></tr>
+      <tr><td class="num">200</td><td>من حساب غير مسجّل، وينتظر تأكيد المحاسب: <code dir="ltr">{"status": "held", "held_id": 7}</code></td></tr>
       <tr><td class="num">400</td><td>بيانات ناقصة أو غير صالحة</td></tr>
       <tr><td class="num">401</td><td>التوقيع غير صحيح</td></tr>
-      <tr><td class="num">422</td><td>تعذّر التقسيم مع ذكر السبب: آيبان غير مسجّل، أو مرجع مكرر، أو لا توجد سياسة نشطة، أو رفض البنك إحدى الحركات (وتظهر في «التحويلات الفاشلة»)</td></tr>
+      <tr><td class="num">422</td><td>تعذّر التقسيم مع ذكر السبب: آيبان إيداع غير مخصّص لأي شركة، أو لا توجد سياسة نشطة</td></tr>
       <tr><td class="num">503</td><td>الربط غير مفعّل بعد</td></tr>
     </tbody>
   </table>
@@ -51,17 +56,14 @@ X-Signature: hex( HMAC-SHA256( BANK_WEBHOOK_SECRET, raw request body ) )
 
 <section class="card">
   <h2>٢. العمليات التي نطلبها من نيوتك</h2>
-  <p>كل حركة مال حقيقية تمر عبر هذه العمليات، ويحمل كل منها رقمًا مرجعيًا يظهر في «التحويلات الفاشلة» إن رُفض.</p>
+  <p>أموال جميع العملاء في حساب مفتاح الخزينة الرئيسي (<span dir="ltr">Master Account</span>)، والتقسيم في سجلات المنصة. فالحركة الوحيدة التي نطلبها من البنك هي <span dir="ltr">Payout</span> إلى المستفيد.</p>
   <table class="table">
     <thead><tr><th>العملية</th><th>المرحلة</th><th>متى</th><th>صيغة المرجع</th></tr></thead>
     <tbody>
-      <tr><td dir="ltr">open_pool_account</td><td>فتح الحساب المجمّع (حساب افتراضي) للشركة</td><td>عند اعتماد أول سياسة</td><td>—</td></tr>
-      <tr><td dir="ltr">open_virtual_account</td><td>فتح حساب افتراضي لكل بند ولحساب «الفائض»</td><td>عند الاعتماد أو أول استخدام</td><td>—</td></tr>
-      <tr><td dir="ltr">sweep</td><td>حساب الشركة ← الحساب المجمّع</td><td>مع كل مبلغ يصل</td><td dir="ltr">TX-{معاملة}-sweep</td></tr>
-      <tr><td dir="ltr">move</td><td>الحساب المجمّع ← حساب البند الافتراضي</td><td>حصة كل بند، وتغطية العجز، وعزل الفائض</td><td dir="ltr">TX-{معاملة}-B{بند} · PM-{رقم}</td></tr>
-      <tr><td dir="ltr">transfer</td><td>حساب البند الافتراضي ← المستفيد</td><td>فور التقسيم أو يوم الاستحقاق</td><td dir="ltr">PO-…</td></tr>
+      <tr><td dir="ltr">transfer</td><td><span dir="ltr">Master Account</span> ← المستفيد، باسم مفتاح الخزينة ووصف «نيابة عن [الشركة]: [البند] [الفترة]»</td><td>فور التقسيم، أو يوم الاستحقاق، أو عند سحب الشركة من رصيدها</td><td dir="ltr">PO-…</td></tr>
+      <tr><td dir="ltr">bulk transfer</td><td>عدة تحويلات في ملف واحد، ويعود ملف نتيجة يبيّن الناجح والفاشل</td><td>بانتظار توثيق نيوتك</td><td>—</td></tr>
     </tbody>
   </table>
-  <p class="muted small">العكس يسير بالاتجاه المعاكس: من حسابات البنود إلى الحساب المجمّع (move) ثم إلى حساب الشركة (transfer)، بمرجع <span dir="ltr">TX-{قيد العكس}-…</span>.</p>
+  <p class="muted small">آيبانات الإيداع تصدرها نيوتك ويضيفها المدير إلى المخزون من صفحة «آيبانات الإيداع».</p>
 </section>
 {% endblock %}

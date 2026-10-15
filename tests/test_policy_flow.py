@@ -233,7 +233,7 @@ def test_withdraw_via_page(client, company, db):
 def test_self_approval_company_without_reviewer(client, db, make_user):
     make_user("solo")
     login(client, "solo")
-    response = client.post("/companies/new", data={"name": "مجموعة العرفج", "approval_mode": "self"}, follow_redirects=False)
+    response = client.post("/companies/new", data={"name": "مجموعة العرفج", "approval_mode": "self", "iban": "SA0380000000608010167519"}, follow_redirects=False)
     assert response.status_code == 303
     entity = db.query(models.Entity).filter_by(name="مجموعة العرفج").one()
     assert entity.approval_mode == "self" and entity.reviewers == []

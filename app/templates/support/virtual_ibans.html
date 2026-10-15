@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1>آيبانات الإيداع</h1>
+  <a href="/admin/support" class="btn">← الدعم والتكامل</a>
+</div>
+<p class="muted">الآيبانات الافتراضية التي تصدرها نيوتك تحت حساب مفتاح الخزينة الرئيسي. تأخذ كل شركة آيبانًا تلقائيًا عند اعتماد أول سياسة، والآيبان المسحوب يُجمَّد {{ FREEZE_DAYS }} يومًا قبل أن يعود إلى المخزون.</p>
+
+<div class="kpis">
+  <div class="kpi"><span class="kpi-label">متاح</span><span class="kpi-value num">{{ stock.available }}</span></div>
+  <div class="kpi"><span class="kpi-label">مخصّص</span><span class="kpi-value num">{{ stock.assigned }}</span></div>
+  <div class="kpi"><span class="kpi-label">مجمّد</span><span class="kpi-value num">{{ stock.frozen }}</span></div>
+  <div class="kpi"><span class="kpi-label">شركات بانتظار آيبان</span><span class="kpi-value num {{ 'negative' if waiting }}">{{ waiting | length }}</span></div>
+</div>
+
+<section class="card">
+  <h2>إضافة آيبانات</h2>
+  <form method="post" class="stack">
+    <label>الآيبانات (آيبان في كل سطر)
+      <textarea name="ibans" rows="5" dir="ltr" required placeholder="SA0000000000000000000000"></textarea>
+    </label>
+    <div><button class="btn btn-primary" type="submit">إضافة إلى المخزون</button></div>
+  </form>
+  {% if waiting %}<p class="muted small">تُخصَّص الآيبانات المضافة تلقائيًا للشركات المنتظرة: {{ waiting | map(attribute='name') | join('، ') }}</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>المخزون</h2>
+  {% if rows %}
+  <div class="table-scroll">
+  <table class="table">
+    <thead><tr><th>الآيبان</th><th>الحالة</th><th>الشركة</th><th>منذ</th><th></th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="num">{{ r.iban }}</td>
+        <td><span class="pill pill-iban-{{ r.status }}">{{ {'available': 'متاح', 'assigned': 'مخصّص', 'frozen': 'مجمّد'}[r.status] }}</span></td>
+        <td>{{ r.entity.name if r.entity else '—' }}</td>
+        <td>{{ (r.assigned_at if r.status == 'assigned' else r.released_at if r.status == 'frozen' else r.created_at) | riyadh('%Y-%m-%d') }}</td>
+        <td>
+          {% if r.status == 'assigned' %}
+          <form method="post" action="/admin/virtual-ibans/{{ r.id }}/release" onsubmit="return confirm('سحب الآيبان من الشركة؟ سيُجمَّد {{ FREEZE_DAYS }} يومًا')">
+            <button class="btn-link danger" type="submit">سحب</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">المخزون فارغ. أضف الآيبانات التي استلمتها من نيوتك.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -28,6 +28,7 @@ LEG_LABELS = {
     "move": "الحساب المجمّع ← حساب البند الافتراضي",
     "payout": "حساب البند الافتراضي ← المستفيد",
     "unwind": "عكس معاملة ← حساب الشركة",
+    "deposit": "حوالة واردة رُفضت ← إرجاع إلى المرسل",
 }
 REQUEST_STATUS = {"open": "جديد", "in_progress": "قيد المعالجة", "done": "تم", "rejected": "مرفوض"}
 OPEN_STATUSES = ("open", "in_progress")

@@ -13,10 +13,11 @@ from ..auth import current_user, get_entity_for, require_role
 from ..db import get_session
 from ..domain.money import parse_amount
 from ..domain.periods import RIYADH
-from ..models import AccountKind, BankAccount, Payout, PoolMove, PolicyBucket, Role, Transaction, User, utcnow
+from ..models import AccountKind, BankAccount, HeldDeposit, Payout, PoolMove, PolicyBucket, Role, Transaction, User, utcnow
 from ..services import payouts as payout_svc
 from ..services import support
 from ..services import transactions as svc
+from ..services import virtual_ibans
 from ..services.accounts import accounts_for
 from ..services.policies import active_policy
 from ..templating import templates
@@ -47,6 +48,8 @@ def transactions_page(
     request: Request, entity_id: int, user: User = Depends(current_user), session: Session = Depends(get_session)
 ):
     entity = get_entity_for(user, entity_id, session)
+    deposit_iban = virtual_ibans.current(session, entity)
+    session.commit()
     txns = list(
         session.scalars(
             select(Transaction).where(Transaction.entity_id == entity_id).order_by(Transaction.id.desc()).limit(PAGE_SIZE)
@@ -70,6 +73,8 @@ def transactions_page(
             "form": {},
             "sources": [a for a in accounts_for(session, entity_id, active_only=True) if a.kind in INCOMING_KINDS],
             "account_names": {a.id: a.name for a in accounts_for(session, entity_id)},
+            "held": svc.held_deposits(session, entity_id),
+            "deposit_iban": deposit_iban,
         },
     )
 
@@ -113,17 +118,23 @@ async def simulate_bank_credit(
     form = await request.form()
     wants_json = "application/json" in request.headers.get("accept", "")
     account_id = str(form.get("account_id", ""))
+    # "other": a transfer from an account the company has not registered (it waits for the accountant)
     account = session.get(BankAccount, int(account_id)) if account_id.isdigit() else None
+    deposit_iban = virtual_ibans.for_entity(session, entity.id)
     error = None
-    if account is None or account.entity_id != entity.id or account.kind not in INCOMING_KINDS:
-        error = "اختر حساب مصدر أو الحساب المجمّع"
+    if deposit_iban is None:
+        error = "لم يُخصَّص آيبان الإيداع لهذه الشركة بعد"
+    elif account_id != "other" and (account is None or account.entity_id != entity.id or account.kind not in INCOMING_KINDS):
+        error = "اختر الحساب الذي حُوِّل منه المبلغ"
     else:
         try:
             raw = str(form.get("amount", "")).strip()
             # No amount: a realistic random amount between 500 and 15,000 riyals
             amount = parse_amount(raw) if raw else random.randint(500, 15_000) * 100
+            sender = account.iban if account else f"SA65{random.randint(10**19, 10**20 - 1):020d}"
             txn = svc.ingest_bank_credit(
-                session, account.iban, amount, utcnow(), f"SIM-{uuid.uuid4().hex[:12]}", note="إيداع تجريبي (محاكاة البنك)"
+                session, deposit_iban.iban, sender, amount, utcnow(), f"SIM-{uuid.uuid4().hex[:12]}",
+                sender_name=account.name if account else "حساب غير مسجّل", note="إيداع تجريبي (محاكاة البنك)",
             )
         except ValueError as exc:  # includes TransactionError
             error = str(exc)
@@ -134,10 +145,42 @@ async def simulate_bank_credit(
         flash(request, error, "error")
         return redirect(f"/entities/{entity_id}/transactions")
     session.commit()
+    if isinstance(txn, HeldDeposit):
+        if wants_json:
+            return JSONResponse({"held_id": txn.id, "amount": txn.amount / 100})
+        flash(request, "وصلت حوالة من حساب غير مسجّل، وتنتظر تأكيدك أدناه")
+        return redirect(f"/entities/{entity_id}/transactions")
     if wants_json:
         return JSONResponse({"transaction_id": txn.id, "amount": txn.amount / 100, "surplus": txn.surplus / 100})
     flash(request, f"وصل إيداع من «{account.name}» وقُسِّم تلقائيًا")
     return redirect(f"/transactions/{txn.id}")
+
+
+@router.post("/held-deposits/{held_id}/{decision}")
+async def decide_held(
+    request: Request, held_id: int, decision: str, user: User = Depends(editor), session: Session = Depends(get_session)
+):
+    """The accountant confirms a transfer from an unregistered account (split now), or refuses it (returned)."""
+    held = session.get(HeldDeposit, held_id)
+    if held is None or decision not in ("accept", "reject"):
+        raise HTTPException(404, "الحوالة غير موجودة")
+    get_entity_for(user, held.entity_id, session)
+    form = await request.form()
+    try:
+        if decision == "accept":
+            txn = svc.accept_held(session, held, user, register=form.get("register") == "1")
+        else:
+            svc.reject_held(session, held, user)
+    except svc.TransactionError as exc:
+        session.rollback()
+        flash(request, str(exc), "error")
+        return redirect(f"/entities/{held.entity_id}/transactions")
+    session.commit()
+    if decision == "accept":
+        flash(request, "أُكِّدت الحوالة وقُسِّمت")
+        return redirect(f"/transactions/{txn.id}")
+    flash(request, "رُفضت الحوالة، وسيتابع الدعم إرجاعها إلى المرسل")
+    return redirect(f"/entities/{held.entity_id}/transactions")
 
 
 def _txn_for(user: User, txn_id: int, session: Session) -> Transaction:

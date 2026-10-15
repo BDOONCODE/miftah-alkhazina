@@ -354,6 +354,47 @@ class Payout(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
 
 
+# ---------------------------------------------------------------- deposits
+
+
+class VirtualIban(Base):
+    """A deposit IBAN Neotek issued under Miftah's master account. One per client company.
+
+    status: available (in the inventory) | assigned (to entity_id) | frozen (released, waiting out the freeze)
+    """
+
+    __tablename__ = "virtual_ibans"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    iban: Mapped[str] = mapped_column(String(34), unique=True)
+    status: Mapped[str] = mapped_column(String(16), default="available", index=True)
+    entity_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id"), index=True)
+    last_entity_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id"))
+    assigned_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    released_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+    entity: Mapped[Entity | None] = relationship(foreign_keys=[entity_id])
+
+
+class HeldDeposit(Base):
+    """Money that reached a company's deposit IBAN from an account the company has not registered.
+    It is not split until the accountant confirms it is theirs; if they refuse, support returns it."""
+
+    __tablename__ = "held_deposits"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
+    sender_iban: Mapped[str] = mapped_column(String(34), default="")
+    sender_name: Mapped[str] = mapped_column(String(128), default="")
+    amount: Mapped[int] = mapped_column(BigInteger)
+    occurred_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    reference: Mapped[str] = mapped_column(String(128), unique=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending")  # pending | accepted | rejected
+    transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"))
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
 # ---------------------------------------------------------------- support
 
 

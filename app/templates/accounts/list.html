@@ -1,4 +1,5 @@
 {% extends "entity_base.html" %}
+{% from "_deposit_iban.html" import deposit_iban_card %}
 {% block entity_content %}
 {% set can_edit = user.role.value == "accountant" %}
 
@@ -35,30 +36,21 @@
 </div>
 {% endmacro %}
 
+{{ deposit_iban_card(entity, deposit_iban, has_policy) }}
+
 {% if can_edit %}
 <section class="card">
-  <h2>حسابات الشركة (الدخل)</h2>
+  <h2>الحسابات التي تحوّل منها</h2>
   <p class="muted">
-    الحسابات التي <strong>تُودَع فيها المبالغ</strong>. اربط حسابات نقاط البيع ومدى والتوصيل كلًّا على حدة،
-    أو أضف <strong>الحساب الرئيسي</strong> الذي تُودَع فيه جميع المبالغ. وما إن يصل مبلغ إلى أي منها حتى يُقسَّم وفق سياسة التقسيم.
+    حسابات الشركة البنكية التي تحوّل منها إيراداتها إلى <strong>آيبان الإيداع</strong>. سجّل حسابًا واحدًا على الأقل قبل اعتماد السياسة:
+    الحوالات من هذه الحسابات تُقسَّم تلقائيًا، والسحب من رصيد الشركة يكون إليها فقط.
   </p>
-  <h3>إضافة حساب دخل</h3>
+  <h3>إضافة حساب</h3>
   <form method="post" class="stack">
-    <fieldset class="stack plain">
-      <legend>نوع الحساب</legend>
-      <div class="kind-grid">
-        {% for key in INCOME_KINDS %}
-        <label class="radio">
-          <input type="radio" name="kind" value="{{ key }}" required {{ 'checked' if key == 'source' }} {{ 'disabled' if key == 'pool' and has_pool }}>
-          <span><strong>{{ KINDS[key] }}</strong>{% if key == 'pool' and has_pool %} <small class="muted">(مضاف)</small>{% endif %}<br>
-            <small class="muted">{{ HINTS[key] }}</small></span>
-        </label>
-        {% endfor %}
-      </div>
-    </fieldset>
+    <input type="hidden" name="kind" value="source">
     <div class="form-grid">
       <label>اسم الحساب *
-        <input name="name" required placeholder="مثال: نقاط البيع - الفرع الرئيسي">
+        <input name="name" required placeholder="مثال: الحساب الجاري - الراجحي">
       </label>
       <label>البنك
         <input name="bank_name" placeholder="مثال: الراجحي">
@@ -73,11 +65,11 @@
 {% endif %}
 
 <section class="card">
-  <h2>حسابات الدخل المضافة</h2>
+  <h2>الحسابات المضافة</h2>
   {% if income %}
     {{ accounts_table(income, deletable=true) }}
   {% else %}
-  <div class="alert alert-warning">لا توجد حسابات دخل حتى الآن. أضف حساب نقاط البيع أو الحساب الرئيسي أدناه.</div>
+  <div class="alert alert-warning">لم تُسجَّل حسابات بعد. أضف الحساب الذي ستحوّل منه إيرادات الشركة.</div>
   {% endif %}
 </section>
 

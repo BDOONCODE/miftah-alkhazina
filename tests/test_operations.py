@@ -24,7 +24,7 @@ def at(y, mo, d, h=12):
 def setup(db, make_user):
     accountant = make_user("acc")
     entity = companies.register_company(
-        db, accountant, companies.CompanyInput(name="مؤسسة النخيل"), companies.ReviewerInput("سارة", "sara", "Password-123!")
+        db, accountant, companies.CompanyInput(name="مؤسسة النخيل", iban="SA0380000000608010167519"), companies.ReviewerInput("سارة", "sara", "Password-123!")
     )
     reviewer = db.query(models.User).filter_by(username="sara").one()
     reviewer.must_change_password = False

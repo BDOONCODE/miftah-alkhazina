@@ -16,6 +16,7 @@ from ..models import (
     BankAccount,
     BucketPeriodState,
     Entity,
+    HeldDeposit,
     PeriodClosure,
     Transaction,
     TransactionSource,
@@ -23,6 +24,7 @@ from ..models import (
     utcnow,
 )
 from . import payouts
+from .accounts import INCOME_KINDS, normalize_iban
 from .policies import active_policy, specs
 
 
@@ -143,13 +145,9 @@ def record_transaction(
 
     session.flush()
     session.refresh(txn, ["events"])
-    source_account = session.get(BankAccount, source_account_id) if source_account_id else None
-    try:
-        payouts.fund_items(session, entity.id, txn, source_account)
-        # The pool's surplus covers items that are behind (nearest due first), before anything transfers out
-        covered = payouts.cover_deficits(session, entity.id, policy, local_date(utcnow()), transaction_id=txn.id)
-    except payouts.PayoutError as exc:
-        raise TransactionError(str(exc)) from exc
+    # The money is already in the master account: the split is kept in the ledger. The pool's surplus covers
+    # items that are behind (nearest due first), before anything transfers out
+    covered = payouts.cover_deficits(session, entity.id, policy, local_date(utcnow()), transaction_id=txn.id)
     payouts.pay_on_allocation(session, entity.id, policy, txn, result.lines, covered)
 
     session.add(
@@ -244,12 +242,8 @@ def reverse_transaction(session: Session, txn: Transaction, user: User, reason: 
     for closure in session.scalars(select(PeriodClosure).where(PeriodClosure.closed_by_transaction_id == txn.id)):
         closure.voided = True
 
-    # Move the money back at the provider: item accounts -> pool -> the company account it came from
-    source_account = session.get(BankAccount, txn.source_account_id) if txn.source_account_id else None
-    try:
-        payouts.unwind_items(session, txn, reversal, source_account)
-    except payouts.PayoutError as exc:
-        raise TransactionError(str(exc)) from exc
+    # A ledger correction only: the money stays in the master account. Returning money that really
+    # arrived to its sender goes through a reversal request to support
 
     session.add(
         AuditLog(
@@ -267,32 +261,92 @@ def reverse_transaction(session: Session, txn: Transaction, user: User, reason: 
 
 def ingest_bank_credit(
     session: Session,
-    iban: str,
+    deposit_iban: str,
+    sender_iban: str,
     amount: int,
     occurred_at: datetime,
     reference: str,
+    sender_name: str = "",
     note: str = "",
-) -> Transaction:
-    """Money arrived in a company bank account (provider notification or the simulator): split immediately.
+) -> Transaction | HeldDeposit:
+    """Money reached a company's deposit IBAN (provider notification or the simulator).
 
-    The same reference is never split twice, because banks sometimes resend notifications.
+    From one of the company's registered accounts: split immediately. From any other account: held until the
+    accountant confirms it is theirs. The same reference is never handled twice (banks resend notifications).
     """
-    from .accounts import find_by_iban
+    from . import virtual_ibans
 
-    if not reference.strip():
+    reference = reference.strip()
+    if not reference:
         raise TransactionError("الإشعار بدون رقم مرجعي")
-    account = find_by_iban(session, iban)
+    if existing := session.scalar(select(Transaction).where(Transaction.external_ref == reference)):
+        return existing
+    if held := session.scalar(select(HeldDeposit).where(HeldDeposit.reference == reference)):
+        return held
+    entity = virtual_ibans.entity_for(session, deposit_iban)
+    if entity is None:
+        raise TransactionError("آيبان الإيداع غير مخصّص لأي شركة")
+    sender_iban = normalize_iban(sender_iban or "")
+    account = session.scalar(select(BankAccount).where(
+        BankAccount.entity_id == entity.id, BankAccount.iban == sender_iban, BankAccount.is_active,
+        BankAccount.kind.in_(INCOME_KINDS),
+    )) if sender_iban else None
     if account is None:
-        raise TransactionError("الآيبان غير مسجل كحساب دخل لأي شركة")
-    entity = session.get(Entity, account.entity_id)
+        held = HeldDeposit(entity_id=entity.id, sender_iban=sender_iban, sender_name=sender_name.strip()[:128],
+                           amount=amount, occurred_at=occurred_at, reference=reference)
+        session.add(held)
+        session.flush()
+        session.add(AuditLog(entity_id=entity.id, action="deposit.held",
+                             details={"held_id": held.id, "amount": amount, "from": sender_iban[-4:]}))
+        return held
     return record_transaction(
-        session,
-        entity,
-        None,
-        amount,
-        occurred_at,
-        note=note,
-        source=TransactionSource.OPEN_BANKING,
-        external_ref=reference.strip(),
-        source_account_id=account.id,
+        session, entity, None, amount, occurred_at, note=note, source=TransactionSource.OPEN_BANKING,
+        external_ref=reference, source_account_id=account.id,
     )
+
+
+def held_deposits(session: Session, entity_id: int) -> list[HeldDeposit]:
+    return list(session.scalars(
+        select(HeldDeposit).where(HeldDeposit.entity_id == entity_id, HeldDeposit.status == "pending")
+        .order_by(HeldDeposit.id)
+    ))
+
+
+def accept_held(session: Session, held: HeldDeposit, user: User, register: bool) -> Transaction:
+    """The accountant confirms the money is theirs: it is split now, and the sender account can be registered
+    so its next transfers are split directly."""
+    from .accounts import AccountError, add_account
+
+    if held.status != "pending":
+        raise TransactionError("تم البت في هذه الحوالة من قبل")
+    entity = session.get(Entity, held.entity_id)
+    source_id = None
+    if register and held.sender_iban:
+        existing = session.scalar(select(BankAccount).where(
+            BankAccount.entity_id == entity.id, BankAccount.iban == held.sender_iban
+        ))
+        if existing is None:
+            try:
+                existing = add_account(session, entity, user, name=held.sender_name or f"حساب ••{held.sender_iban[-4:]}",
+                                       bank_name="", iban=held.sender_iban, kind="source")
+            except AccountError as exc:
+                raise TransactionError(str(exc)) from exc
+        source_id = existing.id if existing.kind in INCOME_KINDS else None
+    txn = record_transaction(session, entity, user, held.amount, held.occurred_at, note="حوالة مؤكَّدة من المحاسب",
+                             source=TransactionSource.OPEN_BANKING, external_ref=held.reference,
+                             source_account_id=source_id)
+    held.status, held.transaction_id, held.decided_by, held.decided_at = "accepted", txn.id, user.id, utcnow()
+    return txn
+
+
+def reject_held(session: Session, held: HeldDeposit, user: User) -> None:
+    """Not the company's money: support returns it to the sender."""
+    from ..models import TransferIssue
+
+    if held.status != "pending":
+        raise TransactionError("تم البت في هذه الحوالة من قبل")
+    held.status, held.decided_by, held.decided_at = "rejected", user.id, utcnow()
+    session.add(TransferIssue(entity_id=held.entity_id, leg="deposit", destination=held.sender_name or held.sender_iban,
+                              reference=held.reference, error="رفضت الشركة الحوالة: تحتاج إرجاعًا إلى المرسل"))
+    session.add(AuditLog(user_id=user.id, entity_id=held.entity_id, action="deposit.rejected",
+                         details={"held_id": held.id}))

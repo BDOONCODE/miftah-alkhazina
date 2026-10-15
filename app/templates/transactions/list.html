@@ -2,6 +2,40 @@
 {% block entity_content %}
 {% set can_edit = user.role.value == "accountant" %}
 
+{% if held %}
+<section class="card card-highlight">
+  <h2>حوالات بانتظار تأكيدك</h2>
+  <p class="muted">وصلت إلى آيبان الإيداع من حسابات غير مسجّلة. أكّدها لتُقسَّم، أو ارفضها ليُرجعها الدعم إلى المرسل.</p>
+  <div class="table-scroll">
+  <table class="table">
+    <thead><tr><th>الوقت</th><th>المبلغ</th><th>من</th><th></th></tr></thead>
+    <tbody>
+    {% for h in held %}
+      <tr>
+        <td>{{ h.occurred_at | riyadh }}</td>
+        <td class="num">{{ h.amount | sar }}</td>
+        <td>{{ h.sender_name or '—' }}<div class="muted small num">{{ h.sender_iban }}</div></td>
+        <td>
+          {% if can_edit %}
+          <div class="row-actions">
+            <form method="post" action="/held-deposits/{{ h.id }}/accept" class="inline-form">
+              <label class="toggle"><input type="checkbox" name="register" value="1" checked> أضف الحساب إلى حساباتي</label>
+              <button class="btn btn-primary" type="submit">تأكيد وتقسيم</button>
+            </form>
+            <form method="post" action="/held-deposits/{{ h.id }}/reject">
+              <button class="btn-link danger" type="submit">ليست لي</button>
+            </form>
+          </div>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+
 {% if can_edit %}
   {% if not policy %}
   <div class="alert alert-warning">لا توجد سياسة نشطة. <a href="/entities/{{ entity.id }}/policy">حدد سياسة التقسيم</a> واعتمدها أولًا ليتم تقسيم المبالغ.</div>
@@ -40,12 +74,13 @@
         يحاكي إشعارًا من البنك بوصول مبلغ: يمر بمسار الربط البنكي الحقيقي نفسه، ويُقسَّم دون إدخال يدوي.
         وعند اكتمال الربط مع نيوتك، تصل الإيداعات الحقيقية بالطريقة نفسها.
       </p>
-      {% if sources %}
+      {% if deposit_iban %}
       <form method="post" action="/entities/{{ entity.id }}/bank-simulator" class="stack" id="sim-form">
         <div class="form-grid">
-          <label>وصل المبلغ لحساب
+          <label>حُوِّل المبلغ من
             <select name="account_id" required>
               {% for a in sources %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+              <option value="other">حساب غير مسجّل (للتجربة)</option>
             </select>
           </label>
           <label>المبلغ (ر.س)
@@ -60,8 +95,8 @@
       </form>
       {% else %}
       <div class="alert alert-warning">
-        أضف حساب <strong>مصدر إيراد</strong> أو <strong>مجمّع</strong> من
-        <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a> لتجربة الإيداع التلقائي.
+        يعمل الإيداع التلقائي بعد تخصيص آيبان الإيداع للشركة. تجده في
+        <a href="/entities/{{ entity.id }}/accounts">الحسابات البنكية</a>.
       </div>
       {% endif %}
     </section>

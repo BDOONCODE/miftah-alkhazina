@@ -255,6 +255,17 @@ def destination_errors(policy: Policy) -> list[str]:
     return errors
 
 
+def source_errors(session: Session, entity_id: int) -> list[str]:
+    """Before the first approval the company registers the account it will transfer its revenue from:
+    deposits from registered accounts are split directly, anything else waits for the accountant."""
+    from .accounts import INCOME_KINDS
+
+    has_source = session.scalar(select(BankAccount.id).where(
+        BankAccount.entity_id == entity_id, BankAccount.is_active, BankAccount.kind.in_(INCOME_KINDS)
+    ).limit(1))
+    return [] if has_source else ["سجّل في «الحسابات البنكية» الحساب الذي ستحوّل منه إيراداتك إلى آيبان الإيداع"]
+
+
 def funded_in_current_period(session: Session, entity_id: int, buckets: list[BucketSpec], today: date) -> set[int]:
     by_id = {b.bucket_id: b for b in buckets}
     funded: set[int] = set()
@@ -279,7 +290,7 @@ def protected_changes_for(session: Session, policy: Policy, today: date | None =
 def submit(session: Session, policy: Policy, user: User, justification: str) -> None:
     if policy.status is not PolicyStatus.DRAFT:
         raise PolicyError("السياسة ليست مسودة")
-    if errors := validate_policy(specs(policy)) + destination_errors(policy):
+    if errors := validate_policy(specs(policy)) + destination_errors(policy) + source_errors(session, policy.entity_id):
         raise PolicyError("؛ ".join(errors))
     changes = protected_changes_for(session, policy)
     if error := justification_error(changes, justification):
@@ -392,11 +403,10 @@ def approve(session: Session, policy: Policy, user: User, note: str = "") -> Non
     _audit(
         session, user, policy, "policy.approved", removed_buckets=removed, self_approved=policy.created_by == user.id
     )
-    from .payouts import ensure_pool, ensure_virtual_accounts
+    from . import virtual_ibans
 
-    # The company's pool and each item's account open at the provider as soon as the policy is approved
-    ensure_pool(session, policy.entity_id)
-    ensure_virtual_accounts(session, policy.entity_id, [pb.bucket_id for pb in policy.buckets])
+    # The first approved policy gives the company its deposit IBAN (it waits if the inventory is empty)
+    virtual_ibans.assign(session, session.get(Entity, policy.entity_id))
 
 
 def set_approval_mode(session: Session, entity: Entity, user: User, mode: str) -> None:

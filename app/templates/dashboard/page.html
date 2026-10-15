@@ -4,6 +4,7 @@
 {% endblock %}
 
 {% block entity_content %}
+{% from "_deposit_iban.html" import deposit_iban_card %}
 {% macro icon(name) %}<svg viewBox="0 0 24 24" aria-hidden="true">{% if name == 'incoming' %}<path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/>{% elif name == 'surplus' %}<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>{% elif name == 'deficit' %}<path d="M12 3.5l9 16H3l9-16zM12 10v4.5M12 17.2v.1"/>{% elif name == 'count' %}<path d="M9 6h11M9 12h11M9 18h11M4.5 6v.1M4.5 12v.1M4.5 18v.1"/>{% elif name == 'pool' %}<path d="M4 10h16M6 10v8m4-8v8m4-8v8m4-8v8M3 20h18M12 3l9 5H3l9-5z"/>{% elif name == 'isolated' %}<path d="M6 10V8a6 6 0 0112 0v2M5 10h14v10H5zM12 14v2.5"/>{% else %}<circle cx="12" cy="12" r="7"/>{% endif %}</svg>{% endmacro %}
 <div class="page-head">
   <span class="muted">{{ dashboard.title }}</span>
@@ -14,6 +15,14 @@
   </div>
   {% endif %}
 </div>
+
+{% if shortfall > 0 %}
+<div class="alert alert-warning">
+  الإيداعات الواردة هذا الشهر أقل من احتياج البنود حتى اليوم بمقدار <strong class="num">{{ shortfall | sar }}</strong> ر.س.
+  تأكد من التحويل الدوري إلى آيبان الإيداع.
+</div>
+{% endif %}
+{% if not deposit_iban %}{{ deposit_iban_card(entity, deposit_iban, has_policy, compact=true) }}{% endif %}
 
 <div class="surplus-strip">
   <div class="hero-card hero-pool">
