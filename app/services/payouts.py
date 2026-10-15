@@ -5,9 +5,10 @@ it is split in our ledger -> each item's share is held (a ledger balance, not a 
 from the master to the item's beneficiary, in Miftah's name with a description naming the client:
   - an item with no due date (immediate): transfers as soon as it is split.
   - an item with a due date: accumulates and transfers in full on the due date (first day after the cycle ends).
-The surplus stays in the company's pool balance during the cycle. If an item falls short of its schedule, the
-pool covers it first (nearest due date first). On the surplus schedule the cycle's remaining surplus is set
-aside in the company's "surplus" balance, and transfers from there to the account the accountant chose (if any).
+The surplus stays in the company's balance in the master account. If an item falls short of its schedule, the
+surplus covers it first (nearest due date first). On the surplus schedule the ended cycle's remaining surplus is
+paid out to the account the accountant chose; without one it simply stays in the company's balance. The company
+can also transfer its surplus to one of its own accounts at any time.
 
 Held balance of an item = allocated + covered by the pool - successful transfers from it.
 Pool balance = all surplus - covers - isolations (- legacy surplus transfers that left the pool directly).
@@ -42,7 +43,7 @@ from ..models import (
 from .accounts import DESTINATION_KINDS
 from .banking import BankingError, provider
 
-REASON_LABELS = {"immediate": "فور التقسيم", "due": "يوم الاستحقاق", "surplus": "الفائض الشهري",
+REASON_LABELS = {"immediate": "فور التقسيم", "due": "يوم الاستحقاق", "surplus": "الفائض",
                  "withdrawal": "سحب إلى حساب الشركة"}
 SURPLUS_NAME = "الفائض"
 
@@ -115,11 +116,16 @@ def surplus_bucket(session: Session, entity_id: int) -> Bucket:
 
 
 def isolated_surplus(session: Session, entity_id: int) -> int:
-    """The company's set-aside surplus not yet transferred out."""
+    """Surplus set aside under the earlier model (a separate surplus balance); kept so old data still counts."""
     entity = session.get(Entity, entity_id)
     if entity.surplus_bucket_id is None:
         return 0
     return balances(session, entity_id).get(entity.surplus_bucket_id, 0)
+
+
+def surplus_balance(session: Session, entity_id: int) -> int:
+    """The company's surplus: what is left in its balance after the items."""
+    return pool_balance(session, entity_id) + isolated_surplus(session, entity_id)
 
 
 def _move_from_pool(
@@ -286,8 +292,8 @@ def _description(session: Session, entity_id: int, bucket_id: int | None, reason
     return f"نيابة عن {company}: {purpose}" + (f" {period}" if period else "")
 
 
-def withdraw(session: Session, entity: Entity, user, amount: int, account_id: int) -> Payout:
-    """The company takes money back from its set-aside surplus, to one of its own registered accounts only."""
+def withdraw(session: Session, entity: Entity, user, amount: int, account_id: int) -> list[Payout]:
+    """Transfer surplus now, to one of the company's own registered accounts only."""
     from .accounts import INCOME_KINDS
 
     account = session.get(BankAccount, account_id) if account_id else None
@@ -296,12 +302,17 @@ def withdraw(session: Session, entity: Entity, user, amount: int, account_id: in
     if amount <= 0:
         raise PayoutError("يجب أن يكون مبلغ السحب أكبر من صفر")
     _lock_entity(session, entity.id)
-    if amount > isolated_surplus(session, entity.id):
-        raise PayoutError("المبلغ أكبر من رصيد حساب الفائض")
-    payout = _send(session, entity.id, surplus_bucket(session, entity.id).id, amount, account, "withdrawal")
+    if amount > surplus_balance(session, entity.id):
+        raise PayoutError("المبلغ أكبر من رصيد الفائض")
+    sent = []
+    legacy = min(amount, isolated_surplus(session, entity.id))  # surplus set aside under the earlier model first
+    if legacy > 0:
+        sent.append(_send(session, entity.id, surplus_bucket(session, entity.id).id, legacy, account, "withdrawal"))
+    if amount - legacy > 0:
+        sent.append(_send(session, entity.id, None, amount - legacy, account, "withdrawal"))
     session.add(AuditLog(user_id=user.id, entity_id=entity.id, action="surplus.withdrawn",
-                         details={"amount": amount, "to": account.name, "payout_id": payout.id}))
-    return payout
+                         details={"amount": amount, "to": account.name, "payouts": [p.id for p in sent]}))
+    return sent
 
 
 def _beneficiary(session: Session, entity_id: int, account_id: int | None) -> BankAccount | None:
@@ -347,7 +358,7 @@ def run_due(session: Session, entity_id: int, today: date) -> list:
 
     1. Items whose cycle just ended: the pool covers any shortfall, then the full balance transfers
        (excluding the new cycle's share). A paid cycle is recorded, so it is never paid twice.
-    2. On the surplus schedule (monthly by default): the ended cycle's remaining surplus is isolated.
+    2. On the surplus schedule (monthly by default): the ended cycle's remaining surplus is paid out.
     Returns the actions taken (payouts and pool moves).
     """
     from .policies import active_policy
@@ -393,24 +404,28 @@ def run_due(session: Session, entity_id: int, today: date) -> list:
         if amount > 0:
             actions.append(_send(session, entity_id, pb.bucket_id, amount, beneficiary, "due", period=previous))
 
-    actions += isolate_surplus(session, entity_id, policy, today)
+    actions += pay_surplus(session, entity_id, policy, today)
     return actions
 
 
-def isolate_surplus(session: Session, entity_id: int, policy: Policy, today: date) -> list:
-    """On the surplus schedule (monthly by default): move the ended cycle's remaining surplus from the pool
-    into the surplus account (once per cycle), then transfer it on to the account the accountant chose, if any."""
+def pay_surplus(session: Session, entity_id: int, policy: Policy, today: date) -> list:
+    """On the surplus schedule (monthly by default): pay the ended cycle's remaining surplus to the account the
+    accountant chose, once per cycle. Without a chosen account it stays in the company's balance."""
+    beneficiary = _beneficiary(session, entity_id, policy.surplus_account_id)
+    if beneficiary is None:
+        return []
     frequency = policy.surplus_frequency or Frequency.MONTHLY
     day, due = policy.surplus_settlement_day, policy.surplus_due_date
     try:
         start, _ = period_bounds(frequency, today, day, due)
     except ValueError:
-        return []  # incomplete schedule (e.g. no day set): nothing to isolate yet
+        return []  # incomplete schedule (e.g. no day set): nothing to pay yet
     if start is None:
         return []
     previous = period_key(frequency, start - timedelta(days=1), day, due)
-    if session.scalar(select(PoolMove.id).where(
-        PoolMove.entity_id == entity_id, PoolMove.kind == "isolate", PoolMove.period_key == previous
+    if session.scalar(select(Payout.id).where(
+        Payout.entity_id == entity_id, Payout.reason == "surplus", Payout.period_key == previous,
+        Payout.status == PayoutStatus.SENT,
     )):
         return []
     this_cycle = _sum(session, select(func.coalesce(func.sum(Transaction.surplus), 0)).where(
@@ -419,12 +434,7 @@ def isolate_surplus(session: Session, entity_id: int, policy: Policy, today: dat
     amount = pool_balance(session, entity_id) - max(0, this_cycle)
     if amount <= 0:
         return []
-    bucket = surplus_bucket(session, entity_id)
-    actions: list = [_move_from_pool(session, entity_id, "isolate", bucket, amount, previous, None)]
-    beneficiary = _beneficiary(session, entity_id, policy.surplus_account_id)
-    if beneficiary is not None:
-        actions.append(_send(session, entity_id, bucket.id, amount, beneficiary, "surplus", period=previous))
-    return actions
+    return [_send(session, entity_id, None, amount, beneficiary, "surplus", period=previous)]
 
 
 def run_due_all(session: Session, today: date) -> int:

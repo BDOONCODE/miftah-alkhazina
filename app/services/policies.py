@@ -202,10 +202,10 @@ def save_draft(
     policy.buckets.extend(new_buckets)
     policy.notes = notes.strip()
     if surplus_account_id is not None and surplus_account_id not in destinations:
-        raise PolicyError("يجب أن يكون حساب الفائض حسابًا نشطًا لهذه الشركة")
+        raise PolicyError("يجب أن يكون مستفيد الفائض حسابًا نشطًا لهذه الشركة")
     policy.surplus_account_id = surplus_account_id
     if surplus_frequency not in SURPLUS_FREQUENCIES:
-        raise PolicyError("اختر موعدًا صالحًا لعزل الفائض")
+        raise PolicyError("اختر موعدًا صالحًا لتحويل الفائض")
     policy.surplus_frequency = surplus_frequency
     policy.surplus_settlement_day = surplus_day if surplus_frequency is Frequency.DAY_OF_MONTH else None
     policy.surplus_due_date = surplus_due if surplus_frequency in ANCHORED_MONTHS else None
@@ -236,7 +236,7 @@ def _destination_from_iban(session: Session, policy: Policy, user: User, row: Bu
     return account
 
 
-# Schedules for isolating the surplus (not immediate or daily: the surplus has to build up to cover deficits)
+# Schedules for paying out the surplus (not immediate or daily: the surplus has to build up to cover deficits)
 SURPLUS_FREQUENCIES = (
     Frequency.WEEKLY, Frequency.MONTHLY, Frequency.DAY_OF_MONTH,
     Frequency.QUARTERLY, Frequency.SEMIANNUAL, Frequency.ANNUAL,
@@ -249,9 +249,9 @@ def destination_errors(policy: Policy) -> list[str]:
               if pb.destination_account_id is None]
     day = policy.surplus_settlement_day or 0
     if policy.surplus_frequency is Frequency.DAY_OF_MONTH and not 1 <= day <= 31:
-        errors.append("حدد يوم عزل الفائض من 1 إلى 31")
+        errors.append("حدد يوم تحويل الفائض من 1 إلى 31")
     if policy.surplus_frequency in ANCHORED_MONTHS and policy.surplus_due_date is None:
-        errors.append("حدد تاريخ عزل الفائض القادم")
+        errors.append("حدد تاريخ تحويل الفائض القادم")
     return errors
 
 

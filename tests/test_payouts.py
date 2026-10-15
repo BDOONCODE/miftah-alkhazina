@@ -210,28 +210,26 @@ def test_cover_order_prefers_nearest_due_date(db, setup):
     assert order == ["الإتاوة", "الإيجار", "الاحتياطي"]  # undated first; same due date -> priority
 
 
-def test_month_start_isolates_last_months_surplus_and_transfers_it(db, setup):
+def test_month_start_pays_last_months_surplus_to_the_chosen_account(db, setup):
     entity, user, ids, accounts = setup
     deposit(db, entity, user, 10_000 * SAR, 30)
     surplus = po.pool_balance(db, entity.id)
     assert surplus > 0
     actions = po.run_due(db, entity.id, date(2026, 10, 1))
-    moves = db.query(models.PoolMove).filter_by(kind="isolate").all()
-    assert [(m.amount, m.period_key) for m in moves] == [(surplus, "2026-09-01")]
-    assert po.pool_balance(db, entity.id) == 0
     sent = [p for p in actions if isinstance(p, models.Payout) and p.reason == "surplus"]
-    assert [(p.amount, p.beneficiary_account_id) for p in sent] == [(surplus, accounts["owner"].id)]
-    assert po.isolated_surplus(db, entity.id) == 0  # transferred on to the owner's account
+    assert [(p.amount, p.beneficiary_account_id, p.period_key) for p in sent] == [(surplus, accounts["owner"].id, "2026-09-01")]
+    assert po.surplus_balance(db, entity.id) == 0
+    assert not db.query(models.PoolMove).filter_by(kind="isolate").count()  # no separate surplus account any more
     assert po.run_due(db, entity.id, date(2026, 10, 2)) == []  # once a month
 
 
-def test_isolated_surplus_stays_without_a_destination(db, setup):
+def test_surplus_stays_in_the_balance_without_a_destination(db, setup):
     entity, user, *_ = setup
     pol.active_policy(db, entity.id).surplus_account_id = None
     deposit(db, entity, user, 10_000 * SAR, 30)
     surplus = po.pool_balance(db, entity.id)
     po.run_due(db, entity.id, date(2026, 10, 1))
-    assert po.isolated_surplus(db, entity.id) == surplus and po.pool_balance(db, entity.id) == 0
+    assert po.surplus_balance(db, entity.id) == surplus
 
 
 def test_reversal_blocked_after_pool_was_used(db, setup):
@@ -245,24 +243,22 @@ def test_reversal_blocked_after_pool_was_used(db, setup):
 
 
 
-def test_surplus_isolates_on_a_chosen_day_of_month(db, setup):
-    entity, user, *_ = setup
+def test_surplus_is_paid_on_a_chosen_day_of_month(db, setup):
+    entity, user, ids, accounts = setup
     policy = pol.active_policy(db, entity.id)
-    policy.surplus_account_id = None
     policy.surplus_frequency, policy.surplus_settlement_day = Frequency.DAY_OF_MONTH, 25
     deposit(db, entity, user, 10_000 * SAR, 20)
     surplus = po.pool_balance(db, entity.id)
-    assert po.isolate_surplus(db, entity.id, policy, date(2026, 9, 24)) == []  # not the 25th yet
-    po.isolate_surplus(db, entity.id, policy, date(2026, 9, 25))
-    assert po.isolated_surplus(db, entity.id) == surplus and po.pool_balance(db, entity.id) == 0
-    assert db.query(models.PoolMove).filter_by(kind="isolate").one().period_key == "2026-08-25"
+    assert po.pay_surplus(db, entity.id, policy, date(2026, 9, 24)) == []  # not the 25th yet
+    [payout] = po.pay_surplus(db, entity.id, policy, date(2026, 9, 25))
+    assert (payout.amount, payout.period_key) == (surplus, "2026-08-25") and po.surplus_balance(db, entity.id) == 0
 
 
 def test_surplus_schedule_needs_its_day(db, setup):
     entity, user, *_ = setup
     draft = pol.start_draft(db, entity, user)
     draft.surplus_frequency, draft.surplus_settlement_day = Frequency.DAY_OF_MONTH, None
-    assert any("يوم عزل الفائض" in e for e in pol.destination_errors(draft))
+    assert any("يوم تحويل الفائض" in e for e in pol.destination_errors(draft))
 
 
 
@@ -327,19 +323,18 @@ def test_refused_deposit_goes_to_support_for_return(client, db, setup):
     assert held.status == "rejected" and (issue.leg, issue.reference) == ("deposit", "NEO-90")
 
 
-def test_withdrawal_only_to_own_accounts(db, setup):
+def test_surplus_transfer_now_only_to_own_accounts(db, setup):
     entity, user, ids, accounts = setup
     pol.active_policy(db, entity.id).surplus_account_id = None
     deposit(db, entity, user, 10_000 * SAR, 10)
-    po.run_due(db, entity.id, date(2026, 10, 1))  # September's surplus is set aside
-    available = po.isolated_surplus(db, entity.id)
+    available = po.surplus_balance(db, entity.id)
     assert available > 0
     with pytest.raises(po.PayoutError, match="المسجّلة"):
         po.withdraw(db, entity, user, 100 * SAR, accounts["royalty"].id)
     with pytest.raises(po.PayoutError, match="أكبر من رصيد"):
         po.withdraw(db, entity, user, available + 1, accounts["own"].id)
-    payout = po.withdraw(db, entity, user, 100 * SAR, accounts["own"].id)
-    assert payout.reason == "withdrawal" and po.isolated_surplus(db, entity.id) == available - 100 * SAR
+    [payout] = po.withdraw(db, entity, user, 100 * SAR, accounts["own"].id)
+    assert payout.reason == "withdrawal" and po.surplus_balance(db, entity.id) == available - 100 * SAR
 
 
 def test_inventory_assigns_waiting_companies_and_freezes_released(db, make_user, monkeypatch):

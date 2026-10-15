@@ -51,11 +51,9 @@
       annual: T("كل سنة{}", date),
     }[freq];
     const option = surplus.querySelector(".js-sacc").selectedOptions[0];
-    const to = option && option.value
-      ? T("ثم يُحوَّل إلى «{}» (••{}).", option.dataset.name, option.dataset.iban)
-      : T("ويبقى محجوزًا هناك.");
-    surplus.querySelector(".js-surplus-summary").textContent =
-      T("يبقى الفائض في الحساب الكبير ويغطي عجز البنود أولًا، ثم يُعزل {} في حساب «الفائض»، {}", when, to);
+    surplus.querySelector(".js-surplus-summary").textContent = option && option.value
+      ? T("يبقى الفائض في رصيد الشركة ويغطي عجز البنود أولًا، ثم يُحوَّل {} إلى «{}» (••{}).", when, option.dataset.name, option.dataset.iban)
+      : T("يبقى الفائض في رصيد الشركة ويغطي عجز البنود أولًا، ولا يُحوَّل تلقائيًا.");
   }
   if (surplus) {
     surplus.addEventListener("input", refreshSurplus);

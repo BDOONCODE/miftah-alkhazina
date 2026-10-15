@@ -3,32 +3,29 @@
 <section class="card">
   <h2>أرصدة البنود</h2>
   <div class="kpis">
-    <div class="kpi kpi-pool"><span class="kpi-label">فائض هذا الشهر (في الحساب الكبير)</span>
-      <span class="kpi-value num">{{ pool_total | sar }}</span>
-      <span class="small muted">يغطي عجز البنود أولًا، ويُعزل أول الشهر القادم</span></div>
-    <div class="kpi"><span class="kpi-label">حساب الفائض (المعزول)</span>
-      <span class="kpi-value num">{{ isolated_total | sar }}</span>
-      <span class="small muted">{{ ('يُحوَّل إلى ' ~ surplus_to.name) if surplus_to else 'يبقى محجوزًا' }}</span></div>
+    <div class="kpi kpi-pool"><span class="kpi-label">الفائض</span>
+      <span class="kpi-value num">{{ surplus_total | sar }}</span>
+      <span class="small muted">{{ ('يغطي عجز البنود أولًا، ثم يُحوَّل إلى ' ~ surplus_to.name ~ ' في موعده') if surplus_to else 'يغطي عجز البنود أولًا، ويبقى في رصيد الشركة' }}</span></div>
     <div class="kpi"><span class="kpi-label">المحجوز للبنود</span><span class="kpi-value num">{{ held_total | sar }}</span>
       <span class="small muted">أرصدة البنود في سجلات المنصة</span></div>
-    <div class="kpi"><span class="kpi-label">الإجمالي</span><span class="kpi-value num">{{ (pool_total + isolated_total + held_total) | sar }}</span>
-      <span class="small muted">ر.س</span></div>
+    <div class="kpi"><span class="kpi-label">الإجمالي</span><span class="kpi-value num">{{ (surplus_total + held_total) | sar }}</span>
+      <span class="small muted">رصيد الشركة لدى مفتاح الخزينة</span></div>
   </div>
-  {% if user.role.value == "accountant" and isolated_total > 0 and own_accounts %}
+  {% if user.role.value == "accountant" and surplus_total > 0 and own_accounts %}
   <details class="help">
-    <summary>سحب من حساب الفائض</summary>
+    <summary>حوّل الفائض الآن</summary>
     <form method="post" action="/entities/{{ entity.id }}/withdraw" class="form-grid">
       <label>المبلغ (ر.س) *
-        <input name="amount" inputmode="decimal" class="num" required placeholder="{{ isolated_total | sar }}">
+        <input name="amount" inputmode="decimal" class="num" required placeholder="{{ surplus_total | sar }}">
       </label>
       <label>إلى حساب الشركة *
         <select name="account_id" required>
           {% for a in own_accounts %}<option value="{{ a.id }}">{{ a.name }} · ••{{ a.iban[-4:] }}</option>{% endfor %}
         </select>
       </label>
-      <div class="form-actions"><button class="btn btn-primary" type="submit">سحب</button></div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">تحويل</button></div>
     </form>
-    <p class="muted small">يكون السحب إلى الحسابات المسجّلة للشركة فقط.</p>
+    <p class="muted small">يُحوَّل الفائض إلى الحسابات المسجّلة للشركة فقط.</p>
   </details>
   {% endif %}
   <p class="muted">

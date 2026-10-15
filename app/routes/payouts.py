@@ -28,16 +28,17 @@ async def withdraw(request: Request, entity_id: int, user: User = Depends(editor
     try:
         amount = parse_amount(str(form.get("amount", "")))
         account_id = str(form.get("account_id", ""))
-        payout = svc.withdraw(session, entity, user, amount, int(account_id) if account_id.isdigit() else 0)
+        sent = svc.withdraw(session, entity, user, amount, int(account_id) if account_id.isdigit() else 0)
     except (ValueError, svc.PayoutError) as exc:
         session.rollback()
         flash(request, str(exc), "error")
         return redirect(f"/entities/{entity_id}/balances")
     session.commit()
-    if payout.status is PayoutStatus.SENT:
-        flash(request, f"حُوِّل {format_amount(payout.amount)} ر.س إلى «{payout.beneficiary_name}»")
+    failed = [p for p in sent if p.status is not PayoutStatus.SENT]
+    if failed:
+        flash(request, f"تعذّر التحويل: {failed[0].error}", "error")
     else:
-        flash(request, f"تعذّر التحويل: {payout.error}", "error")
+        flash(request, f"حُوِّل {format_amount(amount)} ر.س إلى «{sent[0].beneficiary_name}»")
     return redirect(f"/entities/{entity_id}/balances")
 
 
@@ -61,8 +62,7 @@ def balances_page(
             "tab": "balances",
             "items": views,
             "held_total": sum(v.balance for v in views),
-            "pool_total": svc.pool_balance(session, entity_id),
-            "isolated_total": svc.isolated_surplus(session, entity_id),
+            "surplus_total": svc.surplus_balance(session, entity_id),
             "surplus_to": session.get(BankAccount, policy.surplus_account_id) if policy and policy.surplus_account_id else None,
             "payouts": svc.recent_payouts(session, entity_id),
             "names": {**{v.bucket_id: v.name for v in views}, entity.surplus_bucket_id: svc.SURPLUS_NAME},

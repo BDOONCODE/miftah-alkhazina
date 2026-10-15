@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 from ..auth import current_user, get_entity_for, require_role
 from ..db import get_session
 from ..domain import formula
-from ..models import CustomMetric, DashboardWidget, Role, User
+from ..domain.periods import local_date
+from ..models import CustomMetric, DashboardWidget, Role, User, utcnow
 from ..services import dashboards as svc
 from ..services import virtual_ibans
 from ..services.policies import active_policy
@@ -46,11 +47,11 @@ def dashboard_page(
                 (c, m.format_value(_safe_eval(c.formula, values), c.fmt)) for c in customs
             ],
             "variable_names": list(values),
-            "pool_total": payouts.pool_balance(session, entity_id),
+            "surplus_total": payouts.surplus_balance(session, entity_id),
+            "held_total": sum(v.balance for v in payouts.held_balances(session, entity_id, local_date(utcnow()))),
             "deposit_iban": deposit_iban,
             "has_policy": active_policy(session, entity_id) is not None,
             "shortfall": snap.deficit,
-            "isolated_total": payouts.isolated_surplus(session, entity_id),
             "KINDS": svc.WIDGET_KINDS,
             "PERIODS": m.PERIOD_LABELS,
             "CHARTS": svc.CHARTS,

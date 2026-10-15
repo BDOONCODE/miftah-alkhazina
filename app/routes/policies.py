@@ -189,7 +189,7 @@ async def save_draft(request: Request, policy_id: int, user: User = Depends(edit
         surplus_day = int(day_raw) if day_raw else None
         surplus_due = date.fromisoformat(due_raw) if due_raw else None
     except ValueError:
-        errors = [*errors, "موعد عزل الفائض غير صالح"]
+        errors = [*errors, "موعد تحويل الفائض غير صالح"]
         surplus_frequency, surplus_day, surplus_due = Frequency.MONTHLY, None, None
     if errors:
         return _render_editor(request, user, policy, session, views, errors, notes, status_code=422)

@@ -28,17 +28,17 @@
   <div class="hero-card hero-pool">
     <span class="hero-icon">{{ icon('pool') }}</span>
     <div>
-      <span class="hero-label">فائض هذا الشهر</span>
-      <span class="hero-value num">{{ pool_total | sar }} <small>ر.س</small></span>
-      <span class="hero-hint">في الحساب الكبير، ويغطي عجز البنود أولًا</span>
+      <span class="hero-label">الفائض</span>
+      <span class="hero-value num">{{ surplus_total | sar }} <small>ر.س</small></span>
+      <span class="hero-hint">يغطي عجز البنود أولًا، ثم يُحوَّل في الموعد الذي حددته</span>
     </div>
   </div>
   <div class="hero-card hero-isolated">
     <span class="hero-icon">{{ icon('isolated') }}</span>
     <div>
-      <span class="hero-label">حساب الفائض</span>
-      <span class="hero-value num">{{ isolated_total | sar }} <small>ر.س</small></span>
-      <span class="hero-hint">الفائض المعزول حسب الجدول الذي حددته</span>
+      <span class="hero-label">المحجوز للبنود</span>
+      <span class="hero-value num">{{ held_total | sar }} <small>ر.س</small></span>
+      <span class="hero-hint">يُحوَّل إلى المستفيدين في مواعيد استحقاقهم</span>
     </div>
   </div>
 </div>

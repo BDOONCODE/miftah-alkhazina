@@ -115,23 +115,23 @@
 
     <div class="bucket-card surplus-card">
       <strong>الفائض</strong>
-      <p class="muted js-surplus-summary">يبقى الفائض في الحساب الكبير ويغطي عجز البنود أولًا، ثم يُعزل في حساب «الفائض» وفق الموعد المحدد.</p>
+      <p class="muted js-surplus-summary">يبقى الفائض في رصيد الشركة ويغطي عجز البنود أولًا، ثم يُحوَّل إلى المستفيد الذي تختاره في الموعد المحدد.</p>
       <div class="surplus-grid">
-        <label>موعد العزل
+        <label>موعد تحويل الفائض
           <span class="freq-pair">
             <select name="surplus_frequency" class="js-sfreq">
               {% for k in SURPLUS_FREQUENCIES %}<option value="{{ k }}" {{ 'selected' if surplus_frequency == k }}>{{ FREQ_LABELS[k] }}</option>{% endfor %}
             </select>
             <input name="surplus_day" type="number" min="1" max="31" value="{{ surplus_day }}" placeholder="اليوم"
-                   class="num js-sday" {{ 'hidden' if surplus_frequency != 'day_of_month' }} aria-label="يوم العزل">
+                   class="num js-sday" {{ 'hidden' if surplus_frequency != 'day_of_month' }} aria-label="يوم التحويل">
             <input name="surplus_due" type="date" value="{{ surplus_due }}" class="js-sdue"
                    {{ 'hidden' if surplus_frequency not in ('quarterly', 'semiannual', 'annual') }}
-                   aria-label="تاريخ العزل القادم" title="تاريخ العزل القادم">
+                   aria-label="تاريخ التحويل القادم" title="تاريخ التحويل القادم">
           </span>
         </label>
-        <label>بعد العزل يُحوَّل إلى
+        <label>يُحوَّل الفائض إلى
           <select name="surplus_account" class="js-sacc">
-            <option value="">لا يُحوَّل (يبقى محجوزًا في حساب الفائض)</option>
+            <option value="">لا يُحوَّل (يبقى في رصيد الشركة)</option>
             {% for a in destinations %}
             <option value="{{ a.id }}" data-name="{{ a.name }}" data-iban="{{ a.iban[-4:] }}" {{ 'selected' if surplus_account == a.id|string }}>{{ a.name }} · {{ KIND_LABELS[a.kind.value] }} · ••{{ a.iban[-4:] }}</option>
             {% endfor %}
