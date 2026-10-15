@@ -132,7 +132,7 @@
         <label>يُحوَّل الفائض إلى
           <select name="surplus_account" class="js-sacc">
             <option value="">لا يُحوَّل (يبقى في رصيد الشركة)</option>
-            {% for a in destinations %}
+            {% for a in surplus_destinations %}
             <option value="{{ a.id }}" data-name="{{ a.name }}" data-iban="{{ a.iban[-4:] }}" {{ 'selected' if surplus_account == a.id|string }}>{{ a.name }} · {{ KIND_LABELS[a.kind.value] }} · ••{{ a.iban[-4:] }}</option>
             {% endfor %}
           </select>

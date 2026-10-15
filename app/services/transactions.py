@@ -242,8 +242,8 @@ def reverse_transaction(session: Session, txn: Transaction, user: User, reason: 
     for closure in session.scalars(select(PeriodClosure).where(PeriodClosure.closed_by_transaction_id == txn.id)):
         closure.voided = True
 
-    # A ledger correction only: the money stays in the master account. Returning money that really
-    # arrived to its sender goes through a reversal request to support
+    # Money that really arrived from the bank goes back to the account it came from
+    payouts.refund(session, txn, reversal)
 
     session.add(
         AuditLog(

@@ -367,3 +367,5 @@ fieldset.plain legend { font-weight: 500; margin-bottom: .35rem; }
 .letter-table th { width: 35%; }
 .letter-iban { font-size: 1.1rem; font-weight: 700; }
 @media print { .topbar, .lang-corner, .no-print { display: none !important; } .letter { border: none; } body { background: #fff; } }
+.surplus-now { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.surplus-now form { margin: 0; }

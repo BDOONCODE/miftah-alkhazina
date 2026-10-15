@@ -6,11 +6,10 @@ from sqlalchemy.orm import Session
 
 from ..auth import current_user, get_entity_for, require_role
 from ..db import get_session
-from ..domain.money import format_amount, parse_amount
+from ..domain.money import format_amount
 from ..domain.periods import local_date
 from ..models import BankAccount, PayoutStatus, Role, User, utcnow
 from ..services import payouts as svc
-from ..services.accounts import INCOME_KINDS, accounts_for
 from ..services.banking import is_simulated
 from ..services.policies import active_policy
 from ..templating import templates
@@ -20,16 +19,15 @@ router = APIRouter()
 editor = require_role(Role.ACCOUNTANT)
 
 
-@router.post("/entities/{entity_id}/withdraw")
-async def withdraw(request: Request, entity_id: int, user: User = Depends(editor), session: Session = Depends(get_session)):
-    """Take money back from the set-aside surplus, to one of the company's own registered accounts."""
+@router.post("/entities/{entity_id}/surplus/transfer-now")
+def transfer_surplus_now(
+    request: Request, entity_id: int, user: User = Depends(editor), session: Session = Depends(get_session)
+):
+    """Pay the surplus now, to the account set in the policy, instead of waiting for its schedule."""
     entity = get_entity_for(user, entity_id, session)
-    form = await request.form()
     try:
-        amount = parse_amount(str(form.get("amount", "")))
-        account_id = str(form.get("account_id", ""))
-        sent = svc.withdraw(session, entity, user, amount, int(account_id) if account_id.isdigit() else 0)
-    except (ValueError, svc.PayoutError) as exc:
+        sent = svc.transfer_surplus_now(session, entity, user)
+    except svc.PayoutError as exc:
         session.rollback()
         flash(request, str(exc), "error")
         return redirect(f"/entities/{entity_id}/balances")
@@ -38,7 +36,7 @@ async def withdraw(request: Request, entity_id: int, user: User = Depends(editor
     if failed:
         flash(request, f"تعذّر التحويل: {failed[0].error}", "error")
     else:
-        flash(request, f"حُوِّل {format_amount(amount)} ر.س إلى «{sent[0].beneficiary_name}»")
+        flash(request, f"حُوِّل {format_amount(sum(p.amount for p in sent))} ر.س إلى «{sent[0].beneficiary_name}»")
     return redirect(f"/entities/{entity_id}/balances")
 
 
@@ -63,10 +61,9 @@ def balances_page(
             "items": views,
             "held_total": sum(v.balance for v in views),
             "surplus_total": svc.surplus_balance(session, entity_id),
-            "surplus_to": session.get(BankAccount, policy.surplus_account_id) if policy and policy.surplus_account_id else None,
+            "surplus_to": svc.surplus_account(session, entity_id, policy.surplus_account_id) if policy else None,
             "payouts": svc.recent_payouts(session, entity_id),
             "names": {**{v.bucket_id: v.name for v in views}, entity.surplus_bucket_id: svc.SURPLUS_NAME},
             "simulated": is_simulated(),
-            "own_accounts": [a for a in accounts_for(session, entity_id, active_only=True) if a.kind in INCOME_KINDS],
         },
     )

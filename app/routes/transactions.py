@@ -13,7 +13,9 @@ from ..auth import current_user, get_entity_for, require_role
 from ..db import get_session
 from ..domain.money import parse_amount
 from ..domain.periods import RIYADH
-from ..models import AccountKind, BankAccount, HeldDeposit, Payout, PoolMove, PolicyBucket, Role, Transaction, User, utcnow
+from ..models import (
+    AccountKind, BankAccount, HeldDeposit, Payout, PayoutStatus, PoolMove, PolicyBucket, Role, Transaction, User, utcnow,
+)
 from ..services import payouts as payout_svc
 from ..services import support
 from ..services import transactions as svc
@@ -233,7 +235,13 @@ async def reverse(request: Request, txn_id: int, user: User = Depends(editor), s
         flash(request, str(exc), "error")
         return redirect(f"/transactions/{txn_id}")
     session.commit()
-    flash(request, "عُكست المعاملة وأُعيدت أرصدة البنود إلى ما كانت عليه قبلها")
+    refund = session.scalar(select(Payout).where(Payout.transaction_id == reversal.id, Payout.reason == "refund"))
+    if refund is None:
+        flash(request, "عُكست المعاملة وأُعيدت أرصدة البنود إلى ما كانت عليه قبلها")
+    elif refund.status is PayoutStatus.SENT:
+        flash(request, f"عُكست المعاملة وأُرجع المبلغ إلى «{refund.beneficiary_name}»")
+    else:
+        flash(request, f"عُكست المعاملة، وتعذّر إرجاع المبلغ: {refund.error}. سيتابعه الدعم", "error")
     return redirect(f"/transactions/{reversal.id}")
 
 

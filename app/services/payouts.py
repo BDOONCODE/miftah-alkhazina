@@ -44,7 +44,7 @@ from .accounts import DESTINATION_KINDS
 from .banking import BankingError, provider
 
 REASON_LABELS = {"immediate": "فور التقسيم", "due": "يوم الاستحقاق", "surplus": "الفائض",
-                 "withdrawal": "سحب إلى حساب الشركة"}
+                 "withdrawal": "تحويل الفائض قبل موعده", "refund": "إرجاع إلى المرسل"}
 SURPLUS_NAME = "الفائض"
 
 
@@ -99,7 +99,8 @@ def pool_balance(session: Session, entity_id: int) -> int:
     surplus = _sum(session, select(func.coalesce(func.sum(Transaction.surplus), 0)).where(Transaction.entity_id == entity_id))
     moved = _sum(session, select(func.coalesce(func.sum(PoolMove.amount), 0)).where(PoolMove.entity_id == entity_id))
     legacy = _sum(session, select(func.coalesce(func.sum(Payout.amount), 0)).where(
-        Payout.entity_id == entity_id, Payout.bucket_id.is_(None), Payout.status == PayoutStatus.SENT
+        Payout.entity_id == entity_id, Payout.bucket_id.is_(None), Payout.status == PayoutStatus.SENT,
+        Payout.reason != "refund",  # a refund returns a reversed deposit, which never reached the surplus
     ))
     return surplus - moved - legacy
 
@@ -285,27 +286,39 @@ def _send(
 def _description(session: Session, entity_id: int, bucket_id: int | None, reason: str, period: str | None) -> str:
     """Payouts leave in Miftah's name, so the description tells the beneficiary who the money is from and why."""
     company = session.get(Entity, entity_id).name
-    if reason == "withdrawal":
-        purpose = "سحب من الرصيد"
+    if reason == "refund":
+        purpose = "إرجاع حوالة"
+    elif reason == "withdrawal":
+        purpose = SURPLUS_NAME
     else:
         purpose = _bucket_name(session, session.get(Bucket, bucket_id)) if bucket_id else SURPLUS_NAME
     return f"نيابة عن {company}: {purpose}" + (f" {period}" if period else "")
 
 
-def withdraw(session: Session, entity: Entity, user, amount: int, account_id: int) -> list[Payout]:
-    """Transfer surplus now, to one of the company's own registered accounts only."""
-    from .accounts import INCOME_KINDS
+def surplus_account(session: Session, entity_id: int, account_id: int | None) -> BankAccount | None:
+    """Where the surplus goes: the account set in the policy, if it is still an active company/owner account."""
+    from .accounts import SURPLUS_KINDS
 
     account = session.get(BankAccount, account_id) if account_id else None
-    if account is None or account.entity_id != entity.id or not account.is_active or account.kind not in INCOME_KINDS:
-        raise PayoutError("السحب متاح إلى حسابات الشركة المسجّلة فقط")
-    if amount <= 0:
-        raise PayoutError("يجب أن يكون مبلغ السحب أكبر من صفر")
+    if account is None or account.entity_id != entity_id or not account.is_active or account.kind not in SURPLUS_KINDS:
+        return None
+    return account
+
+
+def transfer_surplus_now(session: Session, entity: Entity, user) -> list[Payout]:
+    """Pay the whole surplus now, to the account set in the policy (the same one the schedule pays)."""
+    from .policies import active_policy
+
+    policy = active_policy(session, entity.id)
+    account = surplus_account(session, entity.id, policy.surplus_account_id if policy else None)
+    if account is None:
+        raise PayoutError("حدد في سياسة التقسيم الحساب الذي يُحوَّل إليه الفائض")
     _lock_entity(session, entity.id)
-    if amount > surplus_balance(session, entity.id):
-        raise PayoutError("المبلغ أكبر من رصيد الفائض")
+    amount = surplus_balance(session, entity.id)
+    if amount <= 0:
+        raise PayoutError("لا يوجد فائض لتحويله")
     sent = []
-    legacy = min(amount, isolated_surplus(session, entity.id))  # surplus set aside under the earlier model first
+    legacy = isolated_surplus(session, entity.id)  # surplus set aside under the earlier model first
     if legacy > 0:
         sent.append(_send(session, entity.id, surplus_bucket(session, entity.id).id, legacy, account, "withdrawal"))
     if amount - legacy > 0:
@@ -313,6 +326,16 @@ def withdraw(session: Session, entity: Entity, user, amount: int, account_id: in
     session.add(AuditLog(user_id=user.id, entity_id=entity.id, action="surplus.withdrawn",
                          details={"amount": amount, "to": account.name, "payouts": [p.id for p in sent]}))
     return sent
+
+
+def refund(session: Session, original: Transaction, reversal: Transaction) -> Payout | None:
+    """A reversed deposit that really arrived from the bank goes back to the account it came from."""
+    from ..models import TransactionSource
+
+    if original.source is not TransactionSource.OPEN_BANKING or not original.source_account_id:
+        return None
+    account = session.get(BankAccount, original.source_account_id)
+    return _send(session, original.entity_id, None, original.amount, account, "refund", transaction_id=reversal.id)
 
 
 def _beneficiary(session: Session, entity_id: int, account_id: int | None) -> BankAccount | None:
@@ -411,7 +434,7 @@ def run_due(session: Session, entity_id: int, today: date) -> list:
 def pay_surplus(session: Session, entity_id: int, policy: Policy, today: date) -> list:
     """On the surplus schedule (monthly by default): pay the ended cycle's remaining surplus to the account the
     accountant chose, once per cycle. Without a chosen account it stays in the company's balance."""
-    beneficiary = _beneficiary(session, entity_id, policy.surplus_account_id)
+    beneficiary = surplus_account(session, entity_id, policy.surplus_account_id)
     if beneficiary is None:
         return []
     frequency = policy.surplus_frequency or Frequency.MONTHLY

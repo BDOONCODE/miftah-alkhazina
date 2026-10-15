@@ -1020,6 +1020,19 @@ EN = {
     "حدد تاريخ تحويل الفائض القادم": "Set the next surplus transfer date",
     "موعد تحويل الفائض غير صالح": "The surplus transfer schedule is not valid",
 
+    "تحويل الفائض قبل موعده": "Surplus transferred early",
+    "إرجاع إلى المرسل": "Returned to sender",
+    "يُحوَّل الفائض إلى حساب نشط للشركة أو المالك فقط": "The surplus can only go to an active company or owner account",
+    "حدد في سياسة التقسيم الحساب الذي يُحوَّل إليه الفائض": "Set in the split policy the account the surplus goes to",
+    "لا يوجد فائض لتحويله": "There is no surplus to transfer",
+    "تحويل الفائض كاملًا الآن إلى «": "Transfer the whole surplus now to “",
+    "يُحوَّل الفائض كاملًا إلى «": "The whole surplus goes to “",
+    "قبل موعده.": "ahead of its schedule.",
+    "لتحويل الفائض، حدد في": "To transfer the surplus, set in the",
+    "الحساب الذي يُحوَّل إليه.": "the account it goes to.",
+    "عُكست المعاملة وأُرجع المبلغ إلى «{}»": "The transaction was reversed and the amount returned to “{}”",
+    "عُكست المعاملة، وتعذّر إرجاع المبلغ: {}. سيتابعه الدعم": "The transaction was reversed, but returning the amount failed: {}. Support will follow up",
+
     # ------------------------------------------------------------------ copy buttons
     "إذا لم يعمل الزر، انسخ هذا الرابط في المتصفح:": "If the button does not work, copy this link into your browser:",
     "تم النسخ ✓": "Copied ✓",

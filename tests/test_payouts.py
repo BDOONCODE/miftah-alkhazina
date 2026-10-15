@@ -323,18 +323,41 @@ def test_refused_deposit_goes_to_support_for_return(client, db, setup):
     assert held.status == "rejected" and (issue.leg, issue.reference) == ("deposit", "NEO-90")
 
 
-def test_surplus_transfer_now_only_to_own_accounts(db, setup):
+def test_surplus_transfer_now_goes_to_the_policy_account(db, setup):
     entity, user, ids, accounts = setup
-    pol.active_policy(db, entity.id).surplus_account_id = None
+    policy = pol.active_policy(db, entity.id)
+    policy.surplus_account_id = None
     deposit(db, entity, user, 10_000 * SAR, 10)
+    with pytest.raises(po.PayoutError, match="سياسة التقسيم"):
+        po.transfer_surplus_now(db, entity, user)  # no destination set in the policy
+    policy.surplus_account_id = accounts["owner"].id
     available = po.surplus_balance(db, entity.id)
-    assert available > 0
-    with pytest.raises(po.PayoutError, match="المسجّلة"):
-        po.withdraw(db, entity, user, 100 * SAR, accounts["royalty"].id)
-    with pytest.raises(po.PayoutError, match="أكبر من رصيد"):
-        po.withdraw(db, entity, user, available + 1, accounts["own"].id)
-    [payout] = po.withdraw(db, entity, user, 100 * SAR, accounts["own"].id)
-    assert payout.reason == "withdrawal" and po.surplus_balance(db, entity.id) == available - 100 * SAR
+    [payout] = po.transfer_surplus_now(db, entity, user)
+    assert (payout.amount, payout.beneficiary_account_id, payout.reason) == (available, accounts["owner"].id, "withdrawal")
+    assert po.surplus_balance(db, entity.id) == 0
+
+
+def test_surplus_cannot_go_to_an_outside_party(db, setup):
+    entity, user, ids, accounts = setup
+    draft = pol.start_draft(db, entity, user)
+    rows = [pol.BucketInput(pb.bucket_id, pb.name, pb.priority, pb.calc_type, pb.value, pb.frequency, pb.settlement_day,
+                            "", pb.protected, destination_account_id=pb.destination_account_id) for pb in draft.buckets]
+    with pytest.raises(pol.PolicyError, match="للشركة أو المالك"):
+        pol.save_draft(db, draft, rows, "", user, surplus_account_id=accounts["landlord"].id)
+
+
+def test_reversing_a_bank_deposit_returns_it_to_the_sender(db, setup, monkeypatch):
+    entity, user, ids, accounts = setup
+    monkeypatch.setattr(tx.payouts, "pay_on_allocation", lambda *a, **k: [])  # keep the deposit reversible
+    txn = tx.ingest_bank_credit(db, vib.for_entity(db, entity.id).iban, OWN_IBAN, 1_000 * SAR,
+                                datetime(2026, 9, 15, 8, tzinfo=timezone.utc), "NEO-55")
+    db.commit()
+    surplus_before = po.surplus_balance(db, entity.id)
+    reversal = tx.reverse_transaction(db, txn, user, "حوّلتها بالغلط")
+    db.commit()
+    refund = db.query(models.Payout).filter_by(reason="refund").one()
+    assert (refund.amount, refund.beneficiary_account_id, refund.transaction_id) == (1_000 * SAR, accounts["own"].id, reversal.id)
+    assert po.surplus_balance(db, entity.id) == surplus_before - txn.surplus  # the refund does not touch the surplus twice
 
 
 def test_inventory_assigns_waiting_companies_and_freezes_released(db, make_user, monkeypatch):

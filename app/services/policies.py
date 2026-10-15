@@ -201,8 +201,12 @@ def save_draft(
     session.flush()
     policy.buckets.extend(new_buckets)
     policy.notes = notes.strip()
-    if surplus_account_id is not None and surplus_account_id not in destinations:
-        raise PolicyError("يجب أن يكون مستفيد الفائض حسابًا نشطًا لهذه الشركة")
+    if surplus_account_id is not None:
+        from .accounts import SURPLUS_KINDS
+
+        target = session.get(BankAccount, surplus_account_id)
+        if target is None or target.entity_id != policy.entity_id or not target.is_active or target.kind not in SURPLUS_KINDS:
+            raise PolicyError("يُحوَّل الفائض إلى حساب نشط للشركة أو المالك فقط")
     policy.surplus_account_id = surplus_account_id
     if surplus_frequency not in SURPLUS_FREQUENCIES:
         raise PolicyError("اختر موعدًا صالحًا لتحويل الفائض")

@@ -13,7 +13,7 @@ from ..domain.policy_rules import effective_rate, validate_policy
 from ..domain.types import BASIS_POINTS_FULL, CalcType, Frequency
 from ..models import Policy, PolicyStatus, Role, User
 from ..services import policies as svc
-from ..services.accounts import DESTINATION_KINDS, INCOME_KINDS, accounts_for
+from ..services.accounts import DESTINATION_KINDS, INCOME_KINDS, SURPLUS_KINDS, accounts_for
 from ..templating import templates
 from ..web import flash, redirect
 
@@ -153,6 +153,9 @@ def _render_editor(request, user, policy, session, rows, errors, notes, status_c
             "SURPLUS_FREQUENCIES": [f.value for f in svc.SURPLUS_FREQUENCIES],
             "protected_changes": svc.protected_changes_for(session, policy),
             "self_approval": svc.is_self_approval(session, policy),
+            "surplus_destinations": [
+                a for a in accounts_for(session, policy.entity_id, active_only=True) if a.kind in SURPLUS_KINDS
+            ],
             "destinations": [
                 a for a in accounts_for(session, policy.entity_id, active_only=True) if a.kind in DESTINATION_KINDS
             ],

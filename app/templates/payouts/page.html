@@ -11,22 +11,18 @@
     <div class="kpi"><span class="kpi-label">الإجمالي</span><span class="kpi-value num">{{ (surplus_total + held_total) | sar }}</span>
       <span class="small muted">رصيد الشركة لدى مفتاح الخزينة</span></div>
   </div>
-  {% if user.role.value == "accountant" and surplus_total > 0 and own_accounts %}
-  <details class="help">
-    <summary>حوّل الفائض الآن</summary>
-    <form method="post" action="/entities/{{ entity.id }}/withdraw" class="form-grid">
-      <label>المبلغ (ر.س) *
-        <input name="amount" inputmode="decimal" class="num" required placeholder="{{ surplus_total | sar }}">
-      </label>
-      <label>إلى حساب الشركة *
-        <select name="account_id" required>
-          {% for a in own_accounts %}<option value="{{ a.id }}">{{ a.name }} · ••{{ a.iban[-4:] }}</option>{% endfor %}
-        </select>
-      </label>
-      <div class="form-actions"><button class="btn btn-primary" type="submit">تحويل</button></div>
+  {% if user.role.value == "accountant" and surplus_total > 0 %}
+  <div class="surplus-now">
+    {% if surplus_to %}
+    <form method="post" action="/entities/{{ entity.id }}/surplus/transfer-now"
+          onsubmit="return confirm('تحويل الفائض كاملًا الآن إلى «{{ surplus_to.name }}»؟')">
+      <button class="btn btn-primary" type="submit">حوّل الفائض الآن</button>
     </form>
-    <p class="muted small">يُحوَّل الفائض إلى الحسابات المسجّلة للشركة فقط.</p>
-  </details>
+    <span class="muted small">يُحوَّل الفائض كاملًا إلى «{{ surplus_to.name }}» قبل موعده.</span>
+    {% else %}
+    <span class="muted small">لتحويل الفائض، حدد في <a href="/entities/{{ entity.id }}/policy">سياسة التقسيم</a> الحساب الذي يُحوَّل إليه.</span>
+    {% endif %}
+  </div>
   {% endif %}
   <p class="muted">
     يُحجز لكل بند نصيبه من الدخل، ثم يُحوَّل إلى المستفيد وفق موعد استحقاقه: تُحوَّل البنود الفورية فور تقسيم الدخل،

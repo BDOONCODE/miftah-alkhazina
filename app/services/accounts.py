@@ -24,6 +24,8 @@ KIND_HINTS = {
 INCOME_KINDS = (AccountKind.SOURCE, AccountKind.POOL)
 # Beneficiary accounts: where money goes out to (added from the policy page)
 BENEFICIARY_KINDS = (AccountKind.SUB, AccountKind.EXTERNAL)
+# The surplus is the company's own money: it can only go to the company's or the owner's accounts
+SURPLUS_KINDS = (AccountKind.SUB, AccountKind.SOURCE, AccountKind.POOL)
 # Account kinds that can be an item's beneficiary (or the surplus destination): beneficiaries only
 DESTINATION_KINDS = BENEFICIARY_KINDS
 IBAN_RE = re.compile(r"^SA\d{22}$")
