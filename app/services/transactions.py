@@ -24,6 +24,7 @@ from ..models import (
     utcnow,
 )
 from . import payouts
+from ..crypto import iban_index
 from .accounts import INCOME_KINDS, normalize_iban
 from .policies import active_policy, specs
 
@@ -288,7 +289,7 @@ def ingest_bank_credit(
         raise TransactionError("آيبان الإيداع غير مخصّص لأي شركة")
     sender_iban = normalize_iban(sender_iban or "")
     account = session.scalar(select(BankAccount).where(
-        BankAccount.entity_id == entity.id, BankAccount.iban == sender_iban, BankAccount.is_active,
+        BankAccount.entity_id == entity.id, BankAccount.iban_hash == iban_index(sender_iban), BankAccount.is_active,
         BankAccount.kind.in_(INCOME_KINDS),
     )) if sender_iban else None
     if account is None:
@@ -323,7 +324,7 @@ def accept_held(session: Session, held: HeldDeposit, user: User, register: bool)
     source_id = None
     if register and held.sender_iban:
         existing = session.scalar(select(BankAccount).where(
-            BankAccount.entity_id == entity.id, BankAccount.iban == held.sender_iban
+            BankAccount.entity_id == entity.id, BankAccount.iban_hash == iban_index(held.sender_iban)
         ))
         if existing is None:
             try:

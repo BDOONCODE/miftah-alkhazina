@@ -66,7 +66,7 @@ def integration_status(session: Session) -> list[CompanyLink]:
     )
     return [
         CompanyLink(e, last_notice.get(e.id), txns.get(e.id, 0), sent.get(e.id, 0), issues.get(e.id, 0))
-        for e in session.scalars(select(Entity).order_by(Entity.name))
+        for e in sorted(session.scalars(select(Entity)), key=lambda e: e.name)  # names are encrypted
     ]
 
 

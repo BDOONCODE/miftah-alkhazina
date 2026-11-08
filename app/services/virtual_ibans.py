@@ -11,6 +11,7 @@ from datetime import timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..crypto import iban_index
 from ..models import AuditLog, Entity, Policy, PolicyStatus, User, VirtualIban, utcnow
 from .accounts import IBAN_RE, normalize_iban
 from .banking import is_simulated
@@ -68,7 +69,7 @@ def current(session: Session, entity: Entity) -> VirtualIban | None:
 def entity_for(session: Session, iban: str) -> Entity | None:
     """The company a deposit IBAN belongs to (assigned IBANs only)."""
     row = session.scalar(select(VirtualIban).where(
-        VirtualIban.iban == normalize_iban(iban), VirtualIban.status == "assigned"
+        VirtualIban.iban_hash == iban_index(iban), VirtualIban.status == "assigned"
     ))
     return session.get(Entity, row.entity_id) if row else None
 

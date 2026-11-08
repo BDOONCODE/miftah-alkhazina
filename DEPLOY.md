@@ -82,6 +82,19 @@ Note: Render's free plan blocks SMTP ports, so email goes through Brevo's HTTPS 
 
 > 🔒 The API key is secret. Never share it or paste it into a chat; only into Render.
 
+## 7. Encryption key for client data
+
+Client names, IBANs, identifiers, transfer details, support messages and audit details are stored encrypted
+(AES-256-GCM, `app/crypto.py`). The site will not start in production without the key.
+
+1. Generate a key on your own computer:
+   `python -c "import secrets; print(secrets.token_urlsafe(48))"`
+2. In Render → **Environment** add `DATA_ENCRYPTION_KEY` = that value, then **Save Changes**.
+3. Keep a copy in a password manager. **If the key is lost, the encrypted data cannot be recovered**, and
+   changing it later makes the existing data unreadable.
+
+> 🔒 The key is secret. Never share it or paste it into a chat; only into Render and your password manager.
+
 ## Notes
 
 - If Supabase pauses anyway, restore it from the Supabase dashboard with **Restore**.

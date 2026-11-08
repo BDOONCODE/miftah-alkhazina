@@ -2,7 +2,7 @@
 
 Flow: the client transfers its revenue to its virtual IBAN -> the money lands in Miftah's master account ->
 it is split in our ledger -> each item's share is held (a ledger balance, not a bank account) -> and paid out
-from the master to the item's beneficiary, in Miftah's name with a description naming the client:
+from the master to the item's beneficiary, in Miftah's name only (the description names no client):
   - an item with no due date (immediate): transfers as soon as it is split.
   - an item with a due date: accumulates and transfers in full on the due date (first day after the cycle ends).
 The surplus stays in the company's balance in the master account. If an item falls short of its schedule, the
@@ -46,6 +46,8 @@ from .banking import BankingError, provider
 REASON_LABELS = {"immediate": "فور التقسيم", "due": "يوم الاستحقاق", "surplus": "الفائض",
                  "withdrawal": "تحويل الفائض قبل موعده", "refund": "إرجاع إلى المرسل"}
 SURPLUS_NAME = "الفائض"
+# Payouts leave in Miftah's name only: the description names no client, person or item
+PAYOUT_DESCRIPTION = "مفتاح الخزينة"
 
 
 class PayoutError(RuntimeError):
@@ -263,7 +265,7 @@ def _send(
     try:
         payout.provider_ref = provider().transfer(
             from_ref=master_account(), to_iban=beneficiary.iban, amount=amount, reference=payout.reference,
-            description=_description(session, entity_id, bucket_id, reason, period),
+            description=PAYOUT_DESCRIPTION,
         )
         payout.status = PayoutStatus.SENT
     except BankingError as exc:
@@ -281,18 +283,6 @@ def _send(
         )
     )
     return payout
-
-
-def _description(session: Session, entity_id: int, bucket_id: int | None, reason: str, period: str | None) -> str:
-    """Payouts leave in Miftah's name, so the description tells the beneficiary who the money is from and why."""
-    company = session.get(Entity, entity_id).name
-    if reason == "refund":
-        purpose = "إرجاع حوالة"
-    elif reason == "withdrawal":
-        purpose = SURPLUS_NAME
-    else:
-        purpose = _bucket_name(session, session.get(Bucket, bucket_id)) if bucket_id else SURPLUS_NAME
-    return f"نيابة عن {company}: {purpose}" + (f" {period}" if period else "")
 
 
 def surplus_account(session: Session, entity_id: int, account_id: int | None) -> BankAccount | None:

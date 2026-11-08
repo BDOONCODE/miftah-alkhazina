@@ -987,7 +987,7 @@ EN = {
     "أموال جميع العملاء في حساب مفتاح الخزينة الرئيسي (": "All clients’ money is in the Treasury Key master account (",
     ")، والتقسيم في سجلات المنصة. فالحركة الوحيدة التي نطلبها من البنك هي": "), and the split is kept in the platform records. So the one movement we ask the bank for is the",
     "إلى المستفيد.": "to the beneficiary.",
-    "← المستفيد، باسم مفتاح الخزينة ووصف «نيابة عن [الشركة]: [البند] [الفترة]»": "→ beneficiary, in Treasury Key’s name with the description “On behalf of [company]: [item] [period]”",
+    "← المستفيد، باسم مفتاح الخزينة فقط، ووصفه «مفتاح الخزينة» بلا اسم شركة أو شخص": "→ beneficiary, in Treasury Key’s name only, described as “Treasury Key” with no company or person named",
     "فور التقسيم، أو يوم الاستحقاق، أو عند سحب الشركة من رصيدها": "On split, on the due date, or when the company withdraws from its balance",
     "عدة تحويلات في ملف واحد، ويعود ملف نتيجة يبيّن الناجح والفاشل": "Several transfers in one file; a result file shows which succeeded and which failed",
     "بانتظار توثيق نيوتك": "Waiting for Neotek’s documentation",

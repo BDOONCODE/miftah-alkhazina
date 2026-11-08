@@ -4,6 +4,7 @@ import json
 import pytest
 
 from app import models
+from app.crypto import iban_index
 from app.models import AccountKind, TransactionSource
 from app.routes.bank import sign
 from app.services import accounts as acc
@@ -236,7 +237,7 @@ def test_registration_goes_to_accounts_with_pool_from_iban(client, db, make_user
         data={"name": "شركة جديدة", "approval_mode": "self", "bank_name": "الراجحي", "iban": POOL},
         follow_redirects=False,
     )
-    entity = db.query(models.Entity).filter_by(name="شركة جديدة").one()
+    entity = next(e for e in db.query(models.Entity) if e.name == "شركة جديدة")
     assert response.headers["location"] == f"/entities/{entity.id}/accounts"
     assert acc.pool_account(db, entity.id).iban == POOL
 
@@ -262,9 +263,9 @@ def test_semiannual_item_needs_and_saves_due_date(client, db, company):
 
 def test_unused_income_account_can_be_deleted(client, db, company):
     add(client, company, "نقاط البيع", POS, "source")
-    account = db.query(models.BankAccount).filter_by(iban=POS).one()
+    account = db.query(models.BankAccount).filter_by(iban_hash=iban_index(POS)).one()
     assert client.post(f"/accounts/{account.id}/delete", follow_redirects=False).status_code == 303
-    assert db.query(models.BankAccount).filter_by(iban=POS).count() == 0
+    assert db.query(models.BankAccount).filter_by(iban_hash=iban_index(POS)).count() == 0
 
 
 def test_income_account_with_transactions_is_kept(client, db, company, accounts):

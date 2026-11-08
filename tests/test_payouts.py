@@ -171,7 +171,7 @@ class RecordingProvider:
 
 
 def test_only_payouts_reach_the_bank(db, setup, monkeypatch):
-    """The split lives in the ledger: the one call to the bank is the payout, from the master, naming the client."""
+    """The split lives in the ledger: the one call to the bank is the payout, from the master, in Miftah's name only."""
     from app.services import banking
 
     recorder = RecordingProvider()
@@ -179,9 +179,8 @@ def test_only_payouts_reach_the_bank(db, setup, monkeypatch):
     entity, user, ids, _ = setup
     deposit(db, entity, user, 10_000 * SAR, 10)
     assert [c for c in recorder.calls if c[0] == "transfer"] == [("transfer", 600 * SAR)]  # the royalty, immediate
-    payout = db.query(models.Payout).one()
     assert recorder.sent[0]["from_ref"] == "sim-master"
-    assert recorder.sent[0]["description"] == f"نيابة عن مزاج: الإتاوة {payout.period_key}"
+    assert recorder.sent[0]["description"] == "مفتاح الخزينة"
 
 
 def test_pool_surplus_covers_deficits_nearest_due_first(db, setup, monkeypatch):

@@ -235,7 +235,7 @@ def test_self_approval_company_without_reviewer(client, db, make_user):
     login(client, "solo")
     response = client.post("/companies/new", data={"name": "مجموعة العرفج", "approval_mode": "self", "iban": "SA0380000000608010167519"}, follow_redirects=False)
     assert response.status_code == 303
-    entity = db.query(models.Entity).filter_by(name="مجموعة العرفج").one()
+    entity = next(e for e in db.query(models.Entity) if e.name == "مجموعة العرفج")
     assert entity.approval_mode == "self" and entity.reviewers == []
 
     client.post(f"/entities/{entity.id}/policy/draft")

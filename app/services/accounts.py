@@ -6,6 +6,7 @@ import re
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..crypto import iban_index
 from ..models import AccountKind, AuditLog, BankAccount, Entity, User
 
 KIND_LABELS = {
@@ -67,7 +68,7 @@ def add_account(
         account_kind = AccountKind(kind)
     except ValueError as exc:
         raise AccountError("اختر نوع الحساب") from exc
-    if session.scalar(select(BankAccount).where(BankAccount.entity_id == entity.id, BankAccount.iban == iban)):
+    if session.scalar(select(BankAccount).where(BankAccount.entity_id == entity.id, BankAccount.iban_hash == iban_index(iban))):
         raise AccountError("هذا الآيبان مسجل لهذه الشركة")
     if account_kind is AccountKind.POOL and pool_account(session, entity.id):
         raise AccountError("للشركة حساب مجمّع بالفعل. عطّل الحساب الحالي أولًا إذا أردت تغييره")
@@ -126,7 +127,7 @@ def find_by_iban(session: Session, iban: str) -> BankAccount | None:
     """The account the money arrived in (for bank notifications): a revenue source or the pool only."""
     return session.scalar(
         select(BankAccount).where(
-            BankAccount.iban == normalize_iban(iban),
+            BankAccount.iban_hash == iban_index(iban),
             BankAccount.is_active.is_(True),
             BankAccount.kind.in_((AccountKind.SOURCE, AccountKind.POOL)),
         )

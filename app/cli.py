@@ -57,7 +57,7 @@ def seed_demo(password: str | None = None) -> None:
                     User(username=username, full_name=full_name, password_hash=hash_password(password or default_password, enforce_rules=False), role=role)
                 )
         session.commit()
-        if not session.scalar(select(Entity).where(Entity.name == DEMO_COMPANY)):
+        if not any(e.name == DEMO_COMPANY for e in session.scalars(select(Entity))):  # names are encrypted
             _seed_demo_company(session, password)
             session.commit()
     print("الحسابات والشركة التجريبية جاهزة")

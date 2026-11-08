@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from ..domain.periods import local_date, period_key
 from ..domain.policy_rules import justification_error, protected_changes, validate_policy
 from ..domain.types import ANCHORED_MONTHS, BucketSpec, CalcType, Frequency
+from ..crypto import iban_index
 from .accounts import DESTINATION_KINDS, AccountError, add_account, normalize_iban
 from ..models import (
     AuditLog,
@@ -220,7 +221,7 @@ def _destination_from_iban(session: Session, policy: Policy, user: User, row: Bu
     """New IBAN from the policy page: reuse the account if registered, otherwise register it under the item's name."""
     iban = normalize_iban(row.new_destination_iban)
     existing = session.scalar(
-        select(BankAccount).where(BankAccount.entity_id == policy.entity_id, BankAccount.iban == iban)
+        select(BankAccount).where(BankAccount.entity_id == policy.entity_id, BankAccount.iban_hash == iban_index(iban))
     )
     if existing is not None:
         if existing.kind not in DESTINATION_KINDS:

@@ -22,9 +22,10 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.types import TypeDecorator
 
+from . import crypto
 from .db import Base
 from .domain.types import CalcType, Frequency, FundingStatus
 
@@ -52,6 +53,33 @@ class UTCDateTime(TypeDecorator):
 
     def process_result_value(self, value: datetime | None, dialect):
         return value.replace(tzinfo=timezone.utc) if value is not None else None
+
+
+class Encrypted(TypeDecorator):
+    """Client data encrypted at rest (AES-256-GCM, see app/crypto.py). Never filter or sort on it in SQL:
+    look IBANs up through their blind index, and sort names in Python."""
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value: str | None, dialect):
+        return crypto.encrypt(value)
+
+    def process_result_value(self, value: str | None, dialect):
+        return crypto.decrypt(value)
+
+
+class EncryptedJSON(TypeDecorator):
+    """A JSON value encrypted at rest (audit details hold names, amounts and IBAN digits)."""
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        return crypto.encrypt_json(value)
+
+    def process_result_value(self, value, dialect):
+        return crypto.decrypt_json(value)
 
 
 def _enum(cls):
@@ -106,21 +134,21 @@ class User(Base):
 class Entity(Base):
     __tablename__ = "entities"
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(128))
+    name: Mapped[str] = mapped_column(Encrypted())
     type: Mapped[str] = mapped_column(String(32), default="company")
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id"))  # reserved for hierarchies later
     currency: Mapped[str] = mapped_column(String(3), default="SAR")
-    cr_number: Mapped[str] = mapped_column(String(32), default="")  # commercial registration
-    vat_number: Mapped[str] = mapped_column(String(32), default="")  # VAT number
+    cr_number: Mapped[str] = mapped_column(Encrypted(), default="")  # commercial registration
+    vat_number: Mapped[str] = mapped_column(Encrypted(), default="")  # VAT number
     bank_name: Mapped[str] = mapped_column(String(64), default="")
-    iban: Mapped[str] = mapped_column(String(34), default="")
-    contact_name: Mapped[str] = mapped_column(String(128), default="")
-    contact_phone: Mapped[str] = mapped_column(String(32), default="")
+    iban: Mapped[str] = mapped_column(Encrypted(), default="")
+    contact_name: Mapped[str] = mapped_column(Encrypted(), default="")
+    contact_phone: Mapped[str] = mapped_column(Encrypted(), default="")
     # Who approves policies: "self" = the creator approves it, "reviewer" = an independent reviewer
     approval_mode: Mapped[str] = mapped_column(String(16), default="reviewer", server_default="reviewer")
     # The company's pool virtual account at the banking provider: all incoming money collects here,
     # is split from here into item accounts, and the surplus stays here
-    pool_virtual_iban: Mapped[str | None] = mapped_column(String(34))
+    pool_virtual_iban: Mapped[str | None] = mapped_column(Encrypted())
     pool_virtual_ref: Mapped[str | None] = mapped_column(String(128))
     # The "surplus" small virtual account: each month the pool's remaining surplus is isolated here
     surplus_bucket_id: Mapped[int | None] = mapped_column(
@@ -147,16 +175,22 @@ class BankAccount(Base):
     """Company bank accounts. provider_ref = the account id at the banking provider (Neotek), later."""
 
     __tablename__ = "bank_accounts"
-    __table_args__ = (UniqueConstraint("entity_id", "iban"),)
+    __table_args__ = (UniqueConstraint("entity_id", "iban_hash", name="uq_bank_accounts_entity_iban_hash"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
-    name: Mapped[str] = mapped_column(String(128))
+    name: Mapped[str] = mapped_column(Encrypted())
     bank_name: Mapped[str] = mapped_column(String(64), default="")
-    iban: Mapped[str] = mapped_column(String(34), index=True)
+    iban: Mapped[str] = mapped_column(Encrypted())
+    iban_hash: Mapped[str | None] = mapped_column(String(64), index=True)  # blind index for lookups
     kind: Mapped[AccountKind] = mapped_column(_enum(AccountKind))
     provider_ref: Mapped[str | None] = mapped_column(String(128))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+    @validates("iban")
+    def _index_iban(self, _key, value):
+        self.iban_hash = crypto.iban_index(value)
+        return value
 
 
 class UserEntity(Base):
@@ -176,7 +210,7 @@ class Bucket(Base):
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
     system_name: Mapped[str | None] = mapped_column(String(64))  # an account the system manages (the surplus)
     # The item's virtual account at the banking provider (Neotek): opened when a policy with the item is approved
-    virtual_iban: Mapped[str | None] = mapped_column(String(34))
+    virtual_iban: Mapped[str | None] = mapped_column(Encrypted())
     virtual_ref: Mapped[str | None] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
@@ -225,7 +259,7 @@ class PolicyBucket(Base):
     frequency: Mapped[Frequency] = mapped_column(_enum(Frequency))
     settlement_day: Mapped[int | None] = mapped_column(Integer)
     due_date: Mapped[date | None] = mapped_column(Date)  # next due date (quarterly, semiannual, annual)
-    destination: Mapped[str] = mapped_column(String(128), default="")  # beneficiary name for display
+    destination: Mapped[str] = mapped_column(Encrypted(), default="")  # beneficiary name for display
     # Beneficiary: the account the item's money is transferred to from its virtual account.
     # Without a due date it transfers as soon as it is split; with one it accumulates and transfers in full on the due date
     destination_account_id: Mapped[int | None] = mapped_column(ForeignKey("bank_accounts.id"))
@@ -250,7 +284,7 @@ class Transaction(Base):
     external_ref: Mapped[str | None] = mapped_column(String(128), unique=True)
     reversal_of: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), unique=True)
     policy_id: Mapped[int] = mapped_column(ForeignKey("policies.id"))
-    note: Mapped[str] = mapped_column(Text, default="")
+    note: Mapped[str] = mapped_column(Encrypted(), default="")
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))  # empty = arrived automatically from the bank
     # Provider operation that moved the money from the company account into the pool (empty for manual entries
     # with no source account)
@@ -345,8 +379,8 @@ class Payout(Base):
     period_key: Mapped[str | None] = mapped_column(String(10))
     transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), index=True)
     beneficiary_account_id: Mapped[int] = mapped_column(ForeignKey("bank_accounts.id"))
-    beneficiary_name: Mapped[str] = mapped_column(String(128))  # snapshot at transfer time
-    beneficiary_iban: Mapped[str] = mapped_column(String(34))
+    beneficiary_name: Mapped[str] = mapped_column(Encrypted())  # snapshot at transfer time
+    beneficiary_iban: Mapped[str] = mapped_column(Encrypted())
     status: Mapped[PayoutStatus] = mapped_column(_enum(PayoutStatus), default=PayoutStatus.SENT)
     reference: Mapped[str] = mapped_column(String(64), unique=True)
     provider_ref: Mapped[str | None] = mapped_column(String(128))
@@ -365,7 +399,8 @@ class VirtualIban(Base):
 
     __tablename__ = "virtual_ibans"
     id: Mapped[int] = mapped_column(primary_key=True)
-    iban: Mapped[str] = mapped_column(String(34), unique=True)
+    iban: Mapped[str] = mapped_column(Encrypted())
+    iban_hash: Mapped[str | None] = mapped_column(String(64), unique=True)  # blind index for lookups
     status: Mapped[str] = mapped_column(String(16), default="available", index=True)
     entity_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id"), index=True)
     last_entity_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id"))
@@ -375,6 +410,11 @@ class VirtualIban(Base):
 
     entity: Mapped[Entity | None] = relationship(foreign_keys=[entity_id])
 
+    @validates("iban")
+    def _index_iban(self, _key, value):
+        self.iban_hash = crypto.iban_index(value)
+        return value
+
 
 class HeldDeposit(Base):
     """Money that reached a company's deposit IBAN from an account the company has not registered.
@@ -383,8 +423,8 @@ class HeldDeposit(Base):
     __tablename__ = "held_deposits"
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
-    sender_iban: Mapped[str] = mapped_column(String(34), default="")
-    sender_name: Mapped[str] = mapped_column(String(128), default="")
+    sender_iban: Mapped[str] = mapped_column(Encrypted(), default="")
+    sender_name: Mapped[str] = mapped_column(Encrypted(), default="")
     amount: Mapped[int] = mapped_column(BigInteger)
     occurred_at: Mapped[datetime] = mapped_column(UTCDateTime())
     reference: Mapped[str] = mapped_column(String(128), unique=True)
@@ -409,7 +449,7 @@ class TransferIssue(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
     leg: Mapped[str] = mapped_column(String(16))
-    destination: Mapped[str] = mapped_column(String(128))  # name of the receiving account
+    destination: Mapped[str] = mapped_column(Encrypted())  # name of the receiving account
     reference: Mapped[str] = mapped_column(String(64))
     error: Mapped[str] = mapped_column(Text, default="")
     resolved: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -426,9 +466,9 @@ class ReversalRequest(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), index=True)
     transaction_id: Mapped[int] = mapped_column(ForeignKey("transactions.id"), index=True)
-    reason: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str] = mapped_column(Encrypted())
     status: Mapped[str] = mapped_column(String(16), default="open")  # open | in_progress | done | rejected
-    note: Mapped[str] = mapped_column(Text, default="")
+    note: Mapped[str] = mapped_column(Encrypted(), default="")
     requested_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     handled_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
@@ -443,12 +483,12 @@ class SupportTicket(Base):
     __tablename__ = "support_tickets"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
-    contact: Mapped[str] = mapped_column(String(254))  # how to reach the sender (email or username)
-    subject: Mapped[str] = mapped_column(String(200))
-    body: Mapped[str] = mapped_column(Text)
+    contact: Mapped[str] = mapped_column(Encrypted())  # how to reach the sender (email or username)
+    subject: Mapped[str] = mapped_column(Encrypted())
+    body: Mapped[str] = mapped_column(Encrypted())
     # open (new) -> in_progress (the admin opened it) -> closed (the admin replied)
     status: Mapped[str] = mapped_column(String(16), default="open")
-    reply: Mapped[str] = mapped_column(Text, default="")
+    reply: Mapped[str] = mapped_column(Encrypted(), default="")
     handled_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
 
@@ -519,7 +559,7 @@ class AuditLog(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     entity_id: Mapped[int | None] = mapped_column(ForeignKey("entities.id"), index=True)
     action: Mapped[str] = mapped_column(String(64))
-    details: Mapped[dict] = mapped_column(JSON, default=dict)
+    details: Mapped[dict] = mapped_column(EncryptedJSON(), default=dict)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
 
     user: Mapped[User | None] = relationship()

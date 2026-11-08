@@ -18,6 +18,8 @@ services:
         sync: false
       - key: SECRET_KEY
         generateValue: true
+      - key: DATA_ENCRYPTION_KEY  # encrypts client data at rest; keep a backup copy (DEPLOY.md, section 7)
+        sync: false
       - key: HTTPS_ONLY_COOKIES
         value: "1"
       - key: ADMIN_USERNAME  # first admin account

@@ -60,7 +60,7 @@ X-Signature: hex( HMAC-SHA256( BANK_WEBHOOK_SECRET, raw request body ) )
   <table class="table">
     <thead><tr><th>العملية</th><th>المرحلة</th><th>متى</th><th>صيغة المرجع</th></tr></thead>
     <tbody>
-      <tr><td dir="ltr">transfer</td><td><span dir="ltr">Master Account</span> ← المستفيد، باسم مفتاح الخزينة ووصف «نيابة عن [الشركة]: [البند] [الفترة]»</td><td>فور التقسيم، أو يوم الاستحقاق، أو عند سحب الشركة من رصيدها</td><td dir="ltr">PO-…</td></tr>
+      <tr><td dir="ltr">transfer</td><td><span dir="ltr">Master Account</span> ← المستفيد، باسم مفتاح الخزينة فقط، ووصفه «مفتاح الخزينة» بلا اسم شركة أو شخص</td><td>فور التقسيم، أو يوم الاستحقاق، أو عند سحب الشركة من رصيدها</td><td dir="ltr">PO-…</td></tr>
       <tr><td dir="ltr">bulk transfer</td><td>عدة تحويلات في ملف واحد، ويعود ملف نتيجة يبيّن الناجح والفاشل</td><td>بانتظار توثيق نيوتك</td><td>—</td></tr>
     </tbody>
   </table>
