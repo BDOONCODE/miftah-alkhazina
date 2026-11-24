@@ -69,6 +69,14 @@ a { color: inherit; text-decoration: none; }
 .nav ul a:hover { color: var(--ink); }
 .pill { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding-inline: 20px; border-radius: 999px; font-size: 14px; font-weight: 400; white-space: nowrap; transition: background .25s, color .25s, transform .25s; }
 .pill:active { transform: scale(.98); }
+.nav-end { display: flex; align-items: center; gap: 10px; }
+.theme { all: unset; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--text); box-shadow: inset 0 0 0 1px var(--line); transition: color .2s, box-shadow .2s; }
+.theme:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.theme svg { width: 18px; height: 18px; }
+.theme .sun { display: none; }
+:root[data-theme="dark"] .theme .sun { display: block; }
+:root[data-theme="dark"] .theme .moon { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .theme .sun { display: block; } :root:not([data-theme="light"]) .theme .moon { display: none; } }
 .pill.dark { background: var(--ink); color: var(--bg); }
 .pill.dark:hover { background: var(--brand); color: #fff; }
 .pill.brand { background: var(--brand); color: #fff; height: 46px; padding-inline: 24px; font-size: 15px; }
@@ -92,24 +100,35 @@ section { position: relative; }
 /* hero */
 .hero { border-radius: 28px; margin-top: 8px; padding: clamp(64px, 8vw, 104px) clamp(16px, 4vw, 48px) 0; background: radial-gradient(60% 70% at 50% 0%, var(--wash-a), transparent 70%), linear-gradient(180deg, var(--bg), var(--wash-b) 120%); overflow: hidden; }
 
-/* dashboard (assembles itself) */
-.dash { margin: clamp(48px, 6vw, 72px) auto 0; max-width: 1040px; background: var(--card); border: 1px solid var(--line); border-bottom: 0; border-radius: 20px 20px 0 0; box-shadow: 0 30px 80px -40px rgba(30, 38, 36, .35); display: grid; grid-template-columns: 196px 1fr; text-align: right; overflow: hidden; }
-.d-side { border-inline-end: 1px solid var(--line); padding: 18px 14px; display: grid; gap: 2px; align-content: start; font-size: 13px; color: var(--text); font-weight: 400; }
-.d-side .co { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; color: var(--ink); font-weight: 500; }
-.d-side .co i { width: 28px; height: 28px; border-radius: 8px; background: var(--brand-pale); color: var(--brand); display: grid; place-items: center; font-style: normal; font-size: 13px; }
-.d-side span { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; }
-.d-side span svg { width: 16px; height: 16px; opacity: .7; }
-.d-side span.on { background: var(--tint); color: var(--ink); }
-.d-main { padding: 20px; display: grid; gap: 14px; min-width: 0; background: var(--tint); }
-.d-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.d-top h3 { font-size: 17px; }
-.d-top small { display: block; font-size: 12px; color: var(--soft); font-weight: 300; }
-.d-search { font-size: 12px; color: var(--soft); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; min-width: 160px; }
-.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; }
+/* dashboard: mirrors the platform (top bar, company title, tabs, KPI cards) and assembles itself */
+.dash { margin: clamp(48px, 6vw, 72px) auto 0; max-width: 1040px; background: var(--card); border: 1px solid var(--line); border-bottom: 0; border-radius: 20px 20px 0 0; box-shadow: 0 30px 80px -40px rgba(30, 38, 36, .35); text-align: right; overflow: hidden; }
+.app-top { display: flex; align-items: center; gap: 22px; padding: 12px 22px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 400; color: var(--text); }
+.app-top .app-logo { display: flex; align-items: center; gap: 6px; color: var(--ink); font-weight: 500; }
+.app-top .app-logo svg { width: 16px; height: 16px; }
+.app-top .app-user { margin-inline-start: auto; font-size: 11px; color: var(--brand); background: var(--brand-pale); padding: 2px 10px; border-radius: 999px; }
+.d-main { padding: 22px; display: grid; gap: 14px; min-width: 0; background: var(--tint); }
+.co-head h3 { font-size: 20px; }
+.tabs { display: flex; gap: 22px; margin-top: 12px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 400; color: var(--text); overflow-x: auto; scrollbar-width: none; }
+.tabs span { padding-bottom: 10px; white-space: nowrap; }
+.tabs span.on { color: var(--brand); border-bottom: 2px solid var(--brand); font-weight: 500; }
+.hero-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.big { border-radius: 16px; padding: 18px 20px; display: grid; gap: 4px; }
+.big small { font-size: 12px; opacity: .85; }
+.big strong { font-size: 26px; font-weight: 500; }
+.big strong em { font-style: normal; font-size: 13px; font-weight: 400; opacity: .8; margin-inline-start: 4px; }
+.big span { font-size: 12px; opacity: .8; }
+.big.green { background: #1D8A64; color: #fff; }
+.big.sand { background: var(--gold-pale); color: var(--ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 30%, transparent); }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-top: 2px solid var(--c, var(--brand)); border-radius: 14px; padding: 12px 14px; display: grid; gap: 2px; }
 .kpi small { font-size: 12px; color: var(--soft); }
-.kpi strong { font-size: 22px; font-weight: 500; }
-.kpi em { font-style: normal; font-size: 11px; color: var(--brand); background: var(--brand-pale); border-radius: 999px; padding: 1px 8px; justify-self: start; }
+.kpi strong { font-size: 18px; font-weight: 500; }
+.bars { display: grid; gap: 10px; margin-top: 6px; }
+.br { display: grid; gap: 4px; font-size: 12px; font-weight: 400; }
+.br div { display: flex; justify-content: space-between; gap: 8px; }
+.br .fig { color: var(--text); }
+.br .t { height: 6px; border-radius: 3px; background: var(--tint); overflow: hidden; }
+.br .t b { display: block; height: 100%; border-radius: 3px; background: var(--brand); transform-origin: right; }
 .d-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 12px; }
 .box { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; min-width: 0; }
 .box h4 { margin: 0 0 8px; font-size: 13px; font-weight: 500; display: flex; justify-content: space-between; }
@@ -122,11 +141,6 @@ section { position: relative; }
 .sb .t { height: 6px; border-radius: 3px; background: var(--tint); overflow: hidden; }
 .sb .t b { display: block; height: 100%; border-radius: 3px; transform-origin: right; }
 .sb .fig { text-align: left; color: var(--text); }
-.feed { display: grid; font-size: 12px; font-weight: 400; }
-.feed div { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; padding: 8px 0; border-top: 1px solid var(--line); align-items: center; }
-.feed div:first-child { border-top: 0; }
-.feed .ok { color: var(--brand); background: var(--brand-pale); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
-.feed .fig { color: var(--ink); }
 
 /* assemble: elements start offset (still visible) and settle; works even if paused */
 .asm .a { animation: settle 1s cubic-bezier(.2, .8, .2, 1) both; }
@@ -134,8 +148,8 @@ section { position: relative; }
 .asm .a1 { animation-delay: .15s; } .asm .a2 { animation-delay: .25s; } .asm .a3 { animation-delay: .35s; } .asm .a4 { animation-delay: .45s; } .asm .a5 { animation-delay: .55s; }
 .asm .line { animation: draw 2.2s .6s cubic-bezier(.4, 0, .2, 1) both; }
 @keyframes draw { from { stroke-dashoffset: 900; } }
-.asm .sb b { animation: grow 1.2s cubic-bezier(.2, .8, .2, 1) both; }
-.asm .sb:nth-child(2) b { animation-delay: .1s; } .asm .sb:nth-child(3) b { animation-delay: .2s; } .asm .sb:nth-child(4) b { animation-delay: .3s; }
+.asm .br b { animation: grow 1.2s cubic-bezier(.2, .8, .2, 1) both; }
+.asm .br:nth-child(2) b { animation-delay: .1s; } .asm .br:nth-child(3) b { animation-delay: .2s; } .asm .br:nth-child(4) b { animation-delay: .3s; }
 @keyframes grow { from { transform: scaleX(.15); } }
 
 /* audience marquee */
@@ -247,8 +261,8 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 @media (max-width: 960px) {
   .nav ul { display: none; }
   .nav .wrap { justify-content: space-between; }
-  .dash { grid-template-columns: 1fr; }
-  .d-side { display: none; }
+  .hero-kpis { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: 1fr 1fr; }
   .d-grid { grid-template-columns: 1fr; }
   .features { grid-template-columns: 1fr 1fr; }
   .steps { grid-template-columns: 1fr 1fr; row-gap: 32px; }
@@ -257,9 +271,8 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 }
 @media (max-width: 600px) {
   .stats, .features, .steps { grid-template-columns: 1fr; }
-  .kpis { grid-template-columns: 1fr 1fr; }
-  .kpis .kpi:last-child { display: none; }
-  .d-search { display: none; }
+  .app-top .app-links { display: none; }
+  .d-main { padding: 16px; }
   .hero, .wash, .closing { border-radius: 22px; }
   .chart-card { padding: 20px 16px 16px; }
   .tip { display: none; }
@@ -290,7 +303,13 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
         <li><a href="#plans">الباقات</a></li>
         <li><a href="#trust">الأمان</a></li>
       </ul>
-      <a class="pill dark" href="/signup">ابدأ الآن</a>
+      <div class="nav-end">
+        <button class="theme" id="theme" type="button" aria-label="تبديل الوضع الفاتح والداكن">
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        </button>
+        <a class="pill dark" href="/signup">ابدأ الآن</a>
+      </div>
     </div>
   </header>
 
@@ -306,20 +325,21 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
       <p class="trustline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>الحساب والتحويلات عبر شريك بنكي مرخّص من البنك المركزي السعودي</p>
 
       <div class="dash asm" aria-label="لوحة مفتاح الخزينة">
-        <aside class="d-side">
-          <div class="co"><i>م</i>مطعم مزاج</div>
-          <span class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>اللوحة</span>
-          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h10"/></svg>المعاملات</span>
-          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10l8-5 8 5M6 10v8M12 10v8M18 10v8M4 20h16"/></svg>الحسابات</span>
-          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l6 4"/></svg>سياسة التقسيم</span>
-          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19V9M12 19V5M19 19v-7"/></svg>التقارير</span>
-        </aside>
+        <div class="app-top"><span class="app-logo"><svg><use href="#i-key"/></svg>مفتاح الخزينة</span><span class="app-links">الشركات</span><span class="app-links">الدعم</span><span class="app-user">محاسب</span></div>
         <div class="d-main">
-          <div class="d-top a a1"><div><h3>صباح الخير</h3><small>الأحد 24 · آخر إيداع قبل دقيقتين</small></div><div class="d-search">ابحث في المعاملات</div></div>
+          <div class="co-head a a1">
+            <h3>شركة رواف التجارية</h3>
+            <div class="tabs"><span class="on">اللوحة</span><span>المعاملات</span><span>الحسابات البنكية</span><span>سياسة التقسيم</span><span>أرصدة البنود</span><span>التقارير</span><span>سجل التدقيق</span></div>
+          </div>
+          <div class="hero-kpis">
+            <div class="big green a a2"><small>الفائض</small><strong><span class="fig" data-count="18920.55">18,920.55</span><em>ر.س</em></strong><span>يغطي عجز البنود أولًا، ثم يُحوَّل في الموعد الذي حددته</span></div>
+            <div class="big sand a a3"><small>المحجوز للبنود</small><strong><span class="fig" data-count="134644.2">134,644.20</span><em>ر.س</em></strong><span>يُحوَّل إلى المستفيدين في مواعيد استحقاقهم</span></div>
+          </div>
           <div class="kpis">
-            <div class="kpi a a2"><small>إقفال أمس</small><strong class="fig" data-count="10000">10,000.00</strong><em>قُسِّم تلقائيًا</em></div>
-            <div class="kpi a a3"><small>المحجوز للالتزامات</small><strong class="fig" data-count="134644.2">134,644.20</strong><em>4 بنود</em></div>
-            <div class="kpi a a4"><small>الفائض</small><strong class="fig" data-count="18920.55">18,920.55</strong><em>يغطي العجز</em></div>
+            <div class="kpi a a3"><small>الوارد هذا الشهر</small><strong class="fig" data-count="284350">284,350.00</strong></div>
+            <div class="kpi a a4" style="--c:#C9962F"><small>المحوَّل للمستفيدين</small><strong class="fig" data-count="96400">96,400.00</strong></div>
+            <div class="kpi a a4" style="--c:#8FA79C"><small>العجز الحالي</small><strong class="fig">0.00</strong></div>
+            <div class="kpi a a5" style="--c:#3FB389"><small>عدد المعاملات</small><strong class="fig">62</strong></div>
           </div>
           <div class="d-grid">
             <div class="box a a4">
@@ -331,21 +351,13 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
               </svg>
             </div>
             <div class="box a a5">
-              <h4>تقسيم إقفال أمس</h4>
-              <div class="splitbars">
-                <div class="sb"><span>الرواتب</span><span class="t"><b style="width:100%;background:#1D8A64"></b></span><span class="fig">3,000</span></div>
-                <div class="sb"><span>الإيجار</span><span class="t"><b style="width:67%;background:#3FB389"></b></span><span class="fig">2,000</span></div>
-                <div class="sb"><span>الضريبة</span><span class="t"><b style="width:43%;background:#8FD0B5"></b></span><span class="fig">1,304</span></div>
-                <div class="sb"><span>الإتاوة</span><span class="t"><b style="width:17%;background:#C9962F"></b></span><span class="fig">500</span></div>
+              <h4>تقدّم البنود <span>هذا الشهر</span></h4>
+              <div class="bars">
+                <div class="br"><div><span>الرواتب</span><span class="fig">52,500 / 68,000</span></div><span class="t"><b style="width:77%"></b></span></div>
+                <div class="br"><div><span>الإيجار</span><span class="fig">38,000 / 45,000</span></div><span class="t"><b style="width:84%;background:#C9962F"></b></span></div>
+                <div class="br"><div><span>ضريبة القيمة المضافة</span><span class="fig">31,304</span></div><span class="t"><b style="width:100%;background:#8FA79C"></b></span></div>
+                <div class="br"><div><span>نسبة المانح</span><span class="fig">12,840</span></div><span class="t"><b style="width:100%;background:#3FB389"></b></span></div>
               </div>
-            </div>
-          </div>
-          <div class="box a a5">
-            <h4>آخر الإيداعات <span>آيبان الإيداع ••0003</span></h4>
-            <div class="feed">
-              <div><span>تسوية مدى</span><span class="ok">قُسِّم</span><span class="fig">+ 6,420.00</span></div>
-              <div><span>تسوية تطبيقات التوصيل</span><span class="ok">قُسِّم</span><span class="fig">+ 2,315.50</span></div>
-              <div><span>إيداع نقدي</span><span class="ok">قُسِّم</span><span class="fig">+ 1,264.50</span></div>
             </div>
           </div>
         </div>
@@ -375,7 +387,7 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
         <p class="sub rv">رصيد كل التزام يتراكم من الإيرادات اليومية، ثم يُحوَّل لمستفيده في يومه.</p>
         <div class="chart-card rv">
           <div class="cc-head">
-            <div><h3>أرصدة البنود خلال شهر</h3><p>مطعم بإقفال يومي قرابة 10,000 ر.س (مثال توضيحي)</p></div>
+            <div><h3>أرصدة البنود خلال شهر</h3><p>منشأة بإقفال يومي قرابة 10,000 ر.س (مثال توضيحي)</p></div>
             <div class="legend"><span><i style="background:#1D8A64"></i>الرواتب</span><span><i style="background:#C9962F"></i>الإيجار</span><span><i style="background:#8FA79C"></i>الضريبة</span></div>
           </div>
           <div class="chart-wrap" id="chartWrap">
@@ -389,7 +401,7 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 
     <section class="block center wrap" id="calc">
       <h2 class="h-lg rv">جرّب إقفال يومك</h2>
-      <p class="sub rv">اكتب المبلغ، وشاهد كيف يُقسَّم حسب سياسة مثال لمطعم امتياز.</p>
+      <p class="sub rv">اكتب المبلغ، وشاهد كيف يُقسَّم حسب سياسة مثال لشركة رواف التجارية.</p>
       <div class="calc rv">
         <div>
           <label for="amount">إقفال اليوم</label>
@@ -492,6 +504,16 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 (function () {
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var money = function (v, d) { return v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+
+  // light / dark toggle
+  var rootEl = document.documentElement;
+  try { var saved = localStorage.getItem('miftah-theme'); if (saved) rootEl.setAttribute('data-theme', saved); } catch (e) {}
+  document.getElementById('theme').addEventListener('click', function () {
+    var cur = rootEl.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var next = cur === 'dark' ? 'light' : 'dark';
+    rootEl.setAttribute('data-theme', next);
+    try { localStorage.setItem('miftah-theme', next); } catch (e) {}
+  });
 
   // duplicate the audience chips so the strip loops without a gap
   var track = document.getElementById('track');
