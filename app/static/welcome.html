@@ -138,6 +138,16 @@ section { position: relative; }
 .asm .sb:nth-child(2) b { animation-delay: .1s; } .asm .sb:nth-child(3) b { animation-delay: .2s; } .asm .sb:nth-child(4) b { animation-delay: .3s; }
 @keyframes grow { from { transform: scaleX(.15); } }
 
+/* audience marquee */
+.audience { padding-top: clamp(56px, 7vw, 80px); text-align: center; }
+.audience p { font-size: 14px; color: var(--soft); font-weight: 400; }
+.marquee { margin-top: 22px; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+.track { display: flex; gap: 12px; width: max-content; animation: marquee 40s linear infinite; }
+.marquee:hover .track { animation-play-state: paused; }
+.track span { display: inline-flex; align-items: center; gap: 10px; padding: 10px 20px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); font-size: 15px; font-weight: 400; color: var(--ink); white-space: nowrap; }
+.track span svg { width: 18px; height: 18px; color: var(--brand); }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(50%); } }
+
 /* stats section */
 .block { padding-block: clamp(80px, 10vw, 128px) 0; }
 .stats { margin-top: 48px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; max-width: 920px; margin-inline: auto; text-align: right; }
@@ -342,6 +352,11 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
       </div>
     </section>
 
+    <section class="audience" aria-label="لمن صُمّمت المنصة">
+      <p>لكل منشأة تبيع كل يوم وتلتزم كل شهر</p>
+      <div class="marquee"><div class="track" id="track"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v8a3 3 0 0 0 6 0V3M8 3v18M17 3c-1.7 1-3 3-3 6v4h3v8"/></svg>المطاعم والمقاهي</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l1.5-5h13L20 9M4 9h16v11H4zM9 20v-6h6v6"/></svg>المحلات التجارية</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h3"/></svg>مكاتب المحاسبة</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.5 11h11L21 7H7M10 20h.01M18 20h.01"/></svg>المتاجر الإلكترونية</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/></svg>الصيدليات</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18M4 6a2 2 0 1 0 4 0 2 2 0 0 0-4 0M4 18a2 2 0 1 0 4 0 2 2 0 0 0-4 0"/></svg>الصالونات والمراكز</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l3 6 6 .9-4.5 4.3 1 6.3L12 17l-5.5 3.5 1-6.3L3 9.9 9 9z"/></svg>منشآت الامتياز</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l6-4 6 4v12M15 21V12l6-3v12M7 13h4M7 17h4"/></svg>المجموعات متعددة الفروع</span></div></div>
+    </section>
+
     <section class="block center wrap" id="trust">
       <span class="mark rv"><svg><use href="#i-key"/></svg>دقة حتى الهللة</span>
       <h2 class="h-lg rv">مصمّمة لأموال المنشآت السعودية</h2>
@@ -477,6 +492,10 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 (function () {
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var money = function (v, d) { return v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+
+  // duplicate the audience chips so the strip loops without a gap
+  var track = document.getElementById('track');
+  Array.prototype.slice.call(track.children).forEach(function (c) { var k = c.cloneNode(true); k.setAttribute('aria-hidden', 'true'); track.appendChild(k); });
 
   // nav hairline on scroll
   var nav = document.getElementById('nav');
