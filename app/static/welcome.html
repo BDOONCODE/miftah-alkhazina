@@ -85,6 +85,8 @@ section { position: relative; }
 .h-xl { font-size: clamp(34px, 4.6vw, 56px); line-height: 1.2; }
 .h-lg { font-size: clamp(28px, 3.4vw, 42px); line-height: 1.25; }
 .sub { font-size: clamp(15px, 1.4vw, 17px); color: var(--text); margin-top: 10px; max-width: 54ch; line-height: 1.7; }
+.trustline { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; font-size: 13px; color: var(--text); font-weight: 400; }
+.trustline svg { width: 16px; height: 16px; color: var(--brand); flex: none; }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 28px; }
 
 /* hero */
@@ -291,6 +293,7 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
         <a class="pill brand" href="/signup">أنشئ حساب منشأتك</a>
         <a class="pill soft" href="#how">كيف يعمل</a>
       </div>
+      <p class="trustline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>الحساب والتحويلات عبر شريك بنكي مرخّص من البنك المركزي السعودي</p>
 
       <div class="dash asm" aria-label="لوحة مفتاح الخزينة">
         <aside class="d-side">
@@ -342,11 +345,11 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
     <section class="block center wrap" id="trust">
       <span class="mark rv"><svg><use href="#i-key"/></svg>دقة حتى الهللة</span>
       <h2 class="h-lg rv">مصمّمة لأموال المنشآت السعودية</h2>
-      <p class="sub rv">الضريبة محسوبة كما في الفاتورة، والمبالغ بالهللة، وبيانات كل منشأة مشفّرة.</p>
+      <p class="sub rv">عبر شريك بنكي مرخّص، والضريبة محسوبة كما في الفاتورة، وبيانات كل منشأة مشفّرة.</p>
       <div class="stats">
         <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 18L18 6"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/></svg><strong class="fig">15 / 115</strong><span>حصة الضريبة من مبيعات شاملة لها.</span></div>
         <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9 11h6"/></svg><strong>بالهللة</strong><span>لا كسور ضائعة، والباقي يذهب للفائض.</span></div>
-        <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><strong>8 مواعيد</strong><span>للتحويل، من فوري إلى سنوي.</span></div>
+        <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><strong>شريك مرخّص</strong><span>الحساب والتحويلات عبر مزوّد مرخّص من البنك المركزي السعودي.</span></div>
         <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="10" width="14" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><strong class="fig">AES-256</strong><span>تشفير بيانات كل منشأة وآيبانها.</span></div>
       </div>
     </section>
