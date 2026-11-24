@@ -163,3 +163,8 @@ def test_admin_api_docs_and_no_accountant_creation(client, make_user):
     assert "/api/bank/incoming" in page and "X-Signature" in page and "محاكاة" in page
     assert "إضافة محاسب" not in client.get("/admin/users").text
     assert client.post("/admin/users", data={"full_name": "x", "username": "x", "password": "Xx-123456!"}).status_code == 405
+
+
+def test_welcome_page_is_public(client):
+    response = client.get("/welcome")
+    assert response.status_code == 200 and "مفتاح الخزينة" in response.text

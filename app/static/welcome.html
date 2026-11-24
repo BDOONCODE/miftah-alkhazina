@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="مفتاح الخزينة: منصة سعودية تقسّم إيرادات المنشأة لحظة وصولها على التزاماتها، وتحوّل كل بند لمستفيده في موعده.">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>مفتاح الخزينة</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500&display=swap">
+<style>
+/* Layout: centered, calm sections on soft gradients; medium-weight type with tight heading-to-sub spacing;
+   white cards with hairline borders and 20px corners; a dashboard that assembles itself in the hero;
+   an interactive month chart; scroll reveals that fade, lift and unblur. */
+:root {
+  --bg: #FFFFFF;
+  --ink: #1E2624;
+  --text: #5C6662;
+  --soft: #8D9792;
+  --line: #ECEEEC;
+  --card: #FFFFFF;
+  --tint: #F6F8F7;
+  --brand: #1D8A64;
+  --brand-2: #3FB389;
+  --brand-pale: #E8F5EF;
+  --gold: #C9962F;
+  --gold-pale: #FBF3E2;
+  --wash-a: #EAF6F0;
+  --wash-b: #F4F1FA;
+  --shadow: 0 1px 2px rgba(30, 38, 36, .04), 0 8px 24px -12px rgba(30, 38, 36, .12);
+  --font: "Readex Pro", "Segoe UI", Tahoma, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B0F0E; --ink: #EEF2F0; --text: #A6B0AB; --soft: #78837E; --line: #1F2724; --card: #121816; --tint: #101513;
+    --brand: #43C095; --brand-2: #6FD6B0; --brand-pale: #12271F; --gold: #DDAA4E; --gold-pale: #261F11;
+    --wash-a: #0F1C17; --wash-b: #13121A;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0B0F0E; --ink: #EEF2F0; --text: #A6B0AB; --soft: #78837E; --line: #1F2724; --card: #121816; --tint: #101513;
+  --brand: #43C095; --brand-2: #6FD6B0; --brand-pale: #12271F; --gold: #DDAA4E; --gold-pale: #261F11;
+  --wash-a: #0F1C17; --wash-b: #13121A;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.7; font-weight: 300; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 50; background: var(--bg); }
+.page { direction: rtl; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1120px; margin-inline: auto; }
+h1, h2, h3 { margin: 0; font-weight: 500; letter-spacing: -.01em; text-wrap: balance; }
+p { margin: 0; }
+a { color: inherit; text-decoration: none; }
+.fig { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 10px; }
+
+/* nav */
+.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 40; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(16px); border-bottom: 1px solid transparent; transition: border-color .3s; }
+.nav.scrolled { border-bottom-color: var(--line); }
+.nav .wrap { display: flex; align-items: center; height: 64px; gap: 40px; }
+.logo { display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 17px; }
+.logo svg { width: 22px; height: 22px; }
+.nav ul { display: flex; gap: 30px; list-style: none; margin: 0 auto; padding: 0; font-size: 14px; color: var(--text); font-weight: 400; }
+.nav ul a:hover { color: var(--ink); }
+.pill { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding-inline: 20px; border-radius: 999px; font-size: 14px; font-weight: 400; white-space: nowrap; transition: background .25s, color .25s, transform .25s; }
+.pill:active { transform: scale(.98); }
+.pill.dark { background: var(--ink); color: var(--bg); }
+.pill.dark:hover { background: var(--brand); color: #fff; }
+.pill.brand { background: var(--brand); color: #fff; height: 46px; padding-inline: 24px; font-size: 15px; }
+.pill.brand:hover { background: color-mix(in srgb, var(--brand) 85%, #000); }
+.pill.soft { background: var(--brand-pale); color: var(--brand); height: 46px; padding-inline: 24px; font-size: 15px; }
+.pill.soft:hover { background: color-mix(in srgb, var(--brand-pale) 70%, var(--brand) 12%); }
+
+/* section scaffolding */
+section { position: relative; }
+.center { text-align: center; display: grid; justify-items: center; }
+.center > .stats, .center > .chart-card, .center > .calc, .center > .features, .center > .steps, .center > .plans, .center > .dash { width: 100%; }
+.mark { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: var(--text); font-weight: 400; margin-bottom: 18px; }
+.mark svg { width: 20px; height: 20px; }
+.h-xl { font-size: clamp(34px, 4.6vw, 56px); line-height: 1.2; }
+.h-lg { font-size: clamp(28px, 3.4vw, 42px); line-height: 1.25; }
+.sub { font-size: clamp(15px, 1.4vw, 17px); color: var(--text); margin-top: 10px; max-width: 54ch; line-height: 1.7; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 28px; }
+
+/* hero */
+.hero { border-radius: 28px; margin-top: 8px; padding: clamp(64px, 8vw, 104px) clamp(16px, 4vw, 48px) 0; background: radial-gradient(60% 70% at 50% 0%, var(--wash-a), transparent 70%), linear-gradient(180deg, var(--bg), var(--wash-b) 120%); overflow: hidden; }
+
+/* dashboard (assembles itself) */
+.dash { margin: clamp(48px, 6vw, 72px) auto 0; max-width: 1040px; background: var(--card); border: 1px solid var(--line); border-bottom: 0; border-radius: 20px 20px 0 0; box-shadow: 0 30px 80px -40px rgba(30, 38, 36, .35); display: grid; grid-template-columns: 196px 1fr; text-align: right; overflow: hidden; }
+.d-side { border-inline-end: 1px solid var(--line); padding: 18px 14px; display: grid; gap: 2px; align-content: start; font-size: 13px; color: var(--text); font-weight: 400; }
+.d-side .co { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; color: var(--ink); font-weight: 500; }
+.d-side .co i { width: 28px; height: 28px; border-radius: 8px; background: var(--brand-pale); color: var(--brand); display: grid; place-items: center; font-style: normal; font-size: 13px; }
+.d-side span { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; }
+.d-side span svg { width: 16px; height: 16px; opacity: .7; }
+.d-side span.on { background: var(--tint); color: var(--ink); }
+.d-main { padding: 20px; display: grid; gap: 14px; min-width: 0; background: var(--tint); }
+.d-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.d-top h3 { font-size: 17px; }
+.d-top small { display: block; font-size: 12px; color: var(--soft); font-weight: 300; }
+.d-search { font-size: 12px; color: var(--soft); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; min-width: 160px; }
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; }
+.kpi small { font-size: 12px; color: var(--soft); }
+.kpi strong { font-size: 22px; font-weight: 500; }
+.kpi em { font-style: normal; font-size: 11px; color: var(--brand); background: var(--brand-pale); border-radius: 999px; padding: 1px 8px; justify-self: start; }
+.d-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 12px; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; min-width: 0; }
+.box h4 { margin: 0 0 8px; font-size: 13px; font-weight: 500; display: flex; justify-content: space-between; }
+.box h4 span { color: var(--soft); font-weight: 300; }
+.spark { width: 100%; height: 120px; display: block; }
+.spark .area { fill: url(#sparkFill); }
+.spark .line { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 900; stroke-dashoffset: 0; }
+.splitbars { display: grid; gap: 9px; margin-top: 4px; }
+.sb { display: grid; grid-template-columns: 64px 1fr 56px; gap: 8px; align-items: center; font-size: 12px; font-weight: 400; }
+.sb .t { height: 6px; border-radius: 3px; background: var(--tint); overflow: hidden; }
+.sb .t b { display: block; height: 100%; border-radius: 3px; transform-origin: right; }
+.sb .fig { text-align: left; color: var(--text); }
+.feed { display: grid; font-size: 12px; font-weight: 400; }
+.feed div { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; padding: 8px 0; border-top: 1px solid var(--line); align-items: center; }
+.feed div:first-child { border-top: 0; }
+.feed .ok { color: var(--brand); background: var(--brand-pale); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+.feed .fig { color: var(--ink); }
+
+/* assemble: elements start offset (still visible) and settle; works even if paused */
+.asm .a { animation: settle 1s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes settle { from { transform: translateY(18px); } }
+.asm .a1 { animation-delay: .15s; } .asm .a2 { animation-delay: .25s; } .asm .a3 { animation-delay: .35s; } .asm .a4 { animation-delay: .45s; } .asm .a5 { animation-delay: .55s; }
+.asm .line { animation: draw 2.2s .6s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes draw { from { stroke-dashoffset: 900; } }
+.asm .sb b { animation: grow 1.2s cubic-bezier(.2, .8, .2, 1) both; }
+.asm .sb:nth-child(2) b { animation-delay: .1s; } .asm .sb:nth-child(3) b { animation-delay: .2s; } .asm .sb:nth-child(4) b { animation-delay: .3s; }
+@keyframes grow { from { transform: scaleX(.15); } }
+
+/* stats section */
+.block { padding-block: clamp(80px, 10vw, 128px) 0; }
+.stats { margin-top: 48px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; max-width: 920px; margin-inline: auto; text-align: right; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 28px 30px; display: grid; gap: 4px; box-shadow: var(--shadow); transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s; }
+.stat:hover { transform: translateY(-3px); box-shadow: 0 1px 2px rgba(30, 38, 36, .04), 0 18px 36px -18px rgba(30, 38, 36, .2); }
+.stat svg { width: 26px; height: 26px; color: var(--brand); margin-bottom: 14px; }
+.stat strong { font-size: 24px; font-weight: 500; }
+.stat span { font-size: 15px; color: var(--text); }
+
+/* chart section */
+.wash { border-radius: 28px; padding: clamp(64px, 8vw, 104px) clamp(16px, 4vw, 56px); background: linear-gradient(180deg, var(--wash-b), var(--wash-a)); }
+.chart-card { margin-top: 44px; background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 28px 28px 22px; text-align: right; max-width: 1040px; margin-inline: auto; box-shadow: var(--shadow); }
+.cc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.cc-head h3 { font-size: 18px; }
+.cc-head p { font-size: 14px; color: var(--text); margin-top: 2px; }
+.legend { display: flex; gap: 16px; font-size: 13px; color: var(--text); font-weight: 400; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 8px; height: 8px; border-radius: 50%; }
+.chart-wrap { position: relative; margin-top: 18px; }
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart .grid line { stroke: var(--line); stroke-dasharray: 4 6; }
+.chart .ylab, .chart .xlab { fill: var(--soft); font-size: 15px; font-family: var(--font); }
+.chart .area { opacity: .9; }
+.chart path.s { fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.chart .cursor { stroke: var(--line); stroke-width: 1.5; opacity: 0; transition: opacity .2s; }
+.chart .pt { opacity: 0; transition: opacity .2s; }
+.chart-wrap.hover .cursor, .chart-wrap.hover .pt { opacity: 1; }
+.tip { position: absolute; top: 8px; pointer-events: none; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 13px; font-weight: 400; box-shadow: var(--shadow); min-width: 190px; opacity: 0; transform: translateY(4px); transition: opacity .2s, transform .2s; }
+.chart-wrap.hover .tip { opacity: 1; transform: none; }
+.tip b { display: block; margin-bottom: 6px; font-weight: 500; }
+.tip div { display: flex; justify-content: space-between; gap: 18px; padding: 2px 0; }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-inline-end: 8px; }
+.endtag { position: absolute; font-size: 12px; font-weight: 500; color: #fff; border-radius: 999px; padding: 2px 10px; transform: translate(-50%, -50%); white-space: nowrap; }
+.note { margin-top: 14px; font-size: 12px; color: var(--soft); text-align: center; }
+
+/* calculator */
+.calc { margin-top: 44px; max-width: 760px; margin-inline: auto; background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 28px; text-align: right; box-shadow: var(--shadow); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 36px; }
+.calc label { font-size: 13px; color: var(--soft); }
+.amount { display: flex; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--line); padding-block: 4px 10px; }
+.amount input { all: unset; flex: 1; min-width: 0; width: 100%; font-size: 36px; font-weight: 400; font-variant-numeric: tabular-nums; direction: ltr; text-align: right; }
+.amount span { color: var(--soft); font-size: 14px; }
+.quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.quick button { all: unset; cursor: pointer; font-size: 13px; padding: 4px 12px; border-radius: 999px; background: var(--tint); color: var(--text); font-variant-numeric: tabular-nums; transition: background .2s, color .2s; }
+.quick button[aria-pressed="true"] { background: var(--brand); color: #fff; }
+.bar { display: flex; gap: 3px; height: 8px; margin-top: 22px; }
+.bar i { border-radius: 4px; min-width: 6px; transition: flex-grow .7s cubic-bezier(.2, .7, .2, 1); }
+.calc .hint { font-size: 12px; color: var(--soft); margin-top: 10px; }
+.ln { display: grid; grid-template-columns: 8px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); font-size: 14px; font-weight: 400; }
+.ln:first-child { border-top: 0; padding-top: 0; }
+.ln i { width: 8px; height: 8px; border-radius: 50%; }
+.ln.sum { font-weight: 500; }
+
+/* features */
+.features { margin-top: 48px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: right; }
+.feat { border: 1px solid var(--line); border-radius: 20px; padding: 28px; display: grid; gap: 8px; align-content: start; background: var(--card); transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s; }
+.feat:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.feat .ic { width: 40px; height: 40px; border-radius: 12px; background: var(--brand-pale); color: var(--brand); display: grid; place-items: center; margin-bottom: 10px; }
+.feat .ic svg { width: 20px; height: 20px; }
+.feat h3 { font-size: 17px; }
+.feat p { font-size: 14px; color: var(--text); }
+
+/* steps */
+.steps { margin-top: 48px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; text-align: right; position: relative; }
+.step { display: grid; gap: 8px; align-content: start; }
+.step .n { font-size: 13px; color: var(--brand); font-weight: 500; }
+.step .rule { height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: 14px; }
+.step .rule b { display: block; height: 100%; background: var(--brand); width: 100%; transform-origin: right; transform: scaleX(var(--k, 1)); transition: transform 1.2s cubic-bezier(.2, .8, .2, 1); }
+.step h3 { font-size: 17px; }
+.step p { font-size: 14px; color: var(--text); }
+
+/* plans */
+.plans { margin-top: 48px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: right; align-items: start; }
+.plan { border: 1px solid var(--line); border-radius: 20px; padding: 28px; display: grid; gap: 18px; background: var(--card); }
+.plan.pick { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand), var(--shadow); }
+.plan .ph { display: flex; justify-content: space-between; align-items: center; }
+.plan .ph b { font-weight: 500; font-size: 16px; }
+.plan .ph em { font-style: normal; font-size: 11px; color: var(--brand); background: var(--brand-pale); padding: 2px 10px; border-radius: 999px; }
+.plan .price { display: flex; align-items: baseline; gap: 6px; }
+.plan .price strong { font-size: 40px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
+.plan .price span { font-size: 13px; color: var(--soft); }
+.plan .who { font-size: 14px; color: var(--text); }
+.plan ul { list-style: none; margin: 0; padding: 18px 0 0; border-top: 1px solid var(--line); display: grid; gap: 10px; font-size: 14px; font-weight: 400; }
+.plan li { display: flex; gap: 10px; align-items: center; }
+.plan li svg { width: 16px; height: 16px; color: var(--brand); flex: none; }
+.plan li small { margin-inline-start: auto; font-size: 11px; color: var(--gold); background: var(--gold-pale); padding: 1px 8px; border-radius: 999px; }
+.plan .pill { width: 100%; height: 44px; font-size: 14px; }
+.fees { margin-top: 18px; font-size: 13px; color: var(--soft); }
+
+/* closing */
+.closing { margin-top: clamp(80px, 10vw, 128px); border-radius: 28px; padding: clamp(72px, 9vw, 112px) 16px; background: radial-gradient(60% 80% at 50% 100%, var(--wash-a), transparent 70%), linear-gradient(180deg, var(--bg), var(--wash-b)); }
+footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-block: 28px 36px; font-size: 13px; color: var(--soft); font-weight: 400; }
+
+/* scroll reveal: soft fade, lift and unblur (only for blocks that start below the fold) */
+.js .rv { opacity: 0; transform: translateY(28px); filter: blur(6px); transition: opacity 1s cubic-bezier(.2, .8, .2, 1), transform 1s cubic-bezier(.2, .8, .2, 1), filter 1s cubic-bezier(.2, .8, .2, 1); }
+.js .rv.in { opacity: 1; transform: none; filter: none; }
+
+@media (max-width: 960px) {
+  .nav ul { display: none; }
+  .nav .wrap { justify-content: space-between; }
+  .dash { grid-template-columns: 1fr; }
+  .d-side { display: none; }
+  .d-grid { grid-template-columns: 1fr; }
+  .features { grid-template-columns: 1fr 1fr; }
+  .steps { grid-template-columns: 1fr 1fr; row-gap: 32px; }
+  .plans { grid-template-columns: 1fr; max-width: 520px; margin-inline: auto; }
+  .calc { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .stats, .features, .steps { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .kpis .kpi:last-child { display: none; }
+  .d-search { display: none; }
+  .hero, .wash, .closing { border-radius: 22px; }
+  .chart-card { padding: 20px 16px 16px; }
+  .tip { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .js .rv { opacity: 1; transform: none; filter: none; }
+}
+</style>
+</head>
+<body>
+
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M13 12h9M19 12v4M22 12v2.5" fill="none" stroke="#C9962F" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="page" lang="ar">
+  <header class="nav" id="nav">
+    <div class="wrap">
+      <a class="logo" href="#top"><svg><use href="#i-key"/></svg>مفتاح الخزينة</a>
+      <ul>
+        <li><a href="#how">كيف يعمل</a></li>
+        <li><a href="#features">المزايا</a></li>
+        <li><a href="#plans">الباقات</a></li>
+        <li><a href="#trust">الأمان</a></li>
+      </ul>
+      <a class="pill dark" href="/signup">ابدأ الآن</a>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero center">
+      <span class="mark"><svg><use href="#i-key"/></svg>مفتاح الخزينة</span>
+      <h1 class="h-xl">اقسم إيرادك قبل أن تصرفه</h1>
+      <p class="sub">كل ريال يصل لمنشأتك يُقسَّم فورًا على الضريبة والإيجار والرواتب والأرباح، ويُحوَّل لمستفيده في موعده.</p>
+      <div class="actions">
+        <a class="pill brand" href="/signup">أنشئ حساب منشأتك</a>
+        <a class="pill soft" href="#how">كيف يعمل</a>
+      </div>
+
+      <div class="dash asm" aria-label="لوحة مفتاح الخزينة">
+        <aside class="d-side">
+          <div class="co"><i>م</i>مطعم مزاج</div>
+          <span class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>اللوحة</span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h10"/></svg>المعاملات</span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10l8-5 8 5M6 10v8M12 10v8M18 10v8M4 20h16"/></svg>الحسابات</span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l6 4"/></svg>سياسة التقسيم</span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19V9M12 19V5M19 19v-7"/></svg>التقارير</span>
+        </aside>
+        <div class="d-main">
+          <div class="d-top a a1"><div><h3>صباح الخير</h3><small>الأحد 24 · آخر إيداع قبل دقيقتين</small></div><div class="d-search">ابحث في المعاملات</div></div>
+          <div class="kpis">
+            <div class="kpi a a2"><small>إقفال أمس</small><strong class="fig" data-count="10000">10,000.00</strong><em>قُسِّم تلقائيًا</em></div>
+            <div class="kpi a a3"><small>المحجوز للالتزامات</small><strong class="fig" data-count="134644.2">134,644.20</strong><em>4 بنود</em></div>
+            <div class="kpi a a4"><small>الفائض</small><strong class="fig" data-count="18920.55">18,920.55</strong><em>يغطي العجز</em></div>
+          </div>
+          <div class="d-grid">
+            <div class="box a a4">
+              <h4>الإيرادات اليومية <span>آخر 14 يومًا</span></h4>
+              <svg class="spark" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
+                <defs><linearGradient id="sparkFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3FB389" stop-opacity=".22"/><stop offset="1" stop-color="#3FB389" stop-opacity="0"/></linearGradient></defs>
+                <path class="area" d="M0,82 C30,74 50,88 80,70 S130,52 160,60 S210,40 240,46 S290,30 320,38 S370,22 400,18 L400,120 L0,120Z"/>
+                <path class="line" d="M0,82 C30,74 50,88 80,70 S130,52 160,60 S210,40 240,46 S290,30 320,38 S370,22 400,18"/>
+              </svg>
+            </div>
+            <div class="box a a5">
+              <h4>تقسيم إقفال أمس</h4>
+              <div class="splitbars">
+                <div class="sb"><span>الرواتب</span><span class="t"><b style="width:100%;background:#1D8A64"></b></span><span class="fig">3,000</span></div>
+                <div class="sb"><span>الإيجار</span><span class="t"><b style="width:67%;background:#3FB389"></b></span><span class="fig">2,000</span></div>
+                <div class="sb"><span>الضريبة</span><span class="t"><b style="width:43%;background:#8FD0B5"></b></span><span class="fig">1,304</span></div>
+                <div class="sb"><span>الإتاوة</span><span class="t"><b style="width:17%;background:#C9962F"></b></span><span class="fig">500</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="box a a5">
+            <h4>آخر الإيداعات <span>آيبان الإيداع ••0003</span></h4>
+            <div class="feed">
+              <div><span>تسوية مدى</span><span class="ok">قُسِّم</span><span class="fig">+ 6,420.00</span></div>
+              <div><span>تسوية تطبيقات التوصيل</span><span class="ok">قُسِّم</span><span class="fig">+ 2,315.50</span></div>
+              <div><span>إيداع نقدي</span><span class="ok">قُسِّم</span><span class="fig">+ 1,264.50</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block center wrap" id="trust">
+      <span class="mark rv"><svg><use href="#i-key"/></svg>دقة حتى الهللة</span>
+      <h2 class="h-lg rv">مصمّمة لأموال المنشآت السعودية</h2>
+      <p class="sub rv">الضريبة محسوبة كما في الفاتورة، والمبالغ بالهللة، وبيانات كل منشأة مشفّرة.</p>
+      <div class="stats">
+        <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 18L18 6"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/></svg><strong class="fig">15 / 115</strong><span>حصة الضريبة من مبيعات شاملة لها.</span></div>
+        <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9 11h6"/></svg><strong>بالهللة</strong><span>لا كسور ضائعة، والباقي يذهب للفائض.</span></div>
+        <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><strong>8 مواعيد</strong><span>للتحويل، من فوري إلى سنوي.</span></div>
+        <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="10" width="14" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><strong class="fig">AES-256</strong><span>تشفير بيانات كل منشأة وآيبانها.</span></div>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="wash center">
+        <h2 class="h-lg rv">كل بند يعرف موعده</h2>
+        <p class="sub rv">رصيد كل التزام يتراكم من الإيرادات اليومية، ثم يُحوَّل لمستفيده في يومه.</p>
+        <div class="chart-card rv">
+          <div class="cc-head">
+            <div><h3>أرصدة البنود خلال شهر</h3><p>مطعم بإقفال يومي قرابة 10,000 ر.س (مثال توضيحي)</p></div>
+            <div class="legend"><span><i style="background:#1D8A64"></i>الرواتب</span><span><i style="background:#C9962F"></i>الإيجار</span><span><i style="background:#8FA79C"></i>الضريبة</span></div>
+          </div>
+          <div class="chart-wrap" id="chartWrap">
+            <svg class="chart" id="chart" viewBox="0 0 860 330" role="img" aria-label="رسم أرصدة البنود خلال شهر"></svg>
+            <div class="tip" id="tip"></div>
+          </div>
+          <p class="note">الإيجار يُحوَّل يوم 27، والرواتب آخر الشهر، والضريبة تتراكم حتى نهاية الربع.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="block center wrap" id="calc">
+      <h2 class="h-lg rv">جرّب إقفال يومك</h2>
+      <p class="sub rv">اكتب المبلغ، وشاهد كيف يُقسَّم حسب سياسة مثال لمطعم امتياز.</p>
+      <div class="calc rv">
+        <div>
+          <label for="amount">إقفال اليوم</label>
+          <div class="amount"><input id="amount" inputmode="decimal" autocomplete="off" value="10,000"><span>ر.س</span></div>
+          <div class="quick" role="group" aria-label="مبالغ جاهزة">
+            <button type="button" data-v="3500">3,500</button>
+            <button type="button" data-v="10000" aria-pressed="true">10,000</button>
+            <button type="button" data-v="27600">27,600</button>
+            <button type="button" data-v="84250">84,250</button>
+          </div>
+          <div class="bar" aria-hidden="true">
+            <i data-k="vat" style="background:#8FA79C;flex-grow:1304"></i>
+            <i data-k="royalty" style="background:#C9962F;flex-grow:500"></i>
+            <i data-k="rent" style="background:#3FB389;flex-grow:2000"></i>
+            <i data-k="salaries" style="background:#1D8A64;flex-grow:3000"></i>
+            <i data-k="profit" style="background:#E2C98F;flex-grow:500"></i>
+            <i data-k="surplus" style="background:#D5DCD8;flex-grow:2696"></i>
+          </div>
+          <p class="hint">المجموع يطابق الإقفال حتى آخر هللة.</p>
+        </div>
+        <div aria-live="polite">
+          <div class="ln"><i style="background:#8FA79C"></i><span>ضريبة القيمة المضافة</span><span class="fig" data-out="vat">1,304.35</span></div>
+          <div class="ln"><i style="background:#C9962F"></i><span>إتاوة المانح · <span class="fig">5%</span></span><span class="fig" data-out="royalty">500.00</span></div>
+          <div class="ln"><i style="background:#3FB389"></i><span>الإيجار · <span class="fig">20%</span></span><span class="fig" data-out="rent">2,000.00</span></div>
+          <div class="ln"><i style="background:#1D8A64"></i><span>الرواتب · <span class="fig">30%</span></span><span class="fig" data-out="salaries">3,000.00</span></div>
+          <div class="ln"><i style="background:#E2C98F"></i><span>أرباح المالك · <span class="fig">5%</span></span><span class="fig" data-out="profit">500.00</span></div>
+          <div class="ln sum"><i style="background:#D5DCD8"></i><span>الفائض</span><span class="fig" data-out="surplus">2,695.65</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block center wrap" id="features">
+      <h2 class="h-lg rv">كل ما تحتاجه في مكان واحد</h2>
+      <p class="sub rv">من الإيداع إلى التحويل، كل خطوة واضحة ومسجّلة.</p>
+      <div class="features">
+        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M3 19c.8-2.6 2.8-4 5-4s4.2 1.4 5 4M13 15.4c.9-.3 1.9-.4 3-.4 2.2 0 4.2 1.4 5 4"/></svg></span><h3>اعتماد بأربع عيون</h3><p>المحاسب يبني السياسة، ومراجع مستقل يعتمدها قبل تطبيقها.</p></article>
+        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 4v16M5 11l7-7 7 7"/></svg></span><h3>الفائض يغطي العجز</h3><p>إذا تأخر بند عن جدوله، يسدّه الفائض حسب أقرب استحقاق.</p></article>
+        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v5M12 16h.01"/></svg></span><h3>حوالة من حساب لا نعرفه</h3><p>تنتظر قرارك: تأكيد وتقسيم، أو «ليست لي» فتعود للمرسل.</p></article>
+        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 12h12M12 6l6 6-6 6"/></svg></span><h3>تحويل باسمنا فقط</h3><p>يصل للمستفيد باسم مفتاح الخزينة، دون ذكر أي اسم آخر.</p></article>
+        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span><h3>تقارير وسجل تدقيق</h3><p>تقارير Excel أسبوعية وشهرية، وسجل لكل عملية لا يُعدَّل.</p></article>
+        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16v12H4zM4 7l2-3h12l2 3M9 12h6"/></svg></span><h3>لمكاتب المحاسبة</h3><p>عدة منشآت تحت حساب واحد، لكل منها سياستها وآيبانها.</p></article>
+      </div>
+    </section>
+
+    <section class="block center wrap" id="how">
+      <h2 class="h-lg rv">من الإقفال إلى المستفيد</h2>
+      <p class="sub rv">تضبط السياسة مرة واحدة، والمنصة تطبّقها على كل ريال يصل.</p>
+      <div class="steps" id="steps">
+        <div class="step rv"><div class="rule"><b></b></div><span class="n">الخطوة 1</span><h3>يصل المبلغ</h3><p>تحوّل المنشأة إقفالها إلى آيبان الإيداع الخاص بها.</p></div>
+        <div class="step rv"><div class="rule"><b></b></div><span class="n">الخطوة 2</span><h3>يُقسَّم في ثوانٍ</h3><p>ضريبة، وإتاوة، وإيجار، ورواتب، وأرباح، وفائض.</p></div>
+        <div class="step rv"><div class="rule"><b></b></div><span class="n">الخطوة 3</span><h3>يُحجز حتى موعده</h3><p>يتراكم رصيد كل بند، والفائض يسد أي بند متأخر.</p></div>
+        <div class="step rv"><div class="rule"><b></b></div><span class="n">الخطوة 4</span><h3>يُحوَّل للمستفيد</h3><p>في الموعد، باسم مفتاح الخزينة، للمؤجر والموظفين والمانح.</p></div>
+      </div>
+    </section>
+
+    <section class="block center wrap" id="plans">
+      <h2 class="h-lg rv">باقة على قدر منشأتك</h2>
+      <p class="sub rv">اشتراك شهري، ورسوم بسيطة على كل عملية.</p>
+      <div class="plans">
+        <article class="plan rv">
+          <div class="ph"><b>أساسي</b></div>
+          <div class="price"><strong>199</strong><span>ر.س شهريًا</span></div>
+          <p class="who">منشأة صغيرة تدير أموالها بنفسها</p>
+          <ul><li><svg><use href="#i-check"/></svg>منشأة واحدة وحتى 5 بنود</li><li><svg><use href="#i-check"/></svg>اعتماد ذاتي</li><li><svg><use href="#i-check"/></svg>تحويل تلقائي وإدارة الفائض</li><li><svg><use href="#i-check"/></svg>لوحة وتقرير شهري</li></ul>
+          <a class="pill soft" href="/signup">ابدأ بأساسي</a>
+        </article>
+        <article class="plan pick rv">
+          <div class="ph"><b>نمو</b><em>الأكثر طلبًا</em></div>
+          <div class="price"><strong>449</strong><span>ر.س شهريًا</span></div>
+          <p class="who">منشأة فيها محاسب وصاحب قرار</p>
+          <ul><li><svg><use href="#i-check"/></svg>منشأتان وحتى 10 بنود</li><li><svg><use href="#i-check"/></svg>مراجع مستقل وبنود محمية</li><li><svg><use href="#i-check"/></svg>سجل تدقيق وتقارير تفصيلية</li><li><svg><use href="#i-check"/></svg>تحويل الفائض فورًا</li><li><svg><use href="#i-check"/></svg>الربط مع نقاط البيع<small>قريبًا</small></li></ul>
+          <a class="pill brand" href="/signup">ابدأ بنمو</a>
+        </article>
+        <article class="plan rv">
+          <div class="ph"><b>أعمال</b></div>
+          <div class="price"><strong>999</strong><span>ر.س شهريًا</span></div>
+          <p class="who">مكاتب المحاسبة والمجموعات</p>
+          <ul><li><svg><use href="#i-check"/></svg>حتى 10 منشآت وبنود بلا حد</li><li><svg><use href="#i-check"/></svg>أكثر من مراجع</li><li><svg><use href="#i-check"/></svg>دعم بأولوية ومدير حساب</li><li><svg><use href="#i-check"/></svg>الربط المحاسبي<small>قريبًا</small></li><li><svg><use href="#i-check"/></svg>الربط مع نقاط البيع<small>قريبًا</small></li></ul>
+          <a class="pill soft" href="/signup">ابدأ بأعمال</a>
+        </article>
+      </div>
+      <p class="fees rv">رسوم العمليات في كل الباقات: 20 هللة لكل إيداع، و40 هللة لكل تحويل.</p>
+    </section>
+
+    <section class="closing center">
+      <span class="mark rv"><svg><use href="#i-key"/></svg>مفتاح الخزينة</span>
+      <h2 class="h-xl rv">كل ريال يعرف طريقه</h2>
+      <p class="sub rv">سجّل منشأتك، وأضف حساباتك، وابنِ سياستك في دقائق.</p>
+      <div class="actions rv">
+        <a class="pill brand" href="/signup">أنشئ حسابًا</a>
+        <a class="pill soft" href="/login">لدي حساب</a>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="wrap"><span>© 2026 مفتاح الخزينة</span><span>الرياض، المملكة العربية السعودية</span></div></footer>
+</div>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var money = function (v, d) { return v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+
+  // nav hairline on scroll
+  var nav = document.getElementById('nav');
+  addEventListener('scroll', function () { nav.classList.toggle('scrolled', scrollY > 8); }, { passive: true });
+
+  // ---------- month chart (illustrative: ~10,000 SAR closing a day)
+  var svg = document.getElementById('chart'), wrap = document.getElementById('chartWrap'), tip = document.getElementById('tip');
+  var W = 860, H = 330, L = 50, R = 84, T = 16, B = 34, days = 30, maxY = 70000;
+  var series = [
+    { name: 'الرواتب', color: '#1D8A64', v: [] },
+    { name: 'الإيجار', color: '#C9962F', v: [] },
+    { name: 'الضريبة', color: '#8FA79C', v: [] }
+  ];
+  for (var d = 1; d <= days; d++) {
+    var closing = 10000 + Math.round(1400 * Math.sin(d / 2.3));
+    var sal = (series[0].v[d - 2] || 0) + 68000 / 30;
+    var rent = d === 27 ? 0 : d > 27 ? (series[1].v[d - 2] || 0) + 45000 / 27 : (series[1].v[d - 2] || 0) + 45000 / 27;
+    if (d === 27) rent = 0;
+    var vat = (series[2].v[d - 2] || 0) + closing * 15 / 115;
+    series[0].v.push(Math.min(sal, 68000)); series[1].v.push(rent); series[2].v.push(vat);
+  }
+  var x = function (i) { return L + (W - L - R) * i / (days - 1); };
+  var y = function (v) { return T + (H - T - B) * (1 - v / maxY); };
+  var NS = 'http://www.w3.org/2000/svg', g = function (tag, attrs) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; };
+  var grid = g('g', { class: 'grid' });
+  [0, 20000, 40000, 60000].forEach(function (v) {
+    grid.appendChild(g('line', { x1: L, x2: W - R, y1: y(v), y2: y(v) }));
+    var t = g('text', { class: 'ylab', x: L - 10, y: y(v) + 4, 'text-anchor': 'end' }); t.textContent = v ? (v / 1000) + 'k' : '0'; grid.appendChild(t);
+  });
+  [1, 8, 15, 22, 27, 30].forEach(function (dd) {
+    var t = g('text', { class: 'xlab', x: x(dd - 1), y: H - 8, 'text-anchor': 'middle' }); t.textContent = dd; grid.appendChild(t);
+  });
+  svg.appendChild(grid);
+  // soft fill under the top line, like a balance curve
+  var defs = g('defs', {}), lg = g('linearGradient', { id: 'areaFill', x1: 0, x2: 0, y1: 0, y2: 1 });
+  lg.appendChild(g('stop', { offset: 0, 'stop-color': '#1D8A64', 'stop-opacity': .16 }));
+  lg.appendChild(g('stop', { offset: 1, 'stop-color': '#1D8A64', 'stop-opacity': 0 }));
+  defs.appendChild(lg); svg.appendChild(defs);
+  var top = series[0].v.map(function (v, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1); }).join(' ');
+  svg.appendChild(g('path', { class: 'area', d: top + ' L' + x(days - 1) + ',' + y(0) + ' L' + x(0) + ',' + y(0) + 'Z', fill: 'url(#areaFill)' }));
+  var paths = series.map(function (s) {
+    var dstr = s.v.map(function (v, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1); }).join(' ');
+    var p = g('path', { class: 's', d: dstr, stroke: s.color }); svg.appendChild(p); return p;
+  });
+  // end-of-month value tags
+  series.forEach(function (s) {
+    var tag = document.createElement('span'); tag.className = 'endtag fig';
+    tag.style.background = s.color; tag.textContent = money(Math.round(s.v[days - 1]), 0);
+    tag.style.left = ((x(days - 1) + 44) / W * 100) + '%'; tag.style.top = (y(s.v[days - 1]) / H * 100) + '%';
+    wrap.appendChild(tag);
+  });
+  var cursor = g('line', { class: 'cursor', y1: T, y2: H - B }); svg.appendChild(cursor);
+  var pts = series.map(function (s) { var c = g('circle', { class: 'pt', r: 4.5, fill: s.color, stroke: 'var(--card)', 'stroke-width': 2 }); svg.appendChild(c); return c; });
+
+  // draw lines when the chart is first seen
+  function drawLines() {
+    paths.forEach(function (p, i) {
+      var len = p.getTotalLength(); p.style.strokeDasharray = len; p.style.strokeDashoffset = len;
+      p.getBoundingClientRect();
+      p.style.transition = 'stroke-dashoffset 1.8s ' + (i * .15) + 's cubic-bezier(.4,0,.2,1)'; p.style.strokeDashoffset = 0;
+    });
+  }
+  function show(i) {
+    var px = x(i); cursor.setAttribute('x1', px); cursor.setAttribute('x2', px);
+    pts.forEach(function (c, k) { c.setAttribute('cx', px); c.setAttribute('cy', y(series[k].v[i])); });
+    tip.innerHTML = '<b>يوم ' + (i + 1) + '</b>' + series.map(function (s) {
+      return '<div><span><i style="background:' + s.color + '"></i>' + s.name + '</span><span class="fig">' + money(Math.round(s.v[i]), 0) + '</span></div>';
+    }).join('');
+    var box = wrap.getBoundingClientRect(), left = px / W * box.width;
+    tip.style.left = Math.min(Math.max(left - 95, 0), box.width - 200) + 'px';
+  }
+  wrap.addEventListener('pointermove', function (e) {
+    var box = svg.getBoundingClientRect(), vx = (e.clientX - box.left) / box.width * W;
+    var i = Math.round((vx - L) / (W - L - R) * (days - 1)); i = Math.max(0, Math.min(days - 1, i));
+    wrap.classList.add('hover'); show(i);
+  });
+  wrap.addEventListener('pointerleave', function () { wrap.classList.remove('hover'); });
+
+  // ---------- calculator: the platform's arithmetic in halalas
+  var POLICY = [{ k: 'vat', vat: 1500 }, { k: 'royalty', bp: 500 }, { k: 'rent', bp: 2000 }, { k: 'salaries', bp: 3000 }, { k: 'profit', bp: 500 }];
+  function split(h) { var left = h, o = {}; POLICY.forEach(function (p) { var s = p.vat ? Math.round(h * p.vat / (10000 + p.vat)) : Math.floor(h * p.bp / 10000); s = Math.min(s, left); o[p.k] = s; left -= s; }); o.surplus = left; return o; }
+  var input = document.getElementById('amount'), outs = {}, segs = {}, shown = split(1000000);
+  document.querySelectorAll('[data-out]').forEach(function (el) { outs[el.dataset.out] = el; });
+  document.querySelectorAll('.bar i').forEach(function (el) { segs[el.dataset.k] = el; });
+  function tween(k, to) {
+    var el = outs[k], from = shown[k]; shown[k] = to;
+    if (reduce) { el.textContent = money(to / 100, 2); return; }
+    var t0 = performance.now();
+    (function f(now) { var t = Math.min(1, (now - t0) / 450), e = 1 - Math.pow(1 - t, 3); el.textContent = money(Math.round(from + (to - from) * e) / 100, 2); if (t < 1) requestAnimationFrame(f); })(t0);
+  }
+  function update() {
+    var h = Math.max(0, Math.round((parseFloat(input.value.replace(/[^\d.]/g, '')) || 0) * 100)), r = split(h);
+    Object.keys(r).forEach(function (k) { tween(k, r[k]); segs[k].style.flexGrow = Math.max(r[k], 1); });
+    document.querySelectorAll('.quick button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v * 100 === h)); });
+  }
+  input.addEventListener('input', update);
+  input.addEventListener('blur', function () { var v = parseFloat(input.value.replace(/[^\d.]/g, '')) || 0; input.value = v.toLocaleString('en-US', { maximumFractionDigits: 2 }); });
+  document.querySelectorAll('.quick button').forEach(function (b) { b.addEventListener('click', function () { input.value = Number(b.dataset.v).toLocaleString('en-US'); update(); }); });
+
+  // ---------- hero numbers count up once
+  if (!reduce) document.querySelectorAll('[data-count]').forEach(function (el) {
+    var to = Number(el.dataset.count), t0 = performance.now() + 400;
+    (function f(now) { var t = Math.max(0, Math.min(1, (now - t0) / 1400)), e = 1 - Math.pow(1 - t, 3); el.textContent = money(to * (t === 0 ? 1 : e), 2); if (t < 1) requestAnimationFrame(f); })(performance.now());
+  });
+
+  if (reduce || !('IntersectionObserver' in window)) return;
+  document.documentElement.classList.add('js');
+
+  // ---------- soft scroll reveal for everything below the fold
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      e.target.classList.add('in');
+      if (e.target.classList.contains('chart-card')) drawLines();
+      if (e.target.classList.contains('step')) e.target.style.setProperty('--k', 1);
+      io.unobserve(e.target);
+    });
+  }, { threshold: .15, rootMargin: '0px 0px -60px 0px' });
+  document.querySelectorAll('.rv').forEach(function (el) {
+    if (el.getBoundingClientRect().top < innerHeight) { el.classList.add('in'); return; }
+    var i = Array.prototype.indexOf.call(el.parentNode.children, el);
+    el.style.transitionDelay = (Math.min(i, 5) * 90) + 'ms';
+    if (el.classList.contains('step')) el.style.setProperty('--k', 0);
+    io.observe(el);
+  });
+})();
+</script>
+
+</body>
+</html>

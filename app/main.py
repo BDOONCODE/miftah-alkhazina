@@ -117,6 +117,12 @@ def keepalive(session: Session = Depends(get_session)):
     return PlainTextResponse("ok")
 
 
+@app.get("/welcome", response_class=HTMLResponse, include_in_schema=False)
+def welcome():
+    """Public landing page (marketing); no sign-in needed."""
+    return HTMLResponse((BASE_DIR / "app" / "static" / "welcome.html").read_text(encoding="utf-8"))
+
+
 @app.exception_handler(LoginRequired)
 async def _login_required(request: Request, _exc: LoginRequired):
     return redirect("/login")
