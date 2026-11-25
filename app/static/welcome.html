@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="مفتاح الخزينة: منصة سعودية تقسّم إيرادات المنشأة لحظة وصولها على التزاماتها، وتحوّل كل بند لمستفيده في موعده.">
+<meta name="description" content="مفتاح الخزينة، مدير الخزينة الرقمي للمنشآت: تخصيص الإيرادات وفق سياستك المالية، ومتابعة الالتزامات والاستحقاقات والسيولة من مكان واحد، مع تنفيذ الخدمات المالية عبر جهات مرخّصة.">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>مفتاح الخزينة</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -87,7 +87,7 @@ a { color: inherit; text-decoration: none; }
 /* section scaffolding */
 section { position: relative; }
 .center { text-align: center; display: grid; justify-items: center; }
-.center > .stats, .center > .chart-card, .center > .calc, .center > .features, .center > .steps, .center > .plans, .center > .dash { width: 100%; }
+.center > .stats, .center > .chart-card, .center > .calc, .center > .features, .center > .steps, .center > .dash { width: 100%; }
 .mark { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: var(--text); font-weight: 400; margin-bottom: 18px; }
 .mark svg { width: 20px; height: 20px; }
 .h-xl { font-size: clamp(34px, 4.6vw, 56px); line-height: 1.2; }
@@ -233,24 +233,6 @@ section { position: relative; }
 .step h3 { font-size: 17px; }
 .step p { font-size: 14px; color: var(--text); }
 
-/* plans */
-.plans { margin-top: 48px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: right; align-items: start; }
-.plan { border: 1px solid var(--line); border-radius: 20px; padding: 28px; display: grid; gap: 18px; background: var(--card); }
-.plan.pick { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand), var(--shadow); }
-.plan .ph { display: flex; justify-content: space-between; align-items: center; }
-.plan .ph b { font-weight: 500; font-size: 16px; }
-.plan .ph em { font-style: normal; font-size: 11px; color: var(--brand); background: var(--brand-pale); padding: 2px 10px; border-radius: 999px; }
-.plan .price { display: flex; align-items: baseline; gap: 6px; }
-.plan .price strong { font-size: 40px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
-.plan .price span { font-size: 13px; color: var(--soft); }
-.plan .who { font-size: 14px; color: var(--text); }
-.plan ul { list-style: none; margin: 0; padding: 18px 0 0; border-top: 1px solid var(--line); display: grid; gap: 10px; font-size: 14px; font-weight: 400; }
-.plan li { display: flex; gap: 10px; align-items: center; }
-.plan li svg { width: 16px; height: 16px; color: var(--brand); flex: none; }
-.plan li small { margin-inline-start: auto; font-size: 11px; color: var(--gold); background: var(--gold-pale); padding: 1px 8px; border-radius: 999px; }
-.plan .pill { width: 100%; height: 44px; font-size: 14px; }
-.fees { margin-top: 18px; font-size: 13px; color: var(--soft); }
-
 /* closing */
 .closing { margin-top: clamp(80px, 10vw, 128px); border-radius: 28px; padding: clamp(72px, 9vw, 112px) 16px; background: radial-gradient(60% 80% at 50% 100%, var(--wash-a), transparent 70%), linear-gradient(180deg, var(--bg), var(--wash-b)); }
 footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-block: 28px 36px; font-size: 13px; color: var(--soft); font-weight: 400; }
@@ -267,7 +249,6 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
   .d-grid { grid-template-columns: 1fr; }
   .features { grid-template-columns: 1fr 1fr; }
   .steps { grid-template-columns: 1fr 1fr; row-gap: 32px; }
-  .plans { grid-template-columns: 1fr; max-width: 520px; margin-inline: auto; }
   .calc { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 600px) {
@@ -303,7 +284,6 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
       <ul>
         <li><a href="#how">كيف يعمل</a></li>
         <li><a href="#features">المزايا</a></li>
-        <li><a href="#plans">الباقات</a></li>
         <li><a href="#trust">الأمان</a></li>
       </ul>
       <div class="nav-end">
@@ -318,14 +298,14 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 
   <main id="top">
     <section class="hero center">
-      <span class="mark"><svg><use href="#i-key"/></svg>مفتاح الخزينة</span>
+      <span class="mark"><svg><use href="#i-key"/></svg>مفتاح الخزينة · مدير الخزينة الرقمي للمنشآت</span>
       <h1 class="h-xl">قسّم إيراداتك قبل أن تصرفها</h1>
-      <p class="sub">كل ريال يصل لمنشأتك يُقسَّم فورًا على الضريبة والإيجار والرواتب والأرباح، ويُحوَّل لمستفيده في موعده.</p>
+      <p class="sub">كل ريال يصل لمنشأتك يُخصَّص وفق سياستك المالية على الالتزامات والأولويات، وتُجهَّز استحقاقاته ليتم تنفيذها عبر جهة مالية مرخّصة عند موعدها.</p>
       <div class="actions">
         <a class="pill brand" href="/signup">أنشئ حساب منشأتك</a>
         <a class="pill soft" href="#how">كيف يعمل</a>
       </div>
-      <p class="trustline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>الحساب والتحويلات عبر شريك بنكي مرخّص من البنك المركزي السعودي</p>
+      <p class="trustline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>الخدمات البنكية والتنفيذية، عند تفعيلها، تتم عبر جهات مالية مرخّصة وفق الأنظمة ذات العلاقة.</p>
 
       <div class="dash asm" aria-label="لوحة مفتاح الخزينة">
         <div class="app-top"><span class="app-logo"><svg><use href="#i-key"/></svg>مفتاح الخزينة</span><span class="app-links">الشركات</span><span class="app-links">الدعم</span><span class="app-user">محاسب</span></div>
@@ -335,12 +315,12 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
             <div class="tabs"><span class="on">اللوحة</span><span>المعاملات</span><span>الحسابات البنكية</span><span>سياسة التقسيم</span><span>أرصدة البنود</span><span>التقارير</span><span>سجل التدقيق</span></div>
           </div>
           <div class="hero-kpis">
-            <div class="big green a a2"><small>الفائض</small><strong><span class="fig" data-count="18920.55">18,920.55</span><em>ر.س</em></strong><span>يغطي عجز البنود أولًا، ثم يُحوَّل في الموعد الذي حددته</span></div>
-            <div class="big sand a a3"><small>المحجوز للبنود</small><strong><span class="fig" data-count="134644.2">134,644.20</span><em>ر.س</em></strong><span>يُحوَّل إلى المستفيدين في مواعيد استحقاقهم</span></div>
+            <div class="big green a a2"><small>الفائض</small><strong><span class="fig" data-count="18920.55">18,920.55</span><em>ر.س</em></strong><span>يمكن توجيهه لتغطية العجز وفق السياسة المعتمدة</span></div>
+            <div class="big sand a a3"><small>المخصص للالتزامات</small><strong><span class="fig" data-count="134644.2">134,644.20</span><em>ر.س</em></strong><span>يُرسل للتنفيذ عبر الجهة المالية في مواعيد الاستحقاق</span></div>
           </div>
           <div class="kpis">
             <div class="kpi a a3"><small>الوارد هذا الشهر</small><strong class="fig" data-count="284350">284,350.00</strong></div>
-            <div class="kpi a a4" style="--c:#C9962F"><small>المحوَّل للمستفيدين</small><strong class="fig" data-count="96400">96,400.00</strong></div>
+            <div class="kpi a a4" style="--c:#C9962F"><small>المُرسل للتنفيذ</small><strong class="fig" data-count="96400">96,400.00</strong></div>
             <div class="kpi a a4" style="--c:#8FA79C"><small>العجز الحالي</small><strong class="fig">0.00</strong></div>
             <div class="kpi a a5" style="--c:#3FB389"><small>عدد المعاملات</small><strong class="fig">62</strong></div>
           </div>
@@ -375,11 +355,11 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
     <section class="block center wrap" id="trust">
       <span class="mark rv"><svg><use href="#i-key"/></svg>دقة حتى الهللة</span>
       <h2 class="h-lg rv">مصمّمة لأموال المنشآت السعودية</h2>
-      <p class="sub rv">عبر شريك بنكي مرخّص، والضريبة محسوبة كما في الفاتورة، وبيانات كل منشأة مشفّرة.</p>
+      <p class="sub rv">تخصيص دقيق بالهللة، والضريبة محسوبة كما في الفاتورة، وبيانات كل منشأة مشفّرة.</p>
       <div class="stats">
         <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 18L18 6"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/></svg><strong class="fig">15 / 115</strong><span>حصة الضريبة من مبيعات شاملة لها.</span></div>
         <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9 11h6"/></svg><strong>بالهللة</strong><span>لا كسور ضائعة، والباقي يذهب للفائض.</span></div>
-        <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><strong>شريك مرخّص</strong><span>الحساب والتحويلات عبر مزوّد مرخّص من البنك المركزي السعودي.</span></div>
+        <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><strong>جهات مرخّصة</strong><span>الخدمات المالية والتنفيذية تتم عبر جهات مرخّصة عند تفعيلها.</span></div>
         <div class="stat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="10" width="14" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><strong class="fig">AES-256</strong><span>تشفير بيانات كل منشأة وآيبانها.</span></div>
       </div>
     </section>
@@ -387,24 +367,24 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
     <section class="block">
       <div class="wash center">
         <h2 class="h-lg rv">كل بند يعرف موعده</h2>
-        <p class="sub rv">رصيد كل التزام يتراكم من الإيرادات اليومية، ثم يُحوَّل لمستفيده في يومه.</p>
+        <p class="sub rv">يتراكم المخصص لكل التزام من الإيرادات اليومية، ثم يُرسل للتنفيذ عبر الجهة المالية المرخّصة في يومه.</p>
         <div class="chart-card rv">
           <div class="cc-head">
-            <div><h3>أرصدة البنود خلال شهر</h3><p>منشأة بإقفال يومي قرابة 10,000 ر.س (مثال توضيحي)</p></div>
+            <div><h3>المخصص للالتزامات خلال شهر</h3><p>منشأة بإقفال يومي قرابة 10,000 ر.س (مثال توضيحي)</p></div>
             <div class="legend"><span><i style="background:#1D8A64"></i>الرواتب</span><span><i style="background:#C9962F"></i>الإيجار</span><span><i style="background:#8FA79C"></i>الضريبة</span></div>
           </div>
           <div class="chart-wrap" id="chartWrap">
             <svg class="chart" id="chart" viewBox="0 0 860 330" role="img" aria-label="رسم أرصدة البنود خلال شهر"></svg>
             <div class="tip" id="tip"></div>
           </div>
-          <p class="note">الإيجار يُحوَّل يوم 27، والرواتب آخر الشهر، والضريبة تتراكم حتى نهاية الربع.</p>
+          <p class="note">يُرسل الإيجار للتنفيذ يوم 27، والرواتب آخر الشهر، والضريبة تتراكم حتى نهاية الربع.</p>
         </div>
       </div>
     </section>
 
     <section class="block center wrap" id="calc">
       <h2 class="h-lg rv">جرّب إقفال يومك</h2>
-      <p class="sub rv">اكتب المبلغ، وشاهد كيف يُقسَّم حسب سياسة مثال لشركة رواف التجارية.</p>
+      <p class="sub rv">اكتب المبلغ، وشاهد كيف يُخصَّص حسب سياسة مثال لشركة رواف التجارية.</p>
       <div class="calc rv">
         <div>
           <label for="amount">إقفال اليوم</label>
@@ -441,58 +421,30 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
       <p class="sub rv">من الإيداع إلى التحويل، كل خطوة واضحة ومسجّلة.</p>
       <div class="features">
         <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M3 19c.8-2.6 2.8-4 5-4s4.2 1.4 5 4M13 15.4c.9-.3 1.9-.4 3-.4 2.2 0 4.2 1.4 5 4"/></svg></span><h3>اعتماد بأربع عيون</h3><p>المحاسب يبني السياسة، ومراجع مستقل يعتمدها قبل تطبيقها.</p></article>
-        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 4v16M5 11l7-7 7 7"/></svg></span><h3>الفائض يغطي العجز</h3><p>إذا تأخر بند عن جدوله، يسدّه الفائض حسب أقرب استحقاق.</p></article>
-        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v5M12 16h.01"/></svg></span><h3>حوالة من حساب لا نعرفه</h3><p>تنتظر قرارك: تأكيد وتقسيم، أو «ليست لي» فتعود للمرسل.</p></article>
-        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 12h12M12 6l6 6-6 6"/></svg></span><h3>تحويل باسمنا فقط</h3><p>يصل للمستفيد باسم مفتاح الخزينة، دون ذكر أي اسم آخر.</p></article>
+        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 4v16M5 11l7-7 7 7"/></svg></span><h3>الفائض لتغطية العجز</h3><p>يمكن توجيه الفائض لتغطية العجز وفق السياسة المعتمدة.</p></article>
+        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v5M12 16h.01"/></svg></span><h3>حوالة من حساب لا نعرفه</h3><p>تنتظر قرارك قبل تخصيصها: تأكيد، أو «ليست لي» فتُعاد عبر الجهة المالية.</p></article>
+        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span><h3>متابعة الاستحقاقات</h3><p>ما يستحق اليوم وهذا الأسبوع وهذا الشهر، من مكان واحد.</p></article>
         <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span><h3>تقارير وسجل تدقيق</h3><p>تقارير Excel أسبوعية وشهرية، وسجل لكل عملية لا يُعدَّل.</p></article>
-        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16v12H4zM4 7l2-3h12l2 3M9 12h6"/></svg></span><h3>لمكاتب المحاسبة</h3><p>عدة منشآت تحت حساب واحد، لكل منها سياستها وآيبانها.</p></article>
+        <article class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16v12H4zM4 7l2-3h12l2 3M9 12h6"/></svg></span><h3>لمكاتب المحاسبة</h3><p>عدة منشآت تحت حساب واحد، لكل منها سياستها وتقاريرها.</p></article>
       </div>
     </section>
 
     <section class="block center wrap" id="how">
       <h2 class="h-lg rv">من الإقفال إلى المستفيد</h2>
-      <p class="sub rv">تضبط السياسة مرة واحدة، والمنصة تطبّقها على كل ريال يصل.</p>
+      <p class="sub rv">تضبط السياسة مرة واحدة، والمنصة تطبّقها على كل ريال يصل وتجهّز استحقاقاته.</p>
       <div class="steps" id="steps">
-        <div class="step rv"><div class="rule"><b></b></div><span class="n">الخطوة 1</span><h3>يصل المبلغ</h3><p>تحوّل المنشأة إقفالها إلى آيبان الإيداع الخاص بها.</p></div>
-        <div class="step rv"><div class="rule"><b></b></div><span class="n">الخطوة 2</span><h3>يُقسَّم في ثوانٍ</h3><p>ضريبة، وإتاوة، وإيجار، ورواتب، وأرباح، وفائض.</p></div>
-        <div class="step rv"><div class="rule"><b></b></div><span class="n">الخطوة 3</span><h3>يُحجز حتى موعده</h3><p>يتراكم رصيد كل بند، والفائض يسد أي بند متأخر.</p></div>
-        <div class="step rv"><div class="rule"><b></b></div><span class="n">الخطوة 4</span><h3>يُحوَّل للمستفيد</h3><p>في الموعد، باسم مفتاح الخزينة، للمؤجر والموظفين والمانح.</p></div>
+        <div class="step rv"><div class="rule"><b></b></div><span class="n">الخطوة 1</span><h3>تصل بيانات الإيراد</h3><p>تصل بيانات الإيراد أو المبلغ عبر القناة المالية أو التكامل المعتمد.</p></div>
+        <div class="step rv"><div class="rule"><b></b></div><span class="n">الخطوة 2</span><h3>يُخصَّص في ثوانٍ</h3><p>ضريبة، وإتاوة، وإيجار، ورواتب، وأرباح، وفائض.</p></div>
+        <div class="step rv"><div class="rule"><b></b></div><span class="n">الخطوة 3</span><h3>يظل مخصصًا حتى موعده</h3><p>يتراكم المخصص لكل التزام، ويمكن توجيه الفائض لأي بند متأخر.</p></div>
+        <div class="step rv"><div class="rule"><b></b></div><span class="n">الخطوة 4</span><h3>يُرسل للتنفيذ</h3><p>عند موعد الاستحقاق، عبر الجهة المالية المرخّصة، للمؤجر والموظفين والمانح.</p></div>
       </div>
     </section>
 
-    <section class="block center wrap" id="plans">
-      <h2 class="h-lg rv">باقة على قدر منشأتك</h2>
-      <p class="sub rv">اشتراك شهري، ورسوم بسيطة على كل عملية.</p>
-      <div class="plans">
-        <article class="plan rv">
-          <div class="ph"><b>أساسي</b></div>
-          <div class="price"><strong>199</strong><span>ر.س شهريًا</span></div>
-          <p class="who">منشأة صغيرة تدير أموالها بنفسها</p>
-          <ul><li><svg><use href="#i-check"/></svg>منشأة واحدة وحتى 5 بنود</li><li><svg><use href="#i-check"/></svg>اعتماد ذاتي</li><li><svg><use href="#i-check"/></svg>تحويل تلقائي وإدارة الفائض</li><li><svg><use href="#i-check"/></svg>لوحة وتقرير شهري</li></ul>
-          <a class="pill soft" href="/signup">ابدأ بأساسي</a>
-        </article>
-        <article class="plan pick rv">
-          <div class="ph"><b>نمو</b><em>الأكثر طلبًا</em></div>
-          <div class="price"><strong>449</strong><span>ر.س شهريًا</span></div>
-          <p class="who">منشأة فيها محاسب وصاحب قرار</p>
-          <ul><li><svg><use href="#i-check"/></svg>منشأتان وحتى 10 بنود</li><li><svg><use href="#i-check"/></svg>مراجع مستقل وبنود محمية</li><li><svg><use href="#i-check"/></svg>سجل تدقيق وتقارير تفصيلية</li><li><svg><use href="#i-check"/></svg>تحويل الفائض فورًا</li><li><svg><use href="#i-check"/></svg>الربط مع نقاط البيع<small>قريبًا</small></li></ul>
-          <a class="pill brand" href="/signup">ابدأ بنمو</a>
-        </article>
-        <article class="plan rv">
-          <div class="ph"><b>أعمال</b></div>
-          <div class="price"><strong>999</strong><span>ر.س شهريًا</span></div>
-          <p class="who">مكاتب المحاسبة والمجموعات</p>
-          <ul><li><svg><use href="#i-check"/></svg>حتى 10 منشآت وبنود بلا حد</li><li><svg><use href="#i-check"/></svg>أكثر من مراجع</li><li><svg><use href="#i-check"/></svg>دعم بأولوية ومدير حساب</li><li><svg><use href="#i-check"/></svg>الربط المحاسبي<small>قريبًا</small></li><li><svg><use href="#i-check"/></svg>الربط مع نقاط البيع<small>قريبًا</small></li></ul>
-          <a class="pill soft" href="/signup">ابدأ بأعمال</a>
-        </article>
-      </div>
-      <p class="fees rv">رسوم العمليات في كل الباقات: 20 هللة لكل إيداع، و40 هللة لكل تحويل.</p>
-    </section>
 
     <section class="closing center">
       <span class="mark rv"><svg><use href="#i-key"/></svg>مفتاح الخزينة</span>
       <h2 class="h-xl rv">كل ريال يعرف طريقه</h2>
-      <p class="sub rv">سجّل منشأتك، وأضف حساباتك، وابنِ سياستك في دقائق.</p>
+      <p class="sub rv">تساعد مفتاح الخزينة منشأتك على تخصيص الإيرادات وفق سياسة مالية تعتمدها، ومتابعة الالتزامات والاستحقاقات والسيولة من مكان واحد. تبقى الأموال لدى الجهات المالية المرخّصة.</p>
       <div class="actions rv">
         <a class="pill brand" href="/signup">أنشئ حسابًا</a>
         <a class="pill soft" href="/login">لدي حساب</a>
